@@ -1,0 +1,72 @@
+package gq.luma.bot.render.renderer;
+
+import gq.luma.bot.render.structure.RenderSettings;
+import gq.luma.bot.render.structure.VideoOutputFormat;
+import gq.luma.bot.utils.LumaException;
+import io.humble.video.*;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.function.Consumer;
+
+public class RendererInterface {
+    public static SinglePassFFRenderer createSinglePass(RenderSettings settings, File exportFile) throws IOException, InterruptedException, LumaException {
+        Muxer m = Muxer.make(exportFile.getAbsolutePath(), null, null);
+
+        Codec codec = Codec.findEncodingCodec(settings.getFormat().getVideoCodec());
+        System.out.println("Video Codec: " + codec.getName());
+        Encoder videoEncoder = Encoder.make(codec);
+        videoEncoder.setWidth(settings.getWidth());
+        videoEncoder.setHeight(settings.getHeight());
+        videoEncoder.setPixelFormat(PixelFormat.Type.PIX_FMT_YUV420P);
+        videoEncoder.setTimeBase(Rational.make(1, settings.getFps()));
+        if(settings.getFormat() == VideoOutputFormat.H264) {
+            videoEncoder.setPixelFormat(PixelFormat.Type.PIX_FMT_YUV420P);
+            videoEncoder.setProperty("preset", "slow");
+            videoEncoder.setProperty("crf", settings.getCrf());
+        } else if(settings.getFormat() == VideoOutputFormat.DNXHD){
+            videoEncoder.setPixelFormat(PixelFormat.Type.PIX_FMT_YUV422P);
+            videoEncoder.setProperty("b", "185M");
+            //videoEncoder.setProperty("an", true);
+        } else if(settings.getFormat() == VideoOutputFormat.HUFFYUV){
+            videoEncoder.setPixelFormat(PixelFormat.Type.PIX_FMT_YUV422P);
+        }
+
+        Codec audioCodec = Codec.findEncodingCodec(settings.getFormat().getAudioCodec());
+        System.out.println("Audio Codec: " + audioCodec.getName());
+        Encoder audioEncoder = Encoder.make(audioCodec);
+
+        AudioFormat.Type findType = null;
+        for(AudioFormat.Type type : audioCodec.getSupportedAudioFormats()) {
+            if(findType == null) {
+                findType = type;
+            }
+            if(type == AudioFormat.Type.SAMPLE_FMT_S16) {
+                findType = type;
+                break;
+            }
+        }
+
+        if(findType == null)
+            throw new LumaException("Unable to find valid audio format for audio codec: " + audioCodec.getName());
+
+        audioEncoder.setSampleRate(44100);
+        audioEncoder.setTimeBase(Rational.make(1, 44100));
+        audioEncoder.setChannels(2);
+        audioEncoder.setChannelLayout(AudioChannel.Layout.CH_LAYOUT_STEREO);
+        audioEncoder.setSampleFormat(findType);
+
+        if(m.getFormat().getFlag(MuxerFormat.Flag.GLOBAL_HEADER)) {
+            videoEncoder.setFlag(Encoder.Flag.FLAG_GLOBAL_HEADER, true);
+            audioEncoder.setFlag(Coder.Flag.FLAG_GLOBAL_HEADER, true);
+        }
+
+        videoEncoder.open(null, null);
+        audioEncoder.open(null, null);
+        m.addNewStream(audioEncoder);
+        m.addNewStream(videoEncoder);
+        m.open(null, null);
+
+        return new SinglePassFFRenderer(m, videoEncoder, audioEncoder);
+    }
+}
