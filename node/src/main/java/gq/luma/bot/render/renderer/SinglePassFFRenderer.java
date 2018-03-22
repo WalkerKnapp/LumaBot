@@ -46,9 +46,6 @@ public class SinglePassFFRenderer implements FFRenderer {
         this.audioResampler = MediaAudioResampler.make(audioEncoder.getChannelLayout(), audioEncoder.getSampleRate(), audioEncoder.getSampleFormat(), AudioChannel.Layout.CH_LAYOUT_STEREO, 44100, AudioFormat.Type.SAMPLE_FMT_S16);
         this.audioResampler.open();
         this.sampleOffset = (long) (audioEncoder.getSampleRate() * 0.1);
-
-
-        //this.screenshotQuerier = screenshotQuerier;
     }
 
     @Override
@@ -58,8 +55,6 @@ public class SinglePassFFRenderer implements FFRenderer {
         if(this.latestFrame - ignoreFrames >= 0) {
 
             logger.trace("Writing video with index: {}", this.latestFrame);
-
-            //screenshotQuerier.accept(frame.getUnprocessed(this.latestFrame - ignoreFrames));
 
             MediaPicture finalPacket = frame.writeMedia(videoResampler, this.latestFrame - ignoreFrames);
 

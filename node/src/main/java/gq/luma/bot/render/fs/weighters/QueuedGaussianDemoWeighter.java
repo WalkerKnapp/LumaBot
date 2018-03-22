@@ -28,9 +28,4 @@ public class QueuedGaussianDemoWeighter implements DemoWeighter {
     public double weight(int framePosition) {
         return queue[framePosition];
     }
-
-    @Override
-    public boolean wantsAverage() {
-        return false;
-    }
 }

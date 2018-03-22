@@ -24,9 +24,4 @@ public class GaussianDemoWeighter implements DemoWeighter {
         final double x = framePosition * 2d - 1d;
         return Math.pow(Math.exp(-(((x - mean) * (x - mean)) / (2 * variance))), 1 / (stdDev * Math.sqrt(2 * Math.PI)));
     }
-
-    @Override
-    public boolean wantsAverage() {
-        return true;
-    }
 }

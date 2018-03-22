@@ -127,10 +127,6 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
     @Override
     public int statfs(String path, Statvfs stbuf) {
         if (Platform.getNativePlatform().getOS() == WINDOWS) {
-            // statfs needs to be implemented on Windows in order to allow for copying
-            // data from other devices because winfsp calculates the volume size based
-            // on the statvfs call.
-            // see https://github.com/billziss-gh/winfsp/blob/14e6b402fe3360fdebcc78868de8df27622b565f/src/dll/fuse/fuse_intf.c#L654
             if ("/".equals(path)) {
                 stbuf.f_blocks.set(1024 * 1024); // total data blocks in file system
                 stbuf.f_frsize.set(1024);        // fs block size

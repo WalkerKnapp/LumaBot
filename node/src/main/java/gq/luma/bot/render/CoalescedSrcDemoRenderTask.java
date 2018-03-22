@@ -1,6 +1,5 @@
 package gq.luma.bot.render;
 
-import gq.luma.bot.BotReference;
 import gq.luma.bot.ClientSocket;
 import gq.luma.bot.SrcDemo;
 import gq.luma.bot.SrcGame;
@@ -204,7 +203,7 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
         this.status = "Starting game";
 
         System.out.println("---------------Opening game---------------------");
-        Desktop.getDesktop().browse(new URI(BotReference.STEAM_SHORTCUT_HEADER + game.getAppCode()));
+        Desktop.getDesktop().browse(new URI(SrcRenderTask.STEAM_SHORTCUT_HEADER + game.getAppCode()));
         SourceLogMonitor.monitor("cl_thirdperson", game.getLog()).join();
 
         Thread.sleep(3000);

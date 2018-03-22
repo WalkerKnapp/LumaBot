@@ -12,9 +12,4 @@ public class LinearDemoWeighter implements DemoWeighter {
     public double weight(int framePosition) {
         return frameWeight;
     }
-
-    @Override
-    public boolean wantsAverage() {
-        return false;
-    }
 }

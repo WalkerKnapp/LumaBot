@@ -67,8 +67,4 @@ public enum SrcGame {
     public int getPublishingApp(){
         return publishingApp;
     }
-
-    public static Optional<SrcGame> getByDirectory(String dir){
-        return Stream.of(SrcGame.values()).filter(g -> g.directoryName.equalsIgnoreCase(dir)).findAny();
-    }
 }

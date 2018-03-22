@@ -1,6 +1,5 @@
 package gq.luma.bot.render;
 
-import gq.luma.bot.BotReference;
 import gq.luma.bot.ClientSocket;
 import gq.luma.bot.SrcDemo;
 import gq.luma.bot.render.fs.FuseRenderFS;
@@ -16,10 +15,7 @@ import java.io.*;
 import java.math.RoundingMode;
 import java.net.URI;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.DecimalFormat;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
@@ -51,6 +47,7 @@ public class SingleSrcRenderTask extends SrcRenderTask {
         if(!baseDir.mkdir()){
             System.out.println("Dir already exists.");
         }
+
         this.status = "Waiting";
     }
 
@@ -61,25 +58,6 @@ public class SingleSrcRenderTask extends SrcRenderTask {
             this.status = "Setting up FFmpeg";
 
             File finalFile = new File(baseDir, FilenameUtils.removeExtension(demoFile.getName()) + "." + settings.getFormat().getOutputContainer());
-
-            /*Consumer<MediaPicture> screenshotQuery = picture -> {
-                if(picture.getTimeStamp() == (long)((demo.getPlaybackTime() * settings.getFps())/2)){
-                    BufferedImage image = new BufferedImage(picture.getWidth(), picture.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
-                    final DataBufferByte db = (DataBufferByte) image.getRaster()
-                            .getDataBuffer();
-                    final byte[] bytes = db.getData();
-                    System.out.println("Image size: " + bytes.length);
-                    System.out.println("Picture size: " + picture.getDataPlaneSize(0));
-                    picture.getData(0).getByteBuffer(0, picture.getDataPlaneSize(0)).get(bytes, 0, bytes.length);
-                    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                        System.out.println("Saving image at timestamp " + picture.getTimeStamp());
-                        ImageIO.write(image, "png", baos);
-                        this.thumbnailId = ClientSocket.uploader.uploadInputStream(new ByteArrayInputStream(baos.toByteArray()), "thumbnail.png", "image/png", baos.size());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            };*/
 
             this.renderer = RendererInterface.createSinglePass(settings, finalFile);
             this.renderer.setIgnoreTime(settings.shouldRemoveBroken() ? demo.getFirstPlaybackTick()/60d : 0d);
@@ -125,7 +103,7 @@ public class SingleSrcRenderTask extends SrcRenderTask {
                 throw new LumaException("Unable to delete console log. Please contact the developer.");
             }
             System.out.println("---------------Opening game---------------------");
-            Desktop.getDesktop().browse(new URI(BotReference.STEAM_SHORTCUT_HEADER + demo.getGame().getAppCode()));
+            Desktop.getDesktop().browse(new URI(SrcRenderTask.STEAM_SHORTCUT_HEADER + demo.getGame().getAppCode()));
             SourceLogMonitor.monitor("cl_thirdperson", demo.getGame().getLog()).join();
             Thread.sleep(3000);
 

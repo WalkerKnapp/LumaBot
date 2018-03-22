@@ -4,7 +4,6 @@ import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonObject;
 import gq.luma.bot.ClientSocket;
 import gq.luma.bot.SrcGame;
-import gq.luma.bot.render.fs.FSInterface;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.utils.FileReference;
 import gq.luma.bot.utils.LumaException;
@@ -40,6 +39,8 @@ public abstract class SrcRenderTask implements Task {
             .addPathSegment("ISteamRemoteStorage")
             .addPathSegment("GetUGCFileDetails")
             .addPathSegment("v1");
+
+    static final String STEAM_SHORTCUT_HEADER = "steam://rungameid/";
 
     private transient Future future;
     transient CompletableFuture<File> cf;
@@ -124,13 +125,6 @@ public abstract class SrcRenderTask implements Task {
                     .setQueryParameter("key", ClientSocket.steamKey)
                     .setQueryParameter("ugcid", ugcID).build());
 
-            /*String string = Unirest.get(WORKSHOP_URL.toString())
-                    .queryString("appid", deployApp)
-                    .queryString("key", KeyReference.steamKey)
-                    .queryString("ugcid", ugcID)
-                    .asString()
-                    .getBody();*/
-
             System.out.println("String: " + result);
 
             JsonObject node = Json.parse(result).asObject();
@@ -200,11 +194,6 @@ public abstract class SrcRenderTask implements Task {
             e.printStackTrace();
         }
         killNow();
-        return null;
-    }
-
-    FSInterface handleErrorDokany(Throwable t){
-        handleError(t);
         return null;
     }
 
