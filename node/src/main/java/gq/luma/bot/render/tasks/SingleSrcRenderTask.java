@@ -1,23 +1,20 @@
-package gq.luma.bot.render;
+package gq.luma.bot.render.tasks;
 
 import gq.luma.bot.ClientSocket;
 import gq.luma.bot.SrcDemo;
+import gq.luma.bot.render.SourceLogMonitor;
+import gq.luma.bot.render.SrcRenderTask;
 import gq.luma.bot.render.fs.FuseRenderFS;
 import gq.luma.bot.render.renderer.FFRenderer;
 import gq.luma.bot.render.renderer.RendererInterface;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.utils.FileReference;
-import gq.luma.bot.utils.LumaException;
 import org.apache.commons.io.FilenameUtils;
 
-import java.awt.*;
 import java.io.*;
 import java.math.RoundingMode;
-import java.net.URI;
-import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Stream;
 
 public class SingleSrcRenderTask extends SrcRenderTask {
 
@@ -28,9 +25,6 @@ public class SingleSrcRenderTask extends SrcRenderTask {
     private File baseDir;
 
     private FFRenderer renderer;
-    private File mountPoint;
-
-    private String status;
 
     private DecimalFormat df;
 
@@ -54,7 +48,6 @@ public class SingleSrcRenderTask extends SrcRenderTask {
     @Override
     public void executeAsync() {
         try {
-
             this.status = "Setting up FFmpeg";
 
             File finalFile = new File(baseDir, FilenameUtils.removeExtension(demoFile.getName()) + "." + settings.getFormat().getOutputContainer());
@@ -62,54 +55,10 @@ public class SingleSrcRenderTask extends SrcRenderTask {
             this.renderer = RendererInterface.createSinglePass(settings, finalFile);
             this.renderer.setIgnoreTime(settings.shouldRemoveBroken() ? demo.getFirstPlaybackTick()/60d : 0d);
 
-            this.status = "Setting up File System";
+            scanForWorkshop(demo.getGame(), demo);
 
-            this.mountPoint = new File(demo.getGame().getGameDir(), "export");
-
-            //Setting up filesystem
-            ClientSocket.renderFS.getRenderFS().configure(settings, renderer);
-            ClientSocket.renderFS.getRenderFS().getErrorHandler().exceptionally(this::handleError);
-
-            if(this.mountPoint.exists()) {
-                if (!this.mountPoint.delete()) {
-                    System.err.println("Unable to delete mount point");
-                }
-            }
-
-            Files.createSymbolicLink(mountPoint.toPath(), ClientSocket.renderFS.getMountPoint());
-
-            parseHcontent(demo.getSignOnString()).ifPresent(hcontentString -> {
-                System.out.println("Found hcontent string of: " + hcontentString);
-                File[] workshopFiles = demo.getGame().getWorkshopDir().listFiles();
-                if(workshopFiles != null && Stream.of(workshopFiles).noneMatch(f -> {
-                    File[] subFiles = f.listFiles();
-                    return subFiles != null
-                            && f.getName().equalsIgnoreCase(hcontentString)
-                            && Stream.of(subFiles).anyMatch(subFile -> subFile.getName().equalsIgnoreCase(demo.getMapName() + ".bsp"));
-                })){
-                    downloadSteamMap(demo.getGame().getWorkshopDir(), hcontentString, demo.getGame().getPublishingApp(), demo.getGame().getAppCode());
-                    System.out.println("Downloaded id: " + hcontentString);
-                }
-            });
-
-            this.status = "Setting up File System";
-            checkResources(demo.getGame(), settings);
-
-            this.status = "Starting game";
-
-            //Running Game
             writeCfg().join();
-            if(demo.getGame().getLog().exists() && !demo.getGame().getLog().delete()) {
-                throw new LumaException("Unable to delete console log. Please contact the developer.");
-            }
-            System.out.println("---------------Opening game---------------------");
-            Desktop.getDesktop().browse(new URI(SrcRenderTask.STEAM_SHORTCUT_HEADER + demo.getGame().getAppCode()));
-            SourceLogMonitor.monitor("cl_thirdperson", demo.getGame().getLog()).join();
-            Thread.sleep(3000);
-
-            if(settings.isPretify()){
-                Thread.sleep(10000);
-            }
+            setupGame(demo.getGame(), settings);
 
             sendCommand("exec autorecord", demo.getGame());
 
@@ -125,9 +74,6 @@ public class SingleSrcRenderTask extends SrcRenderTask {
                 sendCommand("demo_pauseatservertick 1;demo_resume", demo.getGame());
                 Thread.sleep(3000);
                 sendCommand("sv_alternateticks 1", demo.getGame());
-                if(demo.getMapName().contains("mp_")){
-                    sendCommand("+remote_view", demo.getGame());
-                }
                 Thread.sleep(3000);
                 sendCommand("exec restarter", demo.getGame());
             }
@@ -192,6 +138,10 @@ public class SingleSrcRenderTask extends SrcRenderTask {
                 }
                 if(settings.isDemohack()) bw.write("portal_demohack 1\n");
 
+                if(demo.getMapName().contains("mp_")){
+                    bw.write("cl_enable_remote_splitscreen 1\n");
+                }
+
                 bw.write("host_framerate " + (settings.getFps() * settings.getFrameblendIndex()) + "\n");
                 bw.write("mat_setvideomode " + settings.getWidth() + " " + settings.getHeight() + " 1\n");
                 if(settings.shouldReallyStartOdd(demo)) bw.write("demo_pauseatservertick 1\n");
@@ -210,13 +160,9 @@ public class SingleSrcRenderTask extends SrcRenderTask {
     }
 
     @Override
-    void cleanup() {
+    protected void cleanup() {
         killGame(demo.getGame());
         this.renderer.forcefullyClose();
-
-        if(!this.mountPoint.delete()){
-            System.err.println("Unable to delete mount point");
-        }
 
         try {
             Thread.sleep(1000);
@@ -226,8 +172,6 @@ public class SingleSrcRenderTask extends SrcRenderTask {
 
         this.status = "Uploading files.";
     }
-
-
 
     @Override
     public boolean equals(Object object) {

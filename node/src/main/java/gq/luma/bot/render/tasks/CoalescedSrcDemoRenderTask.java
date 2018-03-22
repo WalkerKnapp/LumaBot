@@ -1,25 +1,21 @@
-package gq.luma.bot.render;
+package gq.luma.bot.render.tasks;
 
 import gq.luma.bot.ClientSocket;
 import gq.luma.bot.SrcDemo;
 import gq.luma.bot.SrcGame;
+import gq.luma.bot.render.SourceLogMonitor;
+import gq.luma.bot.render.SrcRenderTask;
 import gq.luma.bot.render.fs.FuseRenderFS;
 import gq.luma.bot.render.renderer.FFRenderer;
 import gq.luma.bot.render.renderer.RendererInterface;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.utils.FileReference;
-import gq.luma.bot.utils.LumaException;
 import jnr.ffi.Pointer;
 
-import java.awt.*;
 import java.io.*;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Stream;
 
 public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
 
@@ -27,7 +23,6 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
 
     private String status;
     private String name;
-    private long requester;
 
     private List<SrcDemo> srcDemos;
     private RenderSettings settings;
@@ -36,35 +31,14 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
     private FFRenderer renderer;
     private long predictedTotalFrames;
 
-    public CoalescedSrcDemoRenderTask(String name, long requester, File baseDir, RenderSettings settings, List<SrcDemo> demos){
+    public CoalescedSrcDemoRenderTask(String name, File baseDir, RenderSettings settings, List<SrcDemo> demos){
         this.name = name;
-        this.requester = requester;
         this.baseDir = baseDir;
         this.settings = settings;
         this.srcDemos = demos;
 
         this.predictedTotalFrames = (long) (srcDemos.stream().map(SrcDemo::getPlaybackTime).reduce((f1, f2) -> f1 + f2).orElse(1f) * settings.getFps());
     }
-
-    /*
-    , picture -> {
-                if(picture.getTimeStamp() == predictedTotalFrames/2){
-                    BufferedImage image = new BufferedImage(picture.getWidth(), picture.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
-                    final DataBufferByte db = (DataBufferByte) image.getRaster().getDataBuffer();
-                    final byte[] bytes = db.getData();
-                    System.out.println("Image size: " + bytes.length);
-                    System.out.println("Picture size: " + picture.getDataPlaneSize(0));
-                    picture.getData(0).getByteBuffer(0, picture.getDataPlaneSize(0)).get(bytes, 0, bytes.length);
-                    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                        System.out.println("Saving image at timestamp " + picture.getTimeStamp());
-                        ImageIO.write(image, "png", baos);
-                        this.thumbnailId = ClientSocket.uploader.uploadInputStream(new ByteArrayInputStream(baos.toByteArray()), "thumbnail.png", "image/png", baos.size());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-     */
 
     @Override
     public void executeAsync() {
@@ -86,16 +60,13 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
 
                 if (currentGame != demo.getGame()) {
                     killGame(currentGame);
-                    setupGame(currentGame = demo.getGame());
+                    writeSettings(currentGame = demo.getGame());
+                    setupGame(currentGame, settings);
+                    sendCommand("exec rendersettings.cfg", currentGame);
                     Thread.sleep(3000);
                 }
 
-                parseHcontent(demo.getSignOnString()).ifPresent(hcontentString -> {
-                    if (Stream.of(Objects.requireNonNull(currentGame.getWorkshopDir().listFiles())).noneMatch(f -> f.getName().equalsIgnoreCase(hcontentString))) {
-                        downloadSteamMap(currentGame.getWorkshopDir(), hcontentString, currentGame.getPublishingApp(), currentGame.getAppCode());
-                        System.out.println("Downloaded id: " + hcontentString);
-                    }
-                });
+                scanForWorkshop(currentGame, demo);
 
                 if (demo.getPlaybackTicks() > 2) {
                     if (settings.shouldReallyStartOdd(demo)) {
@@ -176,39 +147,9 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
     }
 
     @Override
-    void cleanup(){
+    protected void cleanup(){
         killGame(currentGame);
         killNow();
-    }
-
-    private void setupGame(SrcGame game) throws LumaException, IOException, URISyntaxException, InterruptedException {
-        this.status = "Setting up File System.";
-
-        checkResources(game, settings);
-
-        if (game.getLog().exists() && !game.getLog().delete()) {
-            throw new LumaException("Unable to delete console log. Please contact the developer.");
-        }
-
-        File mountPoint = new File(game.getGameDir(), "export");
-
-        if (mountPoint.exists() && !mountPoint.delete()) {
-            throw new LumaException("Failed to remove the frame export directory.");
-        }
-
-        Files.createSymbolicLink(mountPoint.toPath(), ClientSocket.renderFS.getMountPoint());
-
-        writeSettings(game);
-
-        this.status = "Starting game";
-
-        System.out.println("---------------Opening game---------------------");
-        Desktop.getDesktop().browse(new URI(SrcRenderTask.STEAM_SHORTCUT_HEADER + game.getAppCode()));
-        SourceLogMonitor.monitor("cl_thirdperson", game.getLog()).join();
-
-        Thread.sleep(3000);
-
-        sendCommand("exec rendersettings.cfg", game);
     }
 
     private void writeSettings(SrcGame game) throws IOException {

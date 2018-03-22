@@ -3,6 +3,7 @@ package gq.luma.bot.render;
 import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonObject;
 import gq.luma.bot.ClientSocket;
+import gq.luma.bot.SrcDemo;
 import gq.luma.bot.SrcGame;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.utils.FileReference;
@@ -12,10 +13,13 @@ import okhttp3.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
@@ -26,11 +30,13 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public abstract class SrcRenderTask implements Task {
+    private static final String STEAM_SHORTCUT_HEADER = "steam://rungameid/";
     private static final Logger logger = LoggerFactory.getLogger(SrcRenderTask.class);
     private static final Pattern ID_PATTERN = Pattern.compile("(?<=workshop\\\\|/)(?<id>\\d*)(?=[\\\\/])");
     private static HttpUrl.Builder urlBuilder = new HttpUrl.Builder()
@@ -40,11 +46,10 @@ public abstract class SrcRenderTask implements Task {
             .addPathSegment("GetUGCFileDetails")
             .addPathSegment("v1");
 
-    static final String STEAM_SHORTCUT_HEADER = "steam://rungameid/";
-
     private transient Future future;
-    transient CompletableFuture<File> cf;
-    private boolean rendering;
+    protected transient CompletableFuture<File> cf;
+
+    protected String status;
 
     @Override
     public CompletableFuture<File> execute() {
@@ -53,13 +58,13 @@ public abstract class SrcRenderTask implements Task {
         return cf;
     }
 
-    void killNow(){
+    protected void killNow(){
         this.future.cancel(true);
     }
 
     public abstract void executeAsync();
 
-    CompletableFuture<Void> sendCommand(String command, SrcGame game){
+    protected CompletableFuture<Void> sendCommand(String command, SrcGame game){
         CompletableFuture<Void> cf = new CompletableFuture<>();
         new Thread(() -> {
             try {
@@ -74,7 +79,7 @@ public abstract class SrcRenderTask implements Task {
         return cf;
     }
 
-    void waitForDemStop(SrcGame game){
+    protected void waitForDemStop(SrcGame game){
         long renderingStartTime = System.currentTimeMillis();
 
         CompletableFuture<?>[] demoWatcherCfs = {SourceLogMonitor.monitor("dem_stop", game.getLog()), SourceLogMonitor.monitor("leaderboard_open", game.getLog(), 1000)};
@@ -85,7 +90,7 @@ public abstract class SrcRenderTask implements Task {
         System.out.println("Time Spent rendering: " + (renderingStopTime - renderingStartTime)/1000);
     }
 
-    void killGame(SrcGame game){
+    protected void killGame(SrcGame game){
         if(game == SrcGame.NONE)
             return;
         ProcessHandle
@@ -95,7 +100,7 @@ public abstract class SrcRenderTask implements Task {
                 .ifPresent(ProcessHandle::destroyForcibly);
     }
 
-    void checkResources(SrcGame game, RenderSettings settings) throws IOException {
+    private void checkResources(SrcGame game, RenderSettings settings) throws IOException {
         File resourcesFolder = new File(FileReference.resDir.getAbsolutePath(), game.getDirectoryName());
         File binDir = new File(game.getGameDir().getParentFile(), "bin");
         logger.debug("Resources: " + resourcesFolder.getAbsolutePath());
@@ -117,7 +122,55 @@ public abstract class SrcRenderTask implements Task {
         }
     }
 
-    static Optional<File> downloadSteamMap(File workshopDir, String ugcID, int deployApp, int deployAppAlt){
+    protected void setupGame(SrcGame game, RenderSettings settings) throws LumaException, IOException, URISyntaxException, InterruptedException {
+        this.status = "Setting up File System.";
+
+        checkResources(game, settings);
+
+        if (game.getLog().exists() && !game.getLog().delete()) {
+            throw new LumaException("Unable to delete console log. Please contact the developer.");
+        }
+
+        File mountPoint = new File(game.getGameDir(), "export");
+
+        if (mountPoint.exists() && !mountPoint.delete()) {
+            throw new LumaException("Failed to remove the frame export directory.");
+        }
+
+        Files.createSymbolicLink(mountPoint.toPath(), ClientSocket.renderFS.getMountPoint());
+
+        this.status = "Starting game";
+
+        System.out.println("---------------Opening game---------------------");
+        Desktop.getDesktop().browse(new URI(SrcRenderTask.STEAM_SHORTCUT_HEADER + game.getAppCode()));
+        SourceLogMonitor.monitor("cl_thirdperson", game.getLog()).join();
+
+        Thread.sleep(3000);
+
+        if(settings.isPretify()){
+            Thread.sleep(10000);
+        }
+    }
+
+    protected void scanForWorkshop(SrcGame game, SrcDemo demo) throws LumaException {
+        AtomicBoolean errorEncountered = new AtomicBoolean(false);
+        parseHcontent(demo.getSignOnString()).ifPresent(hcontentString -> {
+            if (Stream.of(Objects.requireNonNull(game.getWorkshopDir().listFiles())).noneMatch(f -> {
+                File[] subFiles = f.listFiles();
+                return subFiles != null
+                        && f.getName().equalsIgnoreCase(hcontentString)
+                        && Stream.of(subFiles).anyMatch(subFile -> subFile.getName().equalsIgnoreCase(demo.getMapName() + ".bsp"));
+            })) {
+                errorEncountered.set(!downloadSteamMap(game.getWorkshopDir(), hcontentString, game.getPublishingApp(), game.getAppCode()).isPresent());
+                System.out.println("Downloaded id: " + hcontentString);
+            }
+        });
+        if(errorEncountered.get()){
+            throw new LumaException("Failed to download workshop map specified in demo: " + demo.getAssociatedFile());
+        }
+    }
+
+    private static Optional<File> downloadSteamMap(File workshopDir, String ugcID, int deployApp, int deployAppAlt){
         try {
             System.out.println("Using key: " + ClientSocket.steamKey);
 
@@ -177,7 +230,7 @@ public abstract class SrcRenderTask implements Task {
                 .string();
     }
 
-    Optional<String> parseHcontent(String signOnString){
+    private Optional<String> parseHcontent(String signOnString){
         Matcher m = ID_PATTERN.matcher(signOnString);
         while(m.find()){
             if(m.group("id") != null) return Optional.of(m.group("id"));
@@ -185,7 +238,7 @@ public abstract class SrcRenderTask implements Task {
         return Optional.empty();
     }
 
-    Void handleError(Throwable t){
+    protected Void handleError(Throwable t){
         t.printStackTrace();
         cf.completeExceptionally(t);
         try {
@@ -197,7 +250,7 @@ public abstract class SrcRenderTask implements Task {
         return null;
     }
 
-    abstract void cleanup() throws IOException;
+    protected abstract void cleanup() throws IOException;
 
     private static String lastOf(String[] array){
         return array[array.length - 1];
