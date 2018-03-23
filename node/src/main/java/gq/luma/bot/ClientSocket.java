@@ -39,17 +39,16 @@ import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public class ClientSocket extends WebSocketClient {
-
     public static final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(6);
 
     public static OkHttpClient okhttpClient;
     public static FSInterface renderFS;
     public static String steamKey;
-    public static GoogleDriveUploader uploader;
 
     private static final Logger logger = LoggerFactory.getLogger(ClientSocket.class);
     private static final String VERSION = "0.0.1-dev";
 
+    private GoogleDriveUploader uploader;
     private Task currentTask;
     private CompletableFuture<String> keysReceived;
     private CompletableFuture<String> fileReceive;
@@ -97,7 +96,7 @@ public class ClientSocket extends WebSocketClient {
                             object.getString("name", ""),
                             object.getString("dir", ""));
                 } else if (object.getString("type", "").equalsIgnoreCase("coalesced")) {
-                    task = new CoalescedSrcDemoRenderTask(object.getString("name", ""), object.getLong("requester", 0L),
+                    task = new CoalescedSrcDemoRenderTask(object.getString("name", ""),
                             new File(FileReference.tempDir, object.getString("dir", "")),
                             RenderSettings.of(object.get("settings").asObject()),
                             object.get("demos").asArray().values().stream().map(JsonValue::asObject).map(SrcDemo::ofUnchecked).collect(Collectors.toList()));

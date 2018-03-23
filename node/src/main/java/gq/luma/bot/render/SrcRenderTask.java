@@ -65,8 +65,7 @@ public abstract class SrcRenderTask implements Task {
     public abstract void executeAsync();
 
     protected CompletableFuture<Void> sendCommand(String command, SrcGame game){
-        CompletableFuture<Void> cf = new CompletableFuture<>();
-        new Thread(() -> {
+        return CompletableFuture.runAsync(() -> {
             try {
                 ProcessBuilder pb = new ProcessBuilder(game.getExe(), "-hijack", "-console", "+" + command);
                 logger.debug("---------------Injecting {}---------------", command);
@@ -75,8 +74,7 @@ public abstract class SrcRenderTask implements Task {
             } catch (IOException | InterruptedException e) {
                 cf.completeExceptionally(e);
             }
-        }).start();
-        return cf;
+        });
     }
 
     protected void waitForDemStop(SrcGame game){

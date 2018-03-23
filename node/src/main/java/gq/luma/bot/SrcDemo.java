@@ -4,13 +4,9 @@ import com.eclipsesource.json.JsonObject;
 import gq.luma.bot.utils.LumaException;
 
 import java.util.concurrent.CompletionException;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class SrcDemo {
-
-    private static final Pattern PACKET_PATTERN = Pattern.compile("(?<=Packet\\t\\[)(?<pointer>\\d*):(?<size>\\d*)(?=]\\t)");
-
     private String filestamp;
     private int protocol;
     private int networkProtocol;

@@ -1,8 +1,6 @@
 package gq.luma.bot;
 
 import java.io.File;
-import java.util.Optional;
-import java.util.stream.Stream;
 
 public enum SrcGame {
     PORTAL_2("portal2", "F:\\SteamLibrary\\steamapps\\common\\Portal 2\\portal2", "F:\\SteamLibrary\\steamapps\\common\\Portal 2\\portal2\\cfg", "F:\\SteamLibrary\\steamapps\\common\\Portal 2\\portal2\\console.log", "F:\\SteamLibrary\\steamapps\\common\\Portal 2\\portal2\\maps\\workshop", "F:\\SteamLibrary\\steamapps\\common\\Portal 2\\portal2.exe", "portal2.exe", 620, 644),

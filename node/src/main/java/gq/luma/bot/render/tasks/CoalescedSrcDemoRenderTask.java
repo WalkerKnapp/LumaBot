@@ -11,6 +11,8 @@ import gq.luma.bot.render.renderer.RendererInterface;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.utils.FileReference;
 import jnr.ffi.Pointer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.ByteBuffer;
@@ -18,6 +20,7 @@ import java.nio.file.Files;
 import java.util.List;
 
 public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
+    private static final Logger logger = LoggerFactory.getLogger(CoalescedSrcDemoRenderTask.class);
 
     private SrcGame currentGame = SrcGame.NONE;
 
@@ -119,7 +122,7 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
                     Thread.sleep(3000);
 
                     byte[] data = Files.readAllBytes(new File(currentGame.getGameDir(), "screenshots/export/tga0000_.tga").toPath());
-                    System.out.println("Reading " + data.length + " bytes vs an ideal count of " + ((settings.getWidth() * settings.getHeight() * 3) + 18));
+                    logger.trace("Reading " + data.length + " bytes vs an ideal count of " + ((settings.getWidth() * settings.getHeight() * 3) + 18));
                     FuseRenderFS fs = ((FuseRenderFS)ClientSocket.renderFS.getRenderFS());
                     fs.write("/tga000_.tga", Pointer.wrap(fs.getRuntime(), ByteBuffer.wrap(data)), data.length, 0, null);
 
@@ -181,9 +184,9 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
     public String getStatus() {
         String ret = this.status;
         if(ret.equals("Rendering")){
-            System.out.println("Latest Frame: " + renderer.getLatestFrame());
-            double d = (renderer.getLatestFrame() / predictedTotalFrames) * 100d;
-            System.out.println("Grabbed Percentage: " + d);
+            logger.debug("Latest Frame: " + renderer.getLatestFrame());
+            double d = ((double)renderer.getLatestFrame() / predictedTotalFrames) * 100d;
+            logger.debug("Grabbed Percentage: " + d);
             //ret += ": " + df.format(d) + "% complete.";
         }
         return ret;

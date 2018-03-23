@@ -123,8 +123,7 @@ public class SingleSrcRenderTask extends SrcRenderTask {
     }
 
     private CompletableFuture<Void> writeCfg(){
-        CompletableFuture<Void> cf = new CompletableFuture<>();
-        new Thread(() -> {
+        return CompletableFuture.runAsync(() -> {
             try{
                 FileWriter fw = new FileWriter(new File(demo.getGame().getConfigDir(), "autorecord.cfg"));
                 BufferedWriter bw = new BufferedWriter(fw);
@@ -155,8 +154,7 @@ public class SingleSrcRenderTask extends SrcRenderTask {
             } catch (IOException e) {
                 cf.completeExceptionally(e);
             }
-        }).start();
-        return cf;
+        });
     }
 
     @Override
