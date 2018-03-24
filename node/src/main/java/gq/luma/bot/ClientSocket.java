@@ -124,6 +124,7 @@ public class ClientSocket extends WebSocketClient {
                             logger.error("Encountered an error while uploading file: ", e);
                         }
                     }).exceptionally(t -> {
+                        logger.error("Got Error in Task execute: ", t);
                         send("RenderError>>" + t.getMessage());
                         return null;
                     });
@@ -140,6 +141,7 @@ public class ClientSocket extends WebSocketClient {
         } catch (IOException | LumaException e){
             logger.error("Found error: " + e);
             if(currentTask != null) {
+                logger.debug("Sending: RenderError>>{}", e.getMessage());
                 send("RenderError>>" + e.getMessage());
             }
         }

@@ -29,7 +29,7 @@ public class SrcDemo {
         demo.filestamp = json.get("filestamp").asString();
         demo.protocol = json.get("protocol").asInt();
         demo.networkProtocol = json.get("networkProtocol").asInt();
-        demo.game = Stream.of(SrcGame.values()).filter(g -> g.name().equals(json.get("game").asString())).findAny().orElseThrow(() -> new LumaException("Unable to parse game."));
+        demo.game = SrcGame.getByDirName(json.get("game").asString());
         demo.mapName = json.get("mapName").asString();
         demo.serverName = json.get("serverName").asString();
         demo.clientName = json.get("clientName").asString();

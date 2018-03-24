@@ -22,7 +22,7 @@ import java.util.List;
 public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
     private static final Logger logger = LoggerFactory.getLogger(CoalescedSrcDemoRenderTask.class);
 
-    private SrcGame currentGame = SrcGame.NONE;
+    private SrcGame currentGame = null;
 
     private String status;
     private String name;

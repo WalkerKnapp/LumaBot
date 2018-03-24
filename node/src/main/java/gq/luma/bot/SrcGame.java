@@ -1,12 +1,37 @@
 package gq.luma.bot;
 
-import java.io.File;
+import com.eclipsesource.json.Json;
+import com.eclipsesource.json.JsonValue;
+import gq.luma.bot.utils.LumaException;
 
-public enum SrcGame {
-    PORTAL_2("portal2", "F:\\SteamLibrary\\steamapps\\common\\Portal 2\\portal2", "F:\\SteamLibrary\\steamapps\\common\\Portal 2\\portal2\\cfg", "F:\\SteamLibrary\\steamapps\\common\\Portal 2\\portal2\\console.log", "F:\\SteamLibrary\\steamapps\\common\\Portal 2\\portal2\\maps\\workshop", "F:\\SteamLibrary\\steamapps\\common\\Portal 2\\portal2.exe", "portal2.exe", 620, 644),
-    NONE("", "", "", "", "", "", "", 0, 0);
-    //PORTAL("portal"),
-    //MEL("portal_stories");
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.function.IntFunction;
+
+public class SrcGame {
+
+    private static SrcGame[] games;
+
+    static {
+        try(FileReader fr = new FileReader("games.json")) {
+            games = Json.parse(fr).asArray().values().stream().map(JsonValue::asObject).map(object -> {
+                SrcGame game = new SrcGame();
+                game.directoryName = object.get("directoryName").asString();
+                game.appCode = object.get("appCode").asInt();
+                game.publishingApp = object.get("publishingAppCode").asInt();
+                game.gameDir = object.get("gameDir").asString();
+                game.configDir = object.get("configDir").asString();
+                game.log = object.get("logPath").asString();
+                game.workshopDir = object.get("workshopDir").asString();
+                game.exe = object.get("exePath").asString();
+                game.exeName = object.get("exeName").asString();
+                return game;
+            }).toArray(SrcGame[]::new);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     private String directoryName;
     private String gameDir;
@@ -18,16 +43,8 @@ public enum SrcGame {
     private int appCode;
     private int publishingApp;
 
-    SrcGame(String directoryName, String gameDir, String configDir, String log, String workshopDir, String exe, String exeName, int appCode, int publishingApp){
-        this.directoryName = directoryName;
-        this.gameDir = gameDir;
-        this.configDir = configDir;
-        this.log = log;
-        this.workshopDir = workshopDir;
-        this.exe = exe;
-        this.exeName = exeName;
-        this.appCode = appCode;
-        this.publishingApp = publishingApp;
+    private SrcGame(){
+        //Unused
     }
 
     public String getDirectoryName() {
@@ -64,5 +81,14 @@ public enum SrcGame {
 
     public int getPublishingApp(){
         return publishingApp;
+    }
+
+    static SrcGame getByDirName(String dirName) throws LumaException {
+        for(SrcGame value : games){
+            if(dirName.equalsIgnoreCase(value.directoryName)){
+                return value;
+            }
+        }
+        throw new LumaException("Unable to parse game: " + dirName);
     }
 }

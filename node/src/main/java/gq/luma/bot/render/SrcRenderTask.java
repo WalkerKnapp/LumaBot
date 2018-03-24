@@ -70,9 +70,8 @@ public abstract class SrcRenderTask implements Task {
                 ProcessBuilder pb = new ProcessBuilder(game.getExe(), "-hijack", "-console", "+" + command);
                 logger.debug("---------------Injecting {}---------------", command);
                 pb.start().waitFor();
-                cf.complete(null);
             } catch (IOException | InterruptedException e) {
-                cf.completeExceptionally(e);
+                throw new RuntimeException(e);
             }
         });
     }
@@ -89,7 +88,7 @@ public abstract class SrcRenderTask implements Task {
     }
 
     protected void killGame(SrcGame game){
-        if(game == SrcGame.NONE)
+        if(game == null)
             return;
         ProcessHandle
                 .allProcesses()
@@ -141,7 +140,7 @@ public abstract class SrcRenderTask implements Task {
 
         System.out.println("---------------Opening game---------------------");
         Desktop.getDesktop().browse(new URI(SrcRenderTask.STEAM_SHORTCUT_HEADER + game.getAppCode()));
-        SourceLogMonitor.monitor("cl_thirdperson", game.getLog()).join();
+        SourceLogMonitor.monitor("cl_thirdperson", game.getLog(), 50).join();
 
         Thread.sleep(3000);
 
@@ -222,9 +221,9 @@ public abstract class SrcRenderTask implements Task {
     private static String performRequest(HttpUrl url) throws IOException {
         Request request = new Request.Builder().url(url).build();
         System.out.println(request.toString());
-        return ClientSocket.okhttpClient.newCall(request)
+        return Objects.requireNonNull(ClientSocket.okhttpClient.newCall(request)
                 .execute()
-                .body()
+                .body())
                 .string();
     }
 

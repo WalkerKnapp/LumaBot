@@ -36,7 +36,7 @@ public class SrcDemo {
                     .add("filestamp", this.filestamp)
                     .add("protocol", this.protocol)
                     .add("networkProtocol", this.networkProtocol)
-                    .add("game", this.game.name())
+                    .add("game", this.game.getDirectoryName())
                     .add("mapName", this.mapName)
                     .add("serverName", this.serverName)
                     .add("clientName", this.clientName)
