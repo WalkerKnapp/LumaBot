@@ -28,6 +28,7 @@ public class RenderSettings {
     private boolean demohack = false;
     private boolean pretify = false;
     private boolean twoPass = true;
+    private boolean noUpload = false;
 
     private VideoOutputFormat format = VideoOutputFormat.H264;
     private RenderWeighterType weighterType = RenderWeighterType.GAUSSIAN;
@@ -128,6 +129,9 @@ public class RenderSettings {
         if(map.containsKey("twopass") && !map.get("twopass").isEmpty()){
             settings.twoPass = Boolean.parseBoolean(map.get("twopass"));
         }
+        if(map.containsKey("no-upload")){
+            settings.noUpload = true;
+        }
 
         StringBuilder sb = new StringBuilder();
         if(settings.width == 0) sb.append("\n\t-Width");
@@ -147,5 +151,9 @@ public class RenderSettings {
 
     public int getHeight() {
         return height;
+    }
+
+    boolean isNoUpload() {
+        return noUpload;
     }
 }

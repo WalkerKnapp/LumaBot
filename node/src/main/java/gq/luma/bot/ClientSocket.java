@@ -118,7 +118,7 @@ public class ClientSocket extends WebSocketClient {
             try {
                 JsonObject result = new JsonObject();
                 result.set("upload-type", data.get("upload-type"));
-                result.set("code", uploader.uploadFile(f));
+                result.set("code", data.get("no-upload").asBoolean() ? "none" : uploader.uploadFile(f));
                 result.set("code", "");
                 result.set("thumbnail", this.currentTask.getThumbnail());
                 result.set("dir", data.get("dir"));

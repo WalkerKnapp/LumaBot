@@ -29,21 +29,13 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
 
     @Override
     public JsonObject serialize(){
-        //System.out.println("Started serialize");
         JsonArray demosArray = Json.array();
-        //System.out.println("Serialize 1");
         for (SrcDemo srcDemo : srcDemos) {
-            //System.out.println("Serializno: " + srcDemo.getAssociatedFile());
             JsonObject serialize = srcDemo.serialize();
-            //System.out.println("Serializno 2");
             demosArray.add(serialize);
-            //System.out.println("Serizlizno 3");
         }
-        //System.out.println("Serialize 2");
         JsonArray requiredFilesArray = Json.array();
-        //System.out.println("Serialize 3");
         srcDemos.stream().map(SrcDemo::getAssociatedFile).forEach(requiredFilesArray::add);
-        //System.out.println("Serialize 4");
         return new JsonObject()
                 .set("type", "coalesced")
                 .set("requester", requester)
@@ -72,6 +64,11 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
     @Override
     public String getStatus() {
         return null;
+    }
+
+    @Override
+    public boolean isNoUpload() {
+        return settings.isNoUpload();
     }
 
     @Override

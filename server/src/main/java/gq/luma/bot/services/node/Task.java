@@ -23,4 +23,6 @@ public interface Task {
     boolean isRendering();
 
     void setRendering(boolean b);
+
+    boolean isNoUpload();
 }

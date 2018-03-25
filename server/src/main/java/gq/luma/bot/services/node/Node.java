@@ -47,7 +47,7 @@ public class Node {
 
         System.out.println("Trying to serialize the task...");
         try {
-            String sending = "RenderStart>>" + task.serialize().set("upload-type", "gdrive").toString();
+            String sending = "RenderStart>>" + task.serialize().set("no-upload", task.isNoUpload()).set("upload-type", "gdrive").toString();
             System.out.println("Sending: " + sending);
             webSocket.send(sending);
 

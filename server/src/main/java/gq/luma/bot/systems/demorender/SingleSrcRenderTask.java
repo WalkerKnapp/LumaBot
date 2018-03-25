@@ -60,6 +60,11 @@ public class SingleSrcRenderTask extends SrcRenderTask{
     }
 
     @Override
+    public boolean isNoUpload() {
+        return settings.isNoUpload();
+    }
+
+    @Override
     public boolean equals(Object object) {
         return object instanceof SingleSrcRenderTask && ((SingleSrcRenderTask) object).baseDir.getName().equalsIgnoreCase(this.baseDir.getName()) && ((SingleSrcRenderTask) object).demoFile.getName().equalsIgnoreCase(this.demoFile.getName());
     }
