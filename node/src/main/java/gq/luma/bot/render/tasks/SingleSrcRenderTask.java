@@ -7,7 +7,7 @@ import gq.luma.bot.render.SourceLogMonitor;
 import gq.luma.bot.render.SrcRenderTask;
 import gq.luma.bot.render.fs.FuseRenderFS;
 import gq.luma.bot.render.renderer.FFRenderer;
-import gq.luma.bot.render.renderer.RendererInterface;
+import gq.luma.bot.render.renderer.RendererFactory;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.utils.FileReference;
 import gq.luma.bot.utils.LumaException;
@@ -61,7 +61,7 @@ public class SingleSrcRenderTask extends SrcRenderTask {
 
             File finalFile = new File(baseDir, FilenameUtils.removeExtension(demoFile.getName()) + "." + settings.getFormat().getOutputContainer());
 
-            this.renderer = RendererInterface.createSinglePass(settings, finalFile);
+            this.renderer = RendererFactory.createSinglePass(settings, finalFile);
             this.renderer.setIgnoreTime(settings.shouldRemoveBroken() ? demo.getFirstPlaybackTick()/60d : 0d);
             ClientSocket.renderFS.getRenderFS().configure(settings, renderer);
             ClientSocket.renderFS.getRenderFS().getErrorHandler().exceptionally(this::handleError);

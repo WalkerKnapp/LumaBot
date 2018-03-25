@@ -9,7 +9,7 @@ import gq.luma.bot.render.SourceLogMonitor;
 import gq.luma.bot.render.SrcRenderTask;
 import gq.luma.bot.render.fs.FuseRenderFS;
 import gq.luma.bot.render.renderer.FFRenderer;
-import gq.luma.bot.render.renderer.RendererInterface;
+import gq.luma.bot.render.renderer.RendererFactory;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.utils.FileReference;
 import gq.luma.bot.utils.LumaException;
@@ -45,7 +45,7 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
                 data.get("demos").asArray().values().stream().map(JsonValue::asObject).map(SrcDemo::ofUnchecked).collect(Collectors.toList()));
     }
 
-    public CoalescedSrcDemoRenderTask(String name, File baseDir, RenderSettings settings, List<SrcDemo> demos){
+    private CoalescedSrcDemoRenderTask(String name, File baseDir, RenderSettings settings, List<SrcDemo> demos){
         this.name = name;
         this.baseDir = baseDir;
         this.settings = settings;
@@ -60,7 +60,7 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
             this.status = "Setting up FFmpeg";
 
             File finalFile = new File(baseDir, name + "." + settings.getFormat().getOutputContainer());
-            this.renderer = RendererInterface.createSinglePass(settings, finalFile);
+            this.renderer = RendererFactory.createSinglePass(settings, finalFile);
 
             this.status = "Setting up File System";
 
@@ -88,6 +88,8 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
                     } else {
                         sendCommand("exec restarter", currentGame);
                     }
+
+                    renderer.setIgnoreTime(demo.getFirstPlaybackTick() / 60);
 
                     Thread.sleep(1000);
 

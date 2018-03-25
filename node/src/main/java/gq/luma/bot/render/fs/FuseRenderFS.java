@@ -139,11 +139,12 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
     @Override
     public int write(String path, Pointer buf, @size_t long size, @off_t long offset, FuseFileInfo fi){
         try {
-            //System.out.println("Got write to path: " + path + " with offset: " + offset);
             String extension = path.substring(path.length() - 3);
             if (extension.equalsIgnoreCase("tga")) {
                 int index = extractIndex(path);
-                addFrame(index, buf, offset, size);
+                if(renderer.checkFrame(index)) {
+                    addFrame(index, buf, offset, size);
+                }
             } else if (extension.equalsIgnoreCase("wav")) {
                 audioProcessor.packet(buf, offset, size, this.renderer::encodeSamples);
             }

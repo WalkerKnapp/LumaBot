@@ -5,7 +5,12 @@ import io.humble.video.MediaAudio;
 import io.humble.video.MediaPicture;
 
 public interface FFRenderer {
+
+    boolean checkFrame(int rawIndex);
+
     void encodeFrame(Frame frame, long index);
+
+    boolean checkSamples(MediaAudio samples);
 
     void encodeSamples(MediaAudio samples);
 

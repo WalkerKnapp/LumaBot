@@ -49,61 +49,72 @@ public class SinglePassFFRenderer implements FFRenderer {
     }
 
     @Override
+    public boolean checkFrame(int rawIndex) {
+        if(ignoreFrames > 0){
+            logger.debug("Ignoring raw index {} to remove broken frames.", rawIndex);
+            ignoreFrames--;
+            return false;
+        }
+        return true;
+    }
+
+    @Override
     public void encodeFrame(Frame frame, long index){
         this.latestFrame = (index + frameOffset);
 
-        if(this.latestFrame - ignoreFrames >= 0) {
+        logger.trace("Writing video with index: {}", this.latestFrame);
 
-            logger.trace("Writing video with index: {}", this.latestFrame);
+        MediaPicture finalPacket = frame.writeMedia(videoResampler, this.latestFrame - ignoreFrames);
 
-            MediaPicture finalPacket = frame.writeMedia(videoResampler, this.latestFrame - ignoreFrames);
+        do {
+            videoEncoder.encode(videoPacket, finalPacket);
+            if (videoPacket.isComplete()) {
+                muxer.write(videoPacket, false);
+            }
+        } while (videoPacket.isComplete());
+    }
 
-            do {
-                videoEncoder.encode(videoPacket, finalPacket);
-                if (videoPacket.isComplete()) {
-                    muxer.write(videoPacket, false);
-                }
-            } while (videoPacket.isComplete());
-
-        } else {
-            logger.debug("Ignoring frame {} to remove broken frames.", this.latestFrame);
+    @Override
+    public boolean checkSamples(MediaAudio samples) {
+        if(this.ignoreSamples >= samples.getNumSamples()){
+            logger.debug("Ignoring samples at timestamp {} to remove broken frames.", samples.getTimeStamp());
+            this.ignoreSamples -= samples.getNumSamples();
+            return false;
         }
+        return true;
     }
 
     @Override
     public void encodeSamples(MediaAudio samples){
         this.latestSample = samples.getTimeStamp() + this.sampleOffset;
 
-        if(this.latestSample - this.ignoreSamples > 0) {
+        samples.setTimeStamp(this.latestSample);
 
-            samples.setTimeStamp(this.latestSample - this.ignoreSamples);
+        MediaAudio usedAudio = samples;
 
-            MediaAudio usedAudio = samples;
+        if (samples.getSampleRate() != audioEncoder.getSampleRate() ||
+                samples.getFormat() != audioEncoder.getSampleFormat() ||
+                samples.getChannelLayout() != audioEncoder.getChannelLayout()) {
 
-            if (samples.getSampleRate() != audioEncoder.getSampleRate() ||
-                    samples.getFormat() != audioEncoder.getSampleFormat() ||
-                    samples.getChannelLayout() != audioEncoder.getChannelLayout()) {
+            usedAudio = MediaAudio.make(
+                    samples.getNumSamples(),
+                    audioEncoder.getSampleRate(),
+                    audioEncoder.getChannels(),
+                    audioEncoder.getChannelLayout(),
+                    audioEncoder.getSampleFormat());
+            int originalCount = samples.getNumSamples();
+            int sampleCount = audioResampler.resample(usedAudio, samples);
 
-                usedAudio = MediaAudio.make(
-                        samples.getNumSamples(),
-                        audioEncoder.getSampleRate(),
-                        audioEncoder.getChannels(),
-                        audioEncoder.getChannelLayout(),
-                        audioEncoder.getSampleFormat());
-                int originalCount = samples.getNumSamples();
-                int sampleCount = audioResampler.resample(usedAudio, samples);
-
-                logger.trace("Needed resample. Original count: {} Sample Count: {}", originalCount, sampleCount);
-            }
-
-            do {
-                audioEncoder.encodeAudio(audioPacket, usedAudio);
-                if (audioPacket.isComplete()) {
-                    muxer.write(audioPacket, false);
-                }
-            } while (audioPacket.isComplete());
-
+            logger.trace("Audio needed resample. Original count: {} Sample Count: {}", originalCount, sampleCount);
         }
+
+        do {
+            audioEncoder.encodeAudio(audioPacket, usedAudio);
+            if (audioPacket.isComplete()) {
+                muxer.write(audioPacket, false);
+            }
+        } while (audioPacket.isComplete());
+
     }
 
     @Override

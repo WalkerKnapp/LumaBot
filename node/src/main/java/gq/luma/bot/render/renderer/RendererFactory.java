@@ -9,7 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.function.Consumer;
 
-public class RendererInterface {
+public class RendererFactory {
     public static SinglePassFFRenderer createSinglePass(RenderSettings settings, File exportFile) throws IOException, InterruptedException, LumaException {
         Muxer m = Muxer.make(exportFile.getAbsolutePath(), null, null);
 
