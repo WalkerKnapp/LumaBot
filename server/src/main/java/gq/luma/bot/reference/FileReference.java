@@ -16,6 +16,8 @@ public class FileReference implements Service {
     public static File youtubeDL;
     public static File sourceDemoParser;
 
+    public static String mySQLLocation;
+
     @Override
     public void startService() throws Exception {
         Properties properties = new Properties();
@@ -29,5 +31,7 @@ public class FileReference implements Service {
         ffprobe = new File(properties.getProperty("ffprobe"));
         youtubeDL = new File(properties.getProperty("youtube_dl"));
         sourceDemoParser = new File(properties.getProperty("source_demo_parser"));
+
+        mySQLLocation = properties.getProperty("my_sql_location");
     }
 }

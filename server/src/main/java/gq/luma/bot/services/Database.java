@@ -5,6 +5,8 @@ import de.btobastian.javacord.entities.User;
 import de.btobastian.javacord.entities.channels.ServerTextChannel;
 import de.btobastian.javacord.entities.channels.TextChannel;
 import gq.luma.bot.reference.DefaultReference;
+import gq.luma.bot.reference.FileReference;
+import gq.luma.bot.reference.KeyReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,7 +21,6 @@ import java.util.stream.Stream;
 
 public class Database implements Service {
     private static final Logger logger = LoggerFactory.getLogger(Database.class);
-    private static final String DATABASE_URL = "jdbc:sqlite:" + new File("database.db").getAbsolutePath();
 
     private static Connection conn;
 
@@ -61,13 +62,16 @@ public class Database implements Service {
     private static PreparedStatement getFilterByServer;
 
     @Override
-    public void startService() throws SQLException {
+    public void startService() throws SQLException, ClassNotFoundException {
         open();
         Runtime.getRuntime().addShutdownHook(new Thread(Database::close));
     }
 
-    public static void open() throws SQLException {
-        conn = DriverManager.getConnection(DATABASE_URL);
+    public static void open() throws SQLException, ClassNotFoundException {
+
+        //Class.forName("com.mysql.jdbc.Driver");
+
+        conn = DriverManager.getConnection("jdbc:mysql://" + FileReference.mySQLLocation + "/Luma?user=" + KeyReference.sqlUser + "&password=" + KeyReference.sqlPass + "&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=EST");
 
         getChannel = conn.prepareStatement("SELECT * FROM channels WHERE id = ?");
         updateChannelPrefix = conn.prepareStatement("UPDATE channels SET prefix = ? WHERE id = ?");
@@ -81,26 +85,26 @@ public class Database implements Service {
         updateServerMembers = conn.prepareStatement("UPDATE servers SET members = ? WHERE id = ?");
         updateServerRoles = conn.prepareStatement("UPDATE servers SET roles = ? WHERE id = ?");
         updateServerNotify = conn.prepareStatement("UPDATE servers SET notify = ? WHERE id = ?");
-        updateClarifaiCount = conn.prepareStatement("UPDATE servers SET clarifaiCount = ? WHERE id = ?");
-        insertServer = conn.prepareStatement("INSERT INTO servers (prefix, locale, members, roles, notify, monthlyClarifaiCap, clarifaiCount, clarifaiResetDate, id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        updateClarifaiCount = conn.prepareStatement("UPDATE servers SET clarifai_count = ? WHERE id = ?");
+        insertServer = conn.prepareStatement("INSERT INTO servers (prefix, locale, members, roles, notify, monthly_clarifai_cap, clarifai_count, clarifai_reset_date, id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         getUser = conn.prepareStatement("SELECT * FROM users WHERE id = ?");
         updateUserPermissions = conn.prepareStatement("UPDATE users SET permissions = ? WHERE id = ?");
         updateUserNotify = conn.prepareStatement("UPDATE users SET notify = ? WHERE id = ?");
         insertUser = conn.prepareStatement("INSERT INTO users (permissions, notify, id) VALUES (?, ?, ?)");
 
-        getResult = conn.prepareStatement("SELECT * FROM results WHERE id = ?");
-        insertResult = conn.prepareStatement("INSERT INTO results (id, name, type, code, thumbnail, requester, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        getResult = conn.prepareStatement("SELECT * FROM render_results WHERE id = ?");
+        insertResult = conn.prepareStatement("INSERT INTO render_results (id, name, type, code, thumbnail, requester, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
 
-        getRoleByName = conn.prepareStatement("SELECT * FROM roles WHERE name = ?");
-        getAllRoles = conn.prepareStatement("SELECT * FROM roles");
+        getRoleByName = conn.prepareStatement("SELECT * FROM donor_roles WHERE name = ?");
+        getAllRoles = conn.prepareStatement("SELECT * FROM donor_roles");
 
         getNodeByToken = conn.prepareStatement("SELECT * FROM nodes WHERE token = ?");
         getNodeBySession = conn.prepareStatement("SELECT * FROM nodes WHERE session = ?");
         getAllNodes = conn.prepareStatement("SELECT * FROM nodes");
         updateNodeSession = conn.prepareStatement("UPDATE nodes SET session = ? WHERE token = ?");
         updateNodeTask = conn.prepareStatement("UPDATE nodes SET task = ? WHERE token = ?");
-        updateNode = conn.prepareStatement("UPDATE nodes SET session = ?, lastKnownHost = ?, lastKnownName = ? WHERE token = ?");
+        updateNode = conn.prepareStatement("UPDATE nodes SET session = ?, last_known_host = ?, last_known_name = ? WHERE token = ?");
 
         getFilterByServer = conn.prepareStatement("SELECT * FROM filters WHERE server = ?");
     }
@@ -176,7 +180,7 @@ public class Database implements Service {
         insertServer.setInt(5, 0);
         insertServer.setInt(6, clarifaiCap);
         insertServer.setInt(7, 0);
-        insertServer.setLong(8, clarifaiResetDate.getEpochSecond());
+        insertServer.setTimestamp(8, Timestamp.from(clarifaiResetDate));
         insertServer.setLong(9, server.getId());
         insertServer.execute();
     }

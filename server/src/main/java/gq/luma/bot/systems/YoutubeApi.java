@@ -19,7 +19,7 @@ import java.util.List;
 public class YoutubeApi implements Service {
     private static YouTube youTube;
 
-    private static final String APPLICATION_NAME = "MelissaBot";
+    private static final String APPLICATION_NAME = "LumaBot";
 
     private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
 

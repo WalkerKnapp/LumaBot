@@ -11,9 +11,11 @@ public class KeyReference implements Service {
     public static String imgurId;
     public static String steamKey;
     public static String keystorePass;
-    public static String smbPass;
     public static String gDriveToken;
     public static String clarifai;
+
+    public static String sqlUser;
+    public static String sqlPass;
 
     @Override
     public void startService() throws Exception {
@@ -26,8 +28,10 @@ public class KeyReference implements Service {
         imgurId = properties.getProperty("imgur");
         steamKey = properties.getProperty("steam");
         keystorePass = properties.getProperty("keystore");
-        smbPass = properties.getProperty("smb");
         gDriveToken = properties.getProperty("gDrive");
         clarifai = properties.getProperty("clarifai");
+
+        sqlUser = properties.getProperty("sql_user");
+        sqlPass = properties.getProperty("sql_pass");
     }
 }

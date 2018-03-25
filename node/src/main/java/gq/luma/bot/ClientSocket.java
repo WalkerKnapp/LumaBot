@@ -116,11 +116,12 @@ public class ClientSocket extends WebSocketClient {
                         try {
                             JsonObject result = new JsonObject();
                             result.set("upload-type", object.get("upload-type"));
-                            result.set("code", uploader.uploadFile(f));
+                            //result.set("code", uploader.uploadFile(f));
+                            result.set("code", "");
                             result.set("thumbnail", task.getThumbnail());
                             result.set("dir", object.get("dir"));
                             send("RenderFinished>>" + result.toString());
-                        } catch (IOException e){
+                        } catch (Exception e){
                             logger.error("Encountered an error while uploading file: ", e);
                         }
                     }).exceptionally(t -> {
