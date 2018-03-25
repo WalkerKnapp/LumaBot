@@ -1,5 +1,7 @@
 package gq.luma.bot.render.tasks;
 
+import com.eclipsesource.json.JsonObject;
+import com.eclipsesource.json.JsonValue;
 import gq.luma.bot.ClientSocket;
 import gq.luma.bot.SrcDemo;
 import gq.luma.bot.SrcGame;
@@ -10,6 +12,7 @@ import gq.luma.bot.render.renderer.FFRenderer;
 import gq.luma.bot.render.renderer.RendererInterface;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.utils.FileReference;
+import gq.luma.bot.utils.LumaException;
 import jnr.ffi.Pointer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +21,7 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
     private static final Logger logger = LoggerFactory.getLogger(CoalescedSrcDemoRenderTask.class);
@@ -33,6 +37,13 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
 
     private FFRenderer renderer;
     private long predictedTotalFrames;
+
+    public CoalescedSrcDemoRenderTask(JsonObject data) throws LumaException {
+        this(data.getString("name", ""),
+                new File(FileReference.tempDir, data.getString("dir", "")),
+                RenderSettings.of(data.get("settings").asObject()),
+                data.get("demos").asArray().values().stream().map(JsonValue::asObject).map(SrcDemo::ofUnchecked).collect(Collectors.toList()));
+    }
 
     public CoalescedSrcDemoRenderTask(String name, File baseDir, RenderSettings settings, List<SrcDemo> demos){
         this.name = name;

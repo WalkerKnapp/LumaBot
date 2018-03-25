@@ -4,7 +4,6 @@ import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonObject;
 import com.eclipsesource.json.JsonValue;
 import gq.luma.bot.render.tasks.CoalescedSrcDemoRenderTask;
-import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.render.tasks.SingleSrcRenderTask;
 import gq.luma.bot.render.fs.FSInterface;
 import gq.luma.bot.render.Task;
@@ -36,7 +35,6 @@ import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
 
 public class ClientSocket extends WebSocketClient {
     public static final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(6);
@@ -60,77 +58,37 @@ public class ClientSocket extends WebSocketClient {
     @Override
     public void onOpen(ServerHandshake serverHandshake) {
         logger.info("Opened connection to server. Status: " + serverHandshake.getHttpStatus() + " with message " + serverHandshake.getHttpStatusMessage());
-        //logger.info("Opened connection to server.");
 
-        new Thread(() -> {
+        executorService.submit(() -> {
             try {
                 logger.info("Requesting keys");
                 keysReceived = new CompletableFuture<>();
                 send("KeyRequest>>steam,gdrive");
                 JsonObject keys = Json.parse(keysReceived.get(10, TimeUnit.SECONDS)).asObject();
-                steamKey = keys.getString("steam", null);
-                uploader = new GoogleDriveUploader(keys.getString("gdrive", null));
+                steamKey = keys.get("steam").asString();
+                uploader = new GoogleDriveUploader(keys.get("gdrive").asString());
             } catch (Exception e) {
                 logger.error("Encountered exception while requesting keys: ", e);
                 close(1000, "Failed to receive keys.");
                 System.exit(-1);
             }
-        }).start();
+        });
     }
 
     @Override
     public void onMessage(String message) {
         try {
             logger.info("Received message from server: {}", message);
+
             String code = message.split(">>")[0];
             String content = message.split(">>").length > 1 ? message.split(">>")[1] : null;
             logger.debug("Code: {}", code);
             logger.debug("Content: {}", content);
+
             if (code.equalsIgnoreCase("RenderStart") && content != null) {
-                logger.debug("Found Renderstart!");
-                JsonObject object = Json.parse(content).asObject();
-                Task task;
-                if (object.getString("type", "").equalsIgnoreCase("single-source")) {
-                    task = new SingleSrcRenderTask(SrcDemo.of(object.get("demo").asObject()),
-                            RenderSettings.of(object.get("settings").asObject()),
-                            object.getString("name", ""),
-                            object.getString("dir", ""));
-                } else if (object.getString("type", "").equalsIgnoreCase("coalesced")) {
-                    task = new CoalescedSrcDemoRenderTask(object.getString("name", ""),
-                            new File(FileReference.tempDir, object.getString("dir", "")),
-                            RenderSettings.of(object.get("settings").asObject()),
-                            object.get("demos").asArray().values().stream().map(JsonValue::asObject).map(SrcDemo::ofUnchecked).collect(Collectors.toList()));
-                } else {
-                    throw new IllegalArgumentException("Type: " + object.getString("type", "{null}") + " not found.");
-                }
-                this.currentTask = task;
-                executorService.submit(() -> {
-                    for(JsonValue v : object.get("requiredFiles").asArray().values()){
-                        fileReceive = new CompletableFuture<>();
-                        send("FileRequest>>" + v.asString());
-                        System.out.println("Requesting file: " + v.asString());
-                        fileReceive.join();
-                    }
-
-                    task.execute().thenAccept(f -> {
-                        try {
-                            JsonObject result = new JsonObject();
-                            result.set("upload-type", object.get("upload-type"));
-                            //result.set("code", uploader.uploadFile(f));
-                            result.set("code", "");
-                            result.set("thumbnail", task.getThumbnail());
-                            result.set("dir", object.get("dir"));
-                            send("RenderFinished>>" + result.toString());
-                        } catch (Exception e){
-                            logger.error("Encountered an error while uploading file: ", e);
-                        }
-                    }).exceptionally(t -> {
-                        logger.error("Got Error in Task execute: ", t);
-                        send("RenderError>>" + t.getMessage());
-                        return null;
-                    });
-                });
-
+                JsonObject data = Json.parse(content).asObject();
+                this.currentTask = parseTask(data);
+                executorService.submit(() -> processCurrentTask(data));
             } else if (code.equalsIgnoreCase("RenderStatus")) {
                 send("RenderStatus>>" + currentTask.getStatus());
             } else if (code.equalsIgnoreCase("RenderCancel")) {
@@ -148,17 +106,54 @@ public class ClientSocket extends WebSocketClient {
         }
     }
 
+    private void processCurrentTask(JsonObject data){
+        for(JsonValue v : data.get("requiredFiles").asArray().values()){
+            fileReceive = new CompletableFuture<>();
+            send("FileRequest>>" + v.asString());
+            if(logger.isDebugEnabled()) logger.debug("Requesting file: {}", v.asString());
+            fileReceive.join();
+        }
+
+        this.currentTask.execute().thenAccept(f -> {
+            try {
+                JsonObject result = new JsonObject();
+                result.set("upload-type", data.get("upload-type"));
+                result.set("code", uploader.uploadFile(f));
+                result.set("code", "");
+                result.set("thumbnail", this.currentTask.getThumbnail());
+                result.set("dir", data.get("dir"));
+                send("RenderFinished>>" + result.toString());
+            } catch (Exception e){
+                logger.error("Encountered an error while uploading file: ", e);
+            }
+        }).exceptionally(t -> {
+            logger.error("Got Error in Task execute: ", t);
+            send("RenderError>>" + t.getMessage());
+            return null;
+        });
+    }
+
+    private Task parseTask(JsonObject data) throws LumaException {
+        if (data.get("type").asString().equalsIgnoreCase("single-source")) {
+            return new SingleSrcRenderTask(data);
+        } else if (data.get("type").asString().equalsIgnoreCase("coalesced")) {
+            return new CoalescedSrcDemoRenderTask(data);
+        } else {
+            throw new IllegalArgumentException("Type: " + data.get("type").asString() + " not found.");
+        }
+    }
+
     @Override
     public void onMessage(ByteBuffer buffer){
-        System.out.println("Got message for data.");
+        logger.debug("Got message for a data set.");
 
         byte[] pathBuffer = new byte[256];
         buffer.get(pathBuffer, 0, 256);
         String path = new String(pathBuffer).trim();
-        System.out.println("Got data for file: " + path);
+        logger.info("Got data for file: {}", path);
         File file = new File(FileReference.tempDir, path);
         if(!file.getParentFile().exists() && !file.getParentFile().mkdirs()){
-            System.err.println("Unable to create parent directory.");
+            logger.error("Unable to create parent directory.");
         }
 
         byte[] byteData = new byte[buffer.remaining()];
@@ -167,7 +162,7 @@ public class ClientSocket extends WebSocketClient {
              ByteArrayInputStream bais = new ByteArrayInputStream(byteData)){
             IOUtils.copy(bais, fos);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Encountered an error while downloading the file: ", e);
         }
 
         send("FileReceived>>" + path);
@@ -194,7 +189,9 @@ public class ClientSocket extends WebSocketClient {
         okhttpClient = new OkHttpClient();
 
         Path mount = Paths.get(FileReference.tempDir.getAbsolutePath(), "mount");
-        logger.debug(mount.toString());
+        if(logger.isDebugEnabled()) {
+            logger.debug(mount.toString());
+        }
         renderFS = FSInterface.openFuse(mount).join();
 
         Map<String, String> headers = new HashMap<>();

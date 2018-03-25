@@ -1,5 +1,6 @@
 package gq.luma.bot.render.tasks;
 
+import com.eclipsesource.json.JsonObject;
 import gq.luma.bot.ClientSocket;
 import gq.luma.bot.SrcDemo;
 import gq.luma.bot.render.SourceLogMonitor;
@@ -9,6 +10,7 @@ import gq.luma.bot.render.renderer.FFRenderer;
 import gq.luma.bot.render.renderer.RendererInterface;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.utils.FileReference;
+import gq.luma.bot.utils.LumaException;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.*;
@@ -28,7 +30,14 @@ public class SingleSrcRenderTask extends SrcRenderTask {
 
     private DecimalFormat df;
 
-    public SingleSrcRenderTask(SrcDemo demo, RenderSettings settings, String demoFileName, String baseDirName) {
+    public SingleSrcRenderTask(JsonObject data) throws LumaException {
+        this(SrcDemo.of(data.get("demo").asObject()),
+                RenderSettings.of(data.get("settings").asObject()),
+                data.getString("name", ""),
+                data.getString("dir", ""));
+    }
+
+    private SingleSrcRenderTask(SrcDemo demo, RenderSettings settings, String demoFileName, String baseDirName) {
         this.demo = demo;
         this.settings = settings;
 
