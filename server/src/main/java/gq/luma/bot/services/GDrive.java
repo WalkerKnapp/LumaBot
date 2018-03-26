@@ -1,4 +1,4 @@
-package gq.luma.bot.systems;
+package gq.luma.bot.services;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
@@ -11,28 +11,26 @@ import com.google.api.services.drive.model.File;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.security.GeneralSecurityException;
 
-public class GDrive {
+public class GDrive implements Service {
+    private static final Logger logger = LoggerFactory.getLogger(GDrive.class);
 
-    private static Drive drive;
-    private static HttpTransport transport;
+    private Drive drive;
 
-    static {
-        try {
-            transport = GoogleNetHttpTransport.newTrustedTransport();
-            Credential credential = GoogleCredential.fromStream(GDrive.class.getResourceAsStream("/LumaBot-449002735b83.json")).createScoped(DriveScopes.all());
-            drive = new Drive.Builder(transport, JacksonFactory.getDefaultInstance(), credential).setApplicationName("LumaBot").build();
-        } catch (GeneralSecurityException | IOException e) {
-            e.printStackTrace();
-        }
+    @Override
+    public void startService() throws Exception {
+        HttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
+        Credential credential = GoogleCredential.fromStream(GDrive.class.getResourceAsStream("/LumaBot-449002735b83.json")).createScoped(DriveScopes.all());
+        drive = new Drive.Builder(transport, JacksonFactory.getDefaultInstance(), credential).setApplicationName("LumaBot").build();
     }
 
-    public static String getUrlof(String code) throws IOException {
+    public String getUrlof(String code) throws IOException {
         File file = drive.files().get(code).setFields("*").execute();
         String privateUrl = file.getWebContentLink();
 
@@ -46,18 +44,13 @@ public class GDrive {
             privateUrl = "https://drive.google.com" + dlLink.attr("href");
         }
 
-        System.out.println(privateUrl);
+        logger.debug(privateUrl);
         return privateUrl;
     }
 
-    public static String getViewUrlof(String code) throws IOException {
+    public String getViewUrlof(String code) throws IOException {
         File file = drive.files().get(code).setFields("*").execute();
-        System.out.println("Grabbed view url of: " + file.getWebViewLink());
+        logger.debug("Grabbed view url of: " + file.getWebViewLink());
         return file.getWebViewLink();
     }
-
-    public static void main(String[] args) throws IOException {
-
-    }
-
 }

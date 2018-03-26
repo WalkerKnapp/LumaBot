@@ -1,7 +1,8 @@
 package gq.luma.bot.commands.params.io.input;
 
 import com.google.api.services.youtube.model.Video;
-import gq.luma.bot.systems.YoutubeApi;
+import gq.luma.bot.Luma;
+import gq.luma.bot.services.YoutubeApi;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.utils.LumaException;
 
@@ -21,7 +22,7 @@ public class YoutubeInput implements FileInput {
     }
 
     public Video getVideo() throws IOException, LumaException {
-        return YoutubeApi.getVideo(YoutubeApi.getIDFromUrl(url));
+        return Luma.youtubeApi.getVideo(Luma.youtubeApi.getIDFromUrl(url));
     }
 
     public Process getProcess() {
@@ -35,7 +36,7 @@ public class YoutubeInput implements FileInput {
 
     @Override
     public String getName() throws IOException, LumaException {
-        Video video = YoutubeApi.getVideo(YoutubeApi.getIDFromUrl(url));
+        Video video = Luma.youtubeApi.getVideo(Luma.youtubeApi.getIDFromUrl(url));
         return video.getSnippet().getTitle() + "-" + video.getId() + ".mp4";
     }
 

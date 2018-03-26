@@ -14,51 +14,35 @@ import java.util.stream.Collectors;
 public class FFProbe {
 
     public static CompletableFuture<FFProbeResult> analyzeByStream(InputStream stream) {
-        CompletableFuture<FFProbeResult> cf = new CompletableFuture<>();
-
-        new Thread(() -> analyzeJson(stream).thenAccept(json -> {
-            //System.out.println("Caught json: " + json.toString(WriterConfig.PRETTY_PRINT));
+        return analyzeJson(stream).thenApply(json -> {
             try {
-                cf.complete(FFProbeResult.of(json));
+                return FFProbeResult.of(json);
             } catch (LumaException e) {
-                cf.completeExceptionally(e);
+                throw  new RuntimeException(e);
             }
-        }).exceptionally(t -> {
-            cf.completeExceptionally(t);
-            return null;
-        })).start();
-
-        return cf;
+        });
     }
 
     private static CompletableFuture<JsonObject> analyzeJson(InputStream stream){
-        CompletableFuture<JsonObject> cf = new CompletableFuture<>();
-        new Thread(() -> {
+        return CompletableFuture.supplyAsync(() -> {
             try {
                 ProcessBuilder pb = new ProcessBuilder(FileReference.ffprobe.getAbsolutePath(), "-v", "quiet", "-print_format", "json", "-show_error", "-show_format", "-show_streams", "", "", "-");
                 pb.redirectInput(ProcessBuilder.Redirect.PIPE);
                 pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
                 pb.redirectErrorStream(true);
                 Process p = pb.start();
-
-                OutputStream os = p.getOutputStream();
                 BufferedReader reader = wrapInReader(p);
-
-                IOUtils.copy(stream, os);
-                os.close();
-                p.waitFor();
-
+                try(OutputStream os = p.getOutputStream()) {
+                    IOUtils.copy(stream, os);
+                    p.waitFor();
+                }
                 String json = reader.lines().collect(Collectors.joining());
-                //System.out.println("Parsed json: " + json);
 
-                cf.complete(Json.parse(json).asObject());
-
-                os.close();
+                return Json.parse(json).asObject();
             } catch (IOException | InterruptedException e){
-                cf.completeExceptionally(e);
+                throw new RuntimeException(e);
             }
-        }).start();
-        return cf;
+        });
     }
 
     private static BufferedReader wrapInReader(Process p) {

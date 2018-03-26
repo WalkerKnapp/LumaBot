@@ -12,8 +12,18 @@ public class TwoPassFFRenderer implements FFRenderer {
     }
 
     @Override
+    public boolean checkFrame(int rawIndex) {
+        return false;
+    }
+
+    @Override
     public void encodeFrame(Frame frame, long index) {
 
+    }
+
+    @Override
+    public boolean checkSamples(MediaAudio samples) {
+        return false;
     }
 
     @Override

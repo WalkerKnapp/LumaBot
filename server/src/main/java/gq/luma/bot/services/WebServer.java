@@ -3,7 +3,7 @@ package gq.luma.bot.services;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.router.RouterNanoHTTPD;
 
-import gq.luma.bot.systems.GDrive;
+import gq.luma.bot.Luma;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.utils.StringUtilities;
 import gq.luma.bot.utils.WordEncoder;
@@ -130,15 +130,15 @@ public class WebServer extends RouterNanoHTTPD implements Service {
                     if (session.getQueryParameterString() != null && session.getQueryParameterString().equalsIgnoreCase("dl=1")) {
                         if(extension.equalsIgnoreCase("png")){
                             Response response = NanoHTTPD.newFixedLengthResponse(MOVED_TEMPORARILY, "text/plain", "");
-                            response.addHeader("Location", GDrive.getUrlof(rs.getString("thumbnail")));
+                            response.addHeader("Location", Luma.gDrive.getUrlof(rs.getString("thumbnail")));
                             return response;
                         }
                         Response response = NanoHTTPD.newFixedLengthResponse(MOVED_TEMPORARILY, "text/plain", "");
-                        response.addHeader("Location", GDrive.getUrlof(rs.getString("code")));
+                        response.addHeader("Location", Luma.gDrive.getUrlof(rs.getString("code")));
                         return response;
                     } else {
                         Response response = NanoHTTPD.newFixedLengthResponse(Response.Status.REDIRECT, "text/html", "");
-                        response.addHeader("Location", GDrive.getViewUrlof(rs.getString("code")));
+                        response.addHeader("Location", Luma.gDrive.getViewUrlof(rs.getString("code")));
                         return response;
                         /*File file = new File(FileReference.webRoot, "render-template.html");
                         System.out.println("Sending template: " + file.getName());

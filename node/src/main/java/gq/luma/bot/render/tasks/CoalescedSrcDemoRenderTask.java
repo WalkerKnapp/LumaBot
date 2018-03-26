@@ -89,7 +89,9 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
                         sendCommand("exec restarter", currentGame);
                     }
 
-                    renderer.setIgnoreTime(demo.getFirstPlaybackTick() / 60);
+                    if(settings.shouldRemoveBroken()) {
+                        renderer.setIgnoreTime(demo.getFirstPlaybackTick() / 60);
+                    }
 
                     Thread.sleep(1000);
 

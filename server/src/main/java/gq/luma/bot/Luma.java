@@ -1,6 +1,7 @@
 package gq.luma.bot;
 
-import gq.luma.bot.systems.YoutubeApi;
+import gq.luma.bot.services.GDrive;
+import gq.luma.bot.services.YoutubeApi;
 import gq.luma.bot.services.*;
 import gq.luma.bot.services.node.NodeServer;
 import gq.luma.bot.reference.FileReference;
@@ -10,7 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.UnknownHostException;
-import java.util.concurrent.ExecutorService;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -20,17 +22,31 @@ public class Luma {
     public static ScheduledExecutorService lumaExecutorService = Executors.newScheduledThreadPool(64);
     public static NodeServer nodeServer;
     public static Clarifai clarifai;
+    public static GDrive gDrive;
+    public static YoutubeApi youtubeApi;
+
+    private static List<Service> services;
 
     static {
         try {
-            nodeServer = new NodeServer();
-            clarifai = new Clarifai();
+            services = new ArrayList<>();
+            services.add(new FileReference());
+            services.add(new KeyReference());
+            services.add(new Database());
+            services.add(new WordEncoder());
+            services.add(youtubeApi = new YoutubeApi());
+            services.add(nodeServer = new NodeServer());
+            services.add(new TaskScheduler());
+            services.add(new WebServer());
+            services.add(clarifai = new Clarifai());
+            services.add(new TesseractApi());
+            services.add(gDrive = new GDrive());
+            services.add(new Bot());
         } catch (UnknownHostException e) {
-            e.printStackTrace();
+            logger.error("Encountered error while initializing services:", e);
+            System.exit(-1);
         }
     }
-
-    private static final Service[] services = {new FileReference(), new KeyReference(), new Database(), new WordEncoder(), new YoutubeApi(), nodeServer, new TaskScheduler(), new WebServer(), clarifai, new TesseractApi(), new Bot()};
 
     public static void main(String[] args){
         logger.info("Starting Services.");
@@ -41,7 +57,7 @@ public class Luma {
                 s.startService();
             }
         } catch (Exception e){
-            e.printStackTrace();
+            logger.error("Encountered error while starting services:", e);
             System.exit(-1);
         }
 
