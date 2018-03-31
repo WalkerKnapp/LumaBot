@@ -4,6 +4,8 @@ import gq.luma.bot.render.fs.frame.Frame;
 import io.humble.video.MediaAudio;
 import io.humble.video.MediaPicture;
 
+import java.io.IOException;
+
 public interface FFRenderer {
 
     boolean checkFrame(int rawIndex);
@@ -14,7 +16,7 @@ public interface FFRenderer {
 
     void encodeSamples(MediaAudio samples);
 
-    void finish();
+    void finish() throws IOException, InterruptedException;
 
     void forcefullyClose();
 

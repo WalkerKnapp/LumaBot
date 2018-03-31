@@ -1,5 +1,7 @@
 package gq.luma.bot.render.fs;
 
+import gq.luma.bot.render.fs.frame.AparapiAccumulatorFrame;
+import gq.luma.bot.render.fs.frame.AparapiImmediateFrame;
 import gq.luma.bot.render.renderer.FFRenderer;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.render.structure.RenderWeighterType;
@@ -7,7 +9,6 @@ import gq.luma.bot.render.audio.AudioProcessor;
 import gq.luma.bot.render.audio.BufferedAudioProcessor;
 import gq.luma.bot.render.fs.frame.Frame;
 import gq.luma.bot.render.fs.frame.UnweightedFrame;
-import gq.luma.bot.render.fs.frame.WeightedFrame;
 import gq.luma.bot.render.fs.weighters.DemoWeighter;
 import gq.luma.bot.render.fs.weighters.LinearDemoWeighter;
 import gq.luma.bot.render.fs.weighters.QueuedGaussianDemoWeighter;
@@ -22,6 +23,7 @@ import ru.serce.jnrfuse.ErrorCodes;
 import ru.serce.jnrfuse.FuseStubFS;
 import ru.serce.jnrfuse.struct.*;
 
+import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 import static jnr.ffi.Platform.OS.WINDOWS;
@@ -63,7 +65,8 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
             this.currentFrame = new UnweightedFrame(resampleFrame, videoPicture);
         } else {
             System.out.println("Pixel count: " + pixelCount);
-            this.currentFrame = new WeightedFrame(resampleFrame, videoPicture, pixelCount);
+            //this.currentFrame = new WeightedFrame(resampleFrame, videoPicture, pixelCount);
+            this.currentFrame = new AparapiImmediateFrame(resampleFrame, videoPicture, pixelCount);
             if (settings.getWeighterType() == RenderWeighterType.LINEAR) {
                 System.out.println("Setting weighter to linear");
                 this.weighter = new LinearDemoWeighter(settings.getFrameblendIndex());
@@ -80,7 +83,7 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
     }
 
     @Override
-    public void waitToFinish() {
+    public void waitToFinish() throws IOException, InterruptedException {
         this.renderer.finish();
     }
 

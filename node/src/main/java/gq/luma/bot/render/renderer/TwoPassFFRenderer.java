@@ -1,68 +1,65 @@
 package gq.luma.bot.render.renderer;
 
-import gq.luma.bot.render.fs.frame.Frame;
-import io.humble.video.MediaAudio;
-import io.humble.video.MediaPicture;
+import gq.luma.bot.render.structure.RenderSettings;
+import gq.luma.bot.utils.FileReference;
+import io.humble.video.Encoder;
 import io.humble.video.Muxer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class TwoPassFFRenderer implements FFRenderer {
+import java.io.File;
+import java.io.IOException;
 
-    public TwoPassFFRenderer(){
-        Muxer firstPassCollecter;
+public class TwoPassFFRenderer extends SinglePassFFRenderer {
+    private static final Logger logger = LoggerFactory.getLogger(TwoPassFFRenderer.class);
+
+    private File tempHuffyFile;
+    private File exportFile;
+    private RenderSettings finalExportSettings;
+
+    public TwoPassFFRenderer(Muxer tempHuffyMuxer, Encoder tempHuffyVideoEncoder, Encoder tempHuffyAudioEncoder, File tempHuffyFile, File exportFile, RenderSettings settings){
+        super(tempHuffyMuxer, tempHuffyVideoEncoder, tempHuffyAudioEncoder);
+        this.tempHuffyFile = tempHuffyFile;
+        this.exportFile = exportFile;
+        this.finalExportSettings = settings;
     }
 
     @Override
-    public boolean checkFrame(int rawIndex) {
-        return false;
-    }
+    public void finish() throws IOException, InterruptedException {
+        super.finish();
+        logger.debug("Starting 1st encoding pass.");
+        ProcessBuilder firstPassPB = new ProcessBuilder(FileReference.ffmpeg.getAbsolutePath(),
+                "-report",
+                "-y",
+                "-i", tempHuffyFile.getAbsolutePath(),
+                "-c:v", "libx264",
+                "-b:v", finalExportSettings.getKBBBitrate() + "k",
+                "-pass", "1",
+                "-c:a", "aac",
+                "-b:a", "128k",
+                "-max_muxing_queue_size", "700",
+                "-f", "mp4",
+                "NUL").directory(tempHuffyFile.getParentFile())
+                //.redirectOutput(new File(tempHuffyFile.getParent(), "1stpassout.txt"))
+                .redirectError(new File(tempHuffyFile.getParent(), "1stpasserror.txt"));
+        Process firstPassProcess = firstPassPB.start();
+        firstPassProcess.waitFor();
+        logger.debug("Starting 2nd encoding pass.");
+        ProcessBuilder secondPassPB = new ProcessBuilder(FileReference.ffmpeg.getAbsolutePath(),
+                "-report",
+                "-i", tempHuffyFile.getAbsolutePath(),
+                "-c:v", "libx264",
+                "-b:v", finalExportSettings.getKBBBitrate() + "k",
+                "-pass", "2",
+                "-c:a", "aac",
+                "-b:a", "128k",
+                "-max_muxing_queue_size", "700",
+                exportFile.getAbsolutePath()).directory(tempHuffyFile.getParentFile())
+                //.redirectOutput(new File(tempHuffyFile.getParent(), "2ndpassout.txt"))
+                .redirectError(new File(tempHuffyFile.getParent(), "2ndpasserror.txt"));;
+        Process secondPassProcess = secondPassPB.start();
+        secondPassProcess.waitFor();
+        logger.debug("Finished final task!");
 
-    @Override
-    public void encodeFrame(Frame frame, long index) {
-
-    }
-
-    @Override
-    public boolean checkSamples(MediaAudio samples) {
-        return false;
-    }
-
-    @Override
-    public void encodeSamples(MediaAudio samples) {
-
-    }
-
-    @Override
-    public void finish() {
-
-    }
-
-    @Override
-    public void forcefullyClose() {
-
-    }
-
-    @Override
-    public void setIgnoreTime(double ignoreTime) {
-
-    }
-
-    @Override
-    public void setFrameOffset(long offset) {
-
-    }
-
-    @Override
-    public long getLatestFrame() {
-        return 0;
-    }
-
-    @Override
-    public MediaPicture generateResampledTemplate() {
-        return null;
-    }
-
-    @Override
-    public MediaPicture generateOriginalTemplate() {
-        return null;
     }
 }

@@ -3,6 +3,7 @@ package gq.luma.bot.render.fs;
 import gq.luma.bot.render.renderer.FFRenderer;
 import gq.luma.bot.render.structure.RenderSettings;
 
+import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 public interface RenderFS {
@@ -10,7 +11,7 @@ public interface RenderFS {
 
     CompletableFuture<Void> getErrorHandler();
 
-    void waitToFinish();
+    void waitToFinish() throws IOException, InterruptedException;
 
     void shutdown();
 

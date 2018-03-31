@@ -11,6 +11,7 @@ import gq.luma.bot.render.fs.FuseRenderFS;
 import gq.luma.bot.render.renderer.FFRenderer;
 import gq.luma.bot.render.renderer.RendererFactory;
 import gq.luma.bot.render.structure.RenderSettings;
+import gq.luma.bot.render.structure.VideoOutputFormat;
 import gq.luma.bot.utils.FileReference;
 import gq.luma.bot.utils.LumaException;
 import jnr.ffi.Pointer;
@@ -60,7 +61,11 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
             this.status = "Setting up FFmpeg";
 
             File finalFile = new File(baseDir, name + "." + settings.getFormat().getOutputContainer());
-            this.renderer = RendererFactory.createSinglePass(settings, finalFile);
+            if(settings.isTwoPass() && settings.getFormat() == VideoOutputFormat.H264) {
+                this.renderer = RendererFactory.createTwoPass(settings, finalFile);
+            } else {
+                this.renderer = RendererFactory.createSinglePass(settings, finalFile);
+            }
 
             this.status = "Setting up File System";
 

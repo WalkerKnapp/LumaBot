@@ -8,6 +8,7 @@ import java.util.Properties;
 public class FileReference {
     public static final File tempDir;
     public static final File resDir;
+    public static final File ffmpeg;
 
     static  {
         Properties properties = new Properties();
@@ -18,5 +19,6 @@ public class FileReference {
         }
         tempDir = new File(properties.getProperty("temp"));
         resDir = new File(properties.getProperty("res"));
+        ffmpeg = new File(properties.getProperty("ffmpeg"));
     }
 }

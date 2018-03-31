@@ -4,10 +4,10 @@ import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.render.structure.VideoOutputFormat;
 import gq.luma.bot.utils.LumaException;
 import io.humble.video.*;
+import org.apache.commons.io.FilenameUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.function.Consumer;
 
 public class RendererFactory {
     public static SinglePassFFRenderer createSinglePass(RenderSettings settings, File exportFile) throws IOException, InterruptedException, LumaException {
@@ -68,5 +68,53 @@ public class RendererFactory {
         m.open(null, null);
 
         return new SinglePassFFRenderer(m, videoEncoder, audioEncoder);
+    }
+
+    public static TwoPassFFRenderer createTwoPass(RenderSettings settings, File exportFile) throws LumaException, IOException, InterruptedException {
+        File huffyFile = new File(exportFile.getParent(), FilenameUtils.removeExtension(exportFile.getName()) + "." + VideoOutputFormat.HUFFYUV.getOutputContainer());
+        Muxer m = Muxer.make(huffyFile.getAbsolutePath(), VideoOutputFormat.HUFFYUV.getFormat(), null);
+
+        Codec codec = Codec.findEncodingCodec(VideoOutputFormat.HUFFYUV.getVideoCodec());
+        Encoder videoEncoder = Encoder.make(codec);
+        videoEncoder.setWidth(settings.getWidth());
+        videoEncoder.setHeight(settings.getHeight());
+        videoEncoder.setPixelFormat(PixelFormat.Type.PIX_FMT_YUV422P);
+        videoEncoder.setTimeBase(Rational.make(1, settings.getFps()));
+
+        Codec audioCodec = Codec.findEncodingCodec(VideoOutputFormat.HUFFYUV.getAudioCodec());
+        Encoder audioEncoder = Encoder.make(audioCodec);
+
+        AudioFormat.Type findType = null;
+        for(AudioFormat.Type type : audioCodec.getSupportedAudioFormats()) {
+            if(findType == null) {
+                findType = type;
+            }
+            if(type == AudioFormat.Type.SAMPLE_FMT_S16) {
+                findType = type;
+                break;
+            }
+        }
+
+        if(findType == null)
+            throw new LumaException("Unable to find valid audio format for audio codec: " + audioCodec.getName());
+
+        audioEncoder.setSampleRate(44100);
+        audioEncoder.setTimeBase(Rational.make(1, 44100));
+        audioEncoder.setChannels(2);
+        audioEncoder.setChannelLayout(AudioChannel.Layout.CH_LAYOUT_STEREO);
+        audioEncoder.setSampleFormat(findType);
+
+        if(m.getFormat().getFlag(MuxerFormat.Flag.GLOBAL_HEADER)) {
+            videoEncoder.setFlag(Encoder.Flag.FLAG_GLOBAL_HEADER, true);
+            audioEncoder.setFlag(Coder.Flag.FLAG_GLOBAL_HEADER, true);
+        }
+
+        videoEncoder.open(null, null);
+        audioEncoder.open(null, null);
+        m.addNewStream(audioEncoder);
+        m.addNewStream(videoEncoder);
+        m.open(null, null);
+
+        return new TwoPassFFRenderer(m, videoEncoder, audioEncoder, huffyFile, exportFile, settings);
     }
 }

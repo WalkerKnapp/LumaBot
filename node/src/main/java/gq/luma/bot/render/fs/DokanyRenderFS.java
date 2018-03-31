@@ -20,6 +20,7 @@ import gq.luma.bot.utils.LumaException;
 import io.humble.video.*;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Set;
@@ -90,7 +91,7 @@ public class DokanyRenderFS extends DokanyFileSystem implements RenderFS {
     }
 
     @Override
-    public void waitToFinish() {
+    public void waitToFinish() throws IOException, InterruptedException {
         this.timeOutThread.interrupt();
         this.renderer.finish();
     }

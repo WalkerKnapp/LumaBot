@@ -7,9 +7,15 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 public class SourceLogMonitor {
     private static final Logger logger = LoggerFactory.getLogger(SourceLogMonitor.class);
+
+    private SourceLogMonitor(){
+        //Unused
+    }
+
     public static CompletableFuture<Void> monitor(String monitor, File log){
         return monitor(monitor, log, 15);
     }
@@ -22,36 +28,35 @@ public class SourceLogMonitor {
                 }
                 logger.debug("---------------Found {}---------------", monitor);
             } catch (InterruptedException | IOException e) {
-                throw new RuntimeException(e);
+                throw new CompletionException(e);
             }
         });
     }
 
     private static String tail2(File file, int lines) throws IOException {
-        RandomAccessFile fileHandler = new RandomAccessFile( file, "r" );
-        long fileLength = fileHandler.length() - 1;
-        StringBuilder sb = new StringBuilder();
-        int line = 0;
+        try(RandomAccessFile fileHandler = new RandomAccessFile( file, "r" )) {
+            long fileLength = fileHandler.length() - 1;
+            StringBuilder sb = new StringBuilder();
+            int line = 0;
 
-        for(long filePointer = fileLength; filePointer != -1; filePointer--){
-            fileHandler.seek( filePointer );
-            int readByte = fileHandler.readByte();
+            for (long filePointer = fileLength; filePointer != -1; filePointer--) {
+                fileHandler.seek(filePointer);
+                int readByte = fileHandler.readByte();
 
-            if( readByte == 0xA ) {
-                if (filePointer < fileLength) {
+                if (readByte == 0xA) {
+                    if (filePointer < fileLength) {
+                        line = line + 1;
+                    }
+                } else if (readByte == 0xD && (filePointer < fileLength - 1)) {
                     line = line + 1;
                 }
-            } else if( readByte == 0xD ) {
-                if (filePointer < fileLength-1) {
-                    line = line + 1;
+                if (line >= lines) {
+                    break;
                 }
+                sb.append((char) readByte);
             }
-            if (line >= lines) {
-                break;
-            }
-            sb.append( ( char ) readByte );
+            fileHandler.close();
+            return sb.reverse().toString();
         }
-        fileHandler.close();
-        return sb.reverse().toString();
     }
 }

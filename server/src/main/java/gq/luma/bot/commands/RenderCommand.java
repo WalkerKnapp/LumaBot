@@ -83,7 +83,12 @@ public class RenderCommand {
                 TaskScheduler.scheduleTask(new SingleSrcRenderTask(author.getId(), SrcDemo.of(dlFile), settings, dlFile, renderBaseDir))
                         .thenAccept(jsonObject -> {
                             try {
-                                String link = new WebserverOutputter().uploadFile(jsonObject, workingDir, input.getName(), author.getId(), settings.getWidth(), settings.getHeight());
+                                String link;
+                                if(jsonObject.getBoolean("no-upload", false)){
+                                    link = "(No Upload enabled.)";
+                                } else {
+                                    link = new WebserverOutputter().uploadFile(jsonObject, workingDir, input.getName(), author.getId(), settings.getWidth(), settings.getHeight());
+                                }
                                 responseFuture.join().edit("",
                                         new EmbedBuilder()
                                                 .setColor(BotReference.LUMA_COLOR)

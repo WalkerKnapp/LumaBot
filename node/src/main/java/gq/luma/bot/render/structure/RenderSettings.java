@@ -119,4 +119,11 @@ public class RenderSettings {
     public int getKBBBitrate(){
         return (int) (width * height * (-32.0487 + 6.574417*crf - 0.5035833*Math.pow(crf, 2) + 0.01708333*Math.pow(crf, 3) - 0.0002166667*Math.pow(crf, 4)));
     }
+
+    public static void main(String[] args){
+        int crf = 18;
+        double intermediate = (-32.0487 + 6.574417*crf - 0.5035833*Math.pow(crf, 2) + 0.01708333*Math.pow(crf, 3) - 0.0002166667*Math.pow(crf, 4));
+        double finalD = intermediate * 1280 * 720;
+        System.out.println(finalD);
+    }
 }

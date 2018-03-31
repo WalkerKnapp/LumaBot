@@ -22,6 +22,7 @@ public enum RenderPreset {
         this.framerate = framerate;
         this.frameblendIndex = frameblendIndex;
         this.startOdd = startOdd;
+        this.crf = crf;
         this.hq = hq;
     }
 
