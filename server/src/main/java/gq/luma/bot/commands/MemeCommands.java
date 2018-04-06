@@ -1,6 +1,5 @@
 package gq.luma.bot.commands;
 
-import com.jhlabs.image.*;
 import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
 import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
@@ -10,18 +9,20 @@ import gq.luma.bot.utils.LumaException;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
 
 import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
+import java.awt.*;
+import java.awt.image.*;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Random;
 
 public class MemeCommands {
     @Command(aliases = {"deepfry"}, description = "deepfry_description", usage = "", parent = "meme")
     public EmbedBuilder onDeepFry(CommandEvent event){
-        int brightness = 100;
-        int sharpness = 100;
-        int contrast = 100;
-        int saturation = 100;
-        int noise = 100;
+        int brightness = 150;
+        int sharpness = 150;
+        int contrast = 150;
+        int saturation = 150;
+        int noise = 150;
 
         Map<String, String> params = ParamUtilities.getParams(event.getCommandRemainder());
 
@@ -48,29 +49,51 @@ public class MemeCommands {
             return EmbedUtilities.getErrorMessage(e.getMessage(), event.getLocalization());
         }
 
-        BufferedImage finalImage = generateFilter(brightness, sharpness, contrast, saturation, noise).filter(input, null);
+        filterImage(input, brightness, sharpness, contrast, saturation, noise);
 
-        return EmbedUtilities.getImageMessage(finalImage, event.getLocalization());
+        return EmbedUtilities.getImageMessage(input, event.getLocalization());
     }
 
-    private static CompoundFilter generateFilter(int brightness, int sharpness, int contrast, int saturation, int noise){
-        ContrastFilter contrastFilter = new ContrastFilter();
-        contrastFilter.setBrightness(brightness/100f);
-        contrastFilter.setContrast(contrast/100f);
+    private static void filterImage(BufferedImage original, int brightness, int sharpness, int contrast, int saturation, int noise){
 
-        SharpenFilter sharpenFilter = new SharpenFilter();
+        RescaleOp op = new RescaleOp(brightness/100f, 0, null);
+        op.filter(original, original);
 
-        SaturationFilter saturationFilter = new SaturationFilter();
-        saturationFilter.setAmount((saturation/100f) + 1f);
+        RescaleOp contrastOp1 = new RescaleOp(0, -0.5f, null);
+        RescaleOp contrastOp2 = new RescaleOp(contrast/100f, 0.5f, null);
+        contrastOp1.filter(original, original);
+        contrastOp2.filter(original, original);
 
-        NoiseFilter noiseFilter = new NoiseFilter();
-        noiseFilter.setAmount(noise);
+        Kernel sharpenKernel = new Kernel(3, 3, new float[] {
+                -(sharpness/100), -(sharpness/100), -(sharpness/100),
+                -(sharpness/100), (sharpness/100)*3, -(sharpness/100),
+                -(sharpness/100), -(sharpness/100), -(sharpness/100)});
 
-        if(sharpness != 0f) {
-            return new CompoundFilter(sharpenFilter, new CompoundFilter(saturationFilter, noiseFilter));
-        }
-        else{
-            return new CompoundFilter(saturationFilter, noiseFilter);
-        }
+        ConvolveOp sharpenOp = new ConvolveOp(sharpenKernel);
+        sharpenOp.filter(original, original);
+
+        RGBImageFilter saturationFilter = new RGBImageFilter() {
+            public int filterRGB(int x, int y, int rgb) {
+                float[] hsb = Color.RGBtoHSB((rgb>>16)&0xFF, (rgb>>8)&0xFF ,0xFF, null);
+                return Color.HSBtoRGB(hsb[0], hsb[1] * (saturation/100), hsb[2]);
+            }
+        };
+
+        FilteredImageSource saturationSource = new FilteredImageSource(original.getSource(), saturationFilter);
+        original.getGraphics().drawImage(Toolkit.getDefaultToolkit().createImage(saturationSource), 0, 0, null);
+
+        float std = (noise/100);
+        Random random = new Random();
+        RGBImageFilter noiseFilter = new RGBImageFilter() {
+            public int filterRGB(int x, int y, int rgb) {
+                int ret = ((int)(((rgb>>16)&0xFF)+(random.nextGaussian()*std)))&0xFF;
+                ret = (ret << 8) + (((int)(((rgb>>8)&0xFF)+(random.nextGaussian()*std)))&0xFF);
+                ret = (ret << 8) + (((int)((rgb&0xFF)+(random.nextGaussian()*std)))&0xFF);
+                return ret;
+            }
+        };
+
+        FilteredImageSource noiseSource = new FilteredImageSource(original.getSource(), noiseFilter);
+        original.getGraphics().drawImage(Toolkit.getDefaultToolkit().createImage(noiseSource), 0, 0, null);
     }
 }
