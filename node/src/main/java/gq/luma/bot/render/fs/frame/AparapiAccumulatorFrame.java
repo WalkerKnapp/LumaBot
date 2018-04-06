@@ -8,12 +8,13 @@ import io.humble.video.MediaPictureResampler;
 import jnr.ffi.Pointer;
 import ru.serce.jnrfuse.LibFuse;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class AparapiAccumulatorFrame implements Frame {
     private ProcessingKernel kernel;
     private Range processingRange;
-
+    private ByteBuffer inBuffer;
     private MediaPicture inFrame;
     private MediaPicture outFrame;
 
@@ -35,15 +36,17 @@ public class AparapiAccumulatorFrame implements Frame {
         @Override
         public void run() {
             int i = getGlobalId();
-            exportBuffer[i] += ((importBuffer[i] & 0xFF) * weight[0]);
+            float additionFactor = ((importBuffer[i] & 0xFF) * weight[0]);
+            //System.out.println("Addition Factor: " + additionFactor + ", weight: " + weight[0]);
+            exportBuffer[i] += additionFactor;
         }
     }
 
     public AparapiAccumulatorFrame(MediaPicture inFrame, MediaPicture outFrame, int pixelCount){
         this.inFrame = inFrame;
+        this.inBuffer = inFrame.getData(0).getByteBuffer(0, inFrame.getDataPlaneSize(0));
         this.outFrame = outFrame;
         this.pixelCount = pixelCount;
-        System.out.println(inFrame.getData(0).getByteBuffer(0, inFrame.getDataPlaneSize(0)).isDirect());
         this.kernel = new ProcessingKernel(new byte[pixelCount], new byte[pixelCount]);
         this.processingRange = Range.create(pixelCount);
     }
@@ -59,8 +62,9 @@ public class AparapiAccumulatorFrame implements Frame {
             offsetShift = 0;
         }
         System.arraycopy(data, frameOffset, kernel.importBuffer, offset - offsetShift, writeLength - frameOffset);
-        if(offset + writeLength - 18 == pixelCount){
+        if(offset + writeLength - 18 >= pixelCount){
             kernel.put(kernel.importBuffer);
+            kernel.execute(processingRange);
         }
     }
 
@@ -75,17 +79,19 @@ public class AparapiAccumulatorFrame implements Frame {
             offsetShift = 0;
         }
         buf.get(frameOffset, kernel.importBuffer, (int)(offset - offsetShift), (int)(writeLength - frameOffset));
-        if(offset + writeLength - 18 == pixelCount){
+        if(offset + writeLength - 18 >= pixelCount){
             kernel.put(kernel.importBuffer);
+            kernel.execute(processingRange);
         }
     }
 
     @Override
     public MediaPicture writeMedia(MediaPictureResampler resampler, long timestamp) {
-        kernel.execute(processingRange);
         kernel.get(kernel.exportBuffer);
 
-        inFrame.getData(0).put(kernel.exportBuffer, 0, 0, pixelCount);
+        //System.out.println("Whatttt: " + kernel.exportBuffer[3000]);
+
+        inBuffer.put(kernel.exportBuffer, 0, pixelCount);
         inFrame.setTimeStamp(timestamp);
         inFrame.setComplete(true);
 
@@ -96,10 +102,9 @@ public class AparapiAccumulatorFrame implements Frame {
 
     @Override
     public MediaPicture getUnprocessed(long timestamp) {
-        kernel.execute(processingRange);
         kernel.get(kernel.exportBuffer);
 
-        inFrame.getData(0).put(kernel.exportBuffer, 0, 0, pixelCount);
+        inBuffer.put(kernel.exportBuffer, 0, pixelCount);
         inFrame.setTimeStamp(timestamp);
         inFrame.setComplete(true);
 
@@ -109,5 +114,7 @@ public class AparapiAccumulatorFrame implements Frame {
     @Override
     public void reset() {
         Arrays.fill(kernel.exportBuffer, (byte) 0);
+        kernel.put(kernel.exportBuffer);
+        inBuffer.rewind();
     }
 }

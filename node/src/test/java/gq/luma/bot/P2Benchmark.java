@@ -1,12 +1,15 @@
 package gq.luma.bot;
 
 import com.carrotsearch.junitbenchmarks.AbstractBenchmark;
+import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
 import com.eclipsesource.json.Json;
 import gq.luma.bot.render.SourceLogMonitor;
 import gq.luma.bot.render.SrcRenderTask;
 import gq.luma.bot.render.fs.FSInterface;
 import gq.luma.bot.render.fs.FuseRenderFS;
+import gq.luma.bot.render.renderer.FFRenderer;
 import gq.luma.bot.render.renderer.NullFFRenderer;
+import gq.luma.bot.render.renderer.RendererFactory;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.utils.FileReference;
 import gq.luma.bot.utils.LumaException;
@@ -37,7 +40,7 @@ public class P2Benchmark extends AbstractBenchmark {
 
     private FuseRenderFS renderFS;
     private Path fsMountPoint;
-    private NullFFRenderer renderer;
+    private FFRenderer renderer;
 
     public P2Benchmark() throws LumaException, IOException, URISyntaxException, InterruptedException{
         testDir = new File(FileReference.tempDir, "benchmarks");
@@ -56,7 +59,8 @@ public class P2Benchmark extends AbstractBenchmark {
         }
 
         renderFS = (FuseRenderFS) FSInterface.openFuse(fsMountPoint = Paths.get(FileReference.tempDir.getAbsolutePath(), "mount")).join().getRenderFS();
-        renderer = new NullFFRenderer(benchSettings.getWidth(), benchSettings.getHeight());
+        //renderer = new NullFFRenderer(benchSettings.getWidth(), benchSettings.getHeight());
+        renderer = RendererFactory.createSinglePass(benchSettings, new File(testDir, "meme.avi"));
 
         renderFS.configure(benchSettings, renderer);
         renderFS.getErrorHandler().exceptionally(t -> {throw new CompletionException(t);});
@@ -74,10 +78,14 @@ public class P2Benchmark extends AbstractBenchmark {
         Thread.sleep(3000);
     }
 
+    @BenchmarkOptions(benchmarkRounds = 1, warmupRounds = 0)
     @Test
     public void aparapiImmediateBenchmark(){
+        long startTime = System.nanoTime();
         sendCommand("exec restarter");
         SourceLogMonitor.monitor("dem_stop", benchDemo.getGame().getLog()).join();
+        long endTime = System.nanoTime();
+        System.out.println("Spent: " + (endTime - startTime)/1_000_000_000d + " seconds");
     }
 
     @After

@@ -1,14 +1,11 @@
 package gq.luma.bot.render.fs;
 
-import gq.luma.bot.render.fs.frame.AparapiAccumulatorFrame;
-import gq.luma.bot.render.fs.frame.AparapiImmediateFrame;
+import gq.luma.bot.render.fs.frame.*;
 import gq.luma.bot.render.renderer.FFRenderer;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.render.structure.RenderWeighterType;
 import gq.luma.bot.render.audio.AudioProcessor;
 import gq.luma.bot.render.audio.BufferedAudioProcessor;
-import gq.luma.bot.render.fs.frame.Frame;
-import gq.luma.bot.render.fs.frame.UnweightedFrame;
 import gq.luma.bot.render.fs.weighters.DemoWeighter;
 import gq.luma.bot.render.fs.weighters.LinearDemoWeighter;
 import gq.luma.bot.render.fs.weighters.QueuedGaussianDemoWeighter;
@@ -16,6 +13,7 @@ import io.humble.video.MediaPicture;
 import jnr.ffi.Platform;
 import jnr.ffi.Pointer;
 import jnr.ffi.Runtime;
+import jnr.ffi.Struct;
 import jnr.ffi.types.mode_t;
 import jnr.ffi.types.off_t;
 import jnr.ffi.types.size_t;
@@ -66,7 +64,7 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
         } else {
             System.out.println("Pixel count: " + pixelCount);
             //this.currentFrame = new WeightedFrame(resampleFrame, videoPicture, pixelCount);
-            this.currentFrame = new AparapiImmediateFrame(resampleFrame, videoPicture, pixelCount);
+            this.currentFrame = new AparapiAccumulatorFrame(resampleFrame, videoPicture, pixelCount);
             if (settings.getWeighterType() == RenderWeighterType.LINEAR) {
                 System.out.println("Setting weighter to linear");
                 this.weighter = new LinearDemoWeighter(settings.getFrameblendIndex());
@@ -93,7 +91,15 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
     }
 
     @Override
+    public int open(String path, FuseFileInfo fi) {
+        //System.err.println("FILE WAS OPENED::: " + path);
+        //this.latestCreated = "";
+        return 0;
+    }
+
+    @Override
     public int create(String path, @mode_t long mode, FuseFileInfo fi) {
+        //System.err.println("FILE WAS CREATED::: " + path);
         this.latestCreated = path;
         return 0;
     }
@@ -151,7 +157,8 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
             } else if (extension.equalsIgnoreCase("wav")) {
                 audioProcessor.packet(buf, offset, size, this.renderer::encodeSamples);
             }
-        } catch (Exception e){
+        } catch (Throwable e){
+            e.printStackTrace();
             this.errorHandler.completeExceptionally(e);
         }
         return (int) size;

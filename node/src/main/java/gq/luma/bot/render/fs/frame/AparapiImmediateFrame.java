@@ -12,7 +12,6 @@ import java.util.Arrays;
 
 public class AparapiImmediateFrame implements Frame {
     private ProcessingKernel kernel;
-    private Range processingRange;
 
     private MediaPicture inFrame;
     private MediaPicture outFrame;
@@ -37,8 +36,10 @@ public class AparapiImmediateFrame implements Frame {
 
         @Override
         public void run() {
-            int i = getGlobalId();
-            this.exportBuffer[i + this.exportOffset[0]] += ((this.importBuffer[0][i + this.importOffset[0]] & 0xFF) * this.weight[0]);
+            int id = getGlobalId();
+            int i = id + this.exportOffset[0];
+            int j = id + this.importOffset[0];
+            this.exportBuffer[i] += ((this.importBuffer[0][j] & 0xFF) * this.weight[0]);
         }
     }
 
@@ -50,18 +51,18 @@ public class AparapiImmediateFrame implements Frame {
         this.kernel = new ProcessingKernel(new byte[pixelCount]);
         kernel.setExecutionModeWithoutFallback(Kernel.EXECUTION_MODE.GPU);
         kernel.setExplicit(true);
-        this.processingRange = Range.create(pixelCount);
     }
 
     private void processData(byte[] data, int offset, int writeLength, DemoWeighter weighter, int position) {
+        Range processingRange;
         if(offset == 0){
-            processingRange.setGlobalSize_0(writeLength - 18);
+            processingRange = Range.create(writeLength - 18);
             kernel.weight[0] = weighter.weightFloat(position);
             kernel.importOffset[0] = 18;
             kernel.exportOffset[0] = 0;
             kernel.put(kernel.weight).put(kernel.importOffset).put(kernel.exportOffset);
         } else {
-            processingRange.setGlobalSize_0(writeLength);
+            processingRange = Range.create(writeLength);
             kernel.importOffset[0] = 0;
             kernel.exportOffset[0] = offset - 18;
             kernel.put(kernel.importOffset).put(kernel.exportOffset);
