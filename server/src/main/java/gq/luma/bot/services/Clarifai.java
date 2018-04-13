@@ -37,8 +37,8 @@ public class Clarifai implements Service {
 
         Luma.lumaExecutorService.scheduleAtFixedRate(() -> Bot.api.getServers().forEach(server -> {
             try {
-                if(ChronoUnit.MONTHS.between(Instant.ofEpochSecond(Database.getServerClarifaiResetDate(server)), Instant.now()) > 1){
-                    Database.setServerClarifaiResetDate(server, Instant.now().getEpochSecond());
+                if(ChronoUnit.MONTHS.between(Instant.ofEpochSecond(Luma.database.getServerClarifaiResetDate(server)), Instant.now()) > 1){
+                    Luma.database.setServerClarifaiResetDate(server, Instant.now().getEpochSecond());
                 }
             } catch (SQLException e) {
                 e.printStackTrace();

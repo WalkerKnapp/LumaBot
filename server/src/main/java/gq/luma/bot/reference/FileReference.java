@@ -8,7 +8,6 @@ import java.util.Properties;
 
 public class FileReference implements Service {
     public static File tempDir;
-    public static File resDir;
     public static File webRoot;
     public static File localesDir;
 
@@ -17,6 +16,7 @@ public class FileReference implements Service {
     public static File sourceDemoParser;
 
     public static String mySQLLocation;
+    public static String clamAVLocation;
 
     @Override
     public void startService() throws Exception {
@@ -25,7 +25,6 @@ public class FileReference implements Service {
             properties.load(fis);
         }
         tempDir = new File(properties.getProperty("temp"));
-        resDir = new File(properties.getProperty("res"));
         webRoot = new File(properties.getProperty("web_root"));
         localesDir = new File(properties.getProperty("locales"));
         ffprobe = new File(properties.getProperty("ffprobe"));
@@ -33,5 +32,6 @@ public class FileReference implements Service {
         sourceDemoParser = new File(properties.getProperty("source_demo_parser"));
 
         mySQLLocation = properties.getProperty("my_sql_location");
+        clamAVLocation = properties.getProperty("clamav_location");
     }
 }

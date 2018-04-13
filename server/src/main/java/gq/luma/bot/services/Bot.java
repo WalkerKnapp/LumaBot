@@ -2,6 +2,7 @@ package gq.luma.bot.services;
 
 import de.btobastian.javacord.DiscordApi;
 import de.btobastian.javacord.DiscordApiBuilder;
+import gq.luma.bot.Luma;
 import gq.luma.bot.commands.*;
 import gq.luma.bot.commands.subsystem.CommandExecutor;
 import gq.luma.bot.commands.subsystem.Localization;
@@ -25,7 +26,7 @@ import java.util.Objects;
 public class Bot implements Service {
     private static Logger logger = LoggerFactory.getLogger(Bot.class);
 
-    static DiscordApi api;
+    public static DiscordApi api;
 
     @Override
     public void startService() throws Exception {
@@ -60,9 +61,9 @@ public class Bot implements Service {
 
         api.getServers().forEach(server -> {
             try {
-                if (!Database.isServerPresent(server)) {
+                if (!Luma.database.isServerPresent(server)) {
                     logger.error("Found database desync! Server: {} was not found. Was the database reset?", server.toString());
-                    Database.addServer(server, DefaultReference.CLARIFAI_CAP, Instant.now());
+                    Luma.database.addServer(server, DefaultReference.CLARIFAI_CAP, Instant.now());
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -71,7 +72,7 @@ public class Bot implements Service {
 
         api.addServerJoinListener(event -> {
             try {
-                Database.addServer(event.getServer(), DefaultReference.CLARIFAI_CAP, Instant.now());
+                Luma.database.addServer(event.getServer(), DefaultReference.CLARIFAI_CAP, Instant.now());
             } catch (SQLException e) {
                 e.printStackTrace();
             }

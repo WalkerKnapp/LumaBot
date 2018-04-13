@@ -16,9 +16,7 @@ public @interface Command {
 
     String parent() default "";
 
-    String neededGlobalPerms() default "";
-
-    String neededGuildPerms() default "";
+    String neededPerms() default "";
 
     String whilelistedGuilds() default "";
 }

@@ -31,6 +31,7 @@ dependencies {
     compile group: 'org.jsoup', name: 'jsoup', version: '1.11.2'
 
     compile 'com.clarifai.clarifai-api2:core:2.4.0'
+    compile group: 'fi.solita.clamav', name: 'clamav-client', version: '1.0.1'
 
     compile group: 'net.sourceforge.tess4j', name: 'tess4j', version: '3.4.4'
 }

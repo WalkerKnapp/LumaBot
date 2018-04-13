@@ -5,8 +5,13 @@ import de.btobastian.javacord.entities.Server;
 import de.btobastian.javacord.entities.User;
 import de.btobastian.javacord.entities.channels.TextChannel;
 import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
+import de.btobastian.javacord.entities.permissions.PermissionType;
+import de.btobastian.javacord.entities.permissions.Permissions;
+import de.btobastian.javacord.entities.permissions.PermissionsBuilder;
+import de.btobastian.javacord.entities.permissions.Role;
 import de.btobastian.javacord.events.message.MessageCreateEvent;
 import gq.luma.bot.Luma;
+import gq.luma.bot.commands.subsystem.permissions.PermissionSet;
 import gq.luma.bot.services.Database;
 import gq.luma.bot.utils.StringUtilities;
 
@@ -46,7 +51,7 @@ public class CommandExecutor {
             if(canRun(command, user, event.getServer()) && isUnderWhitelist(command, event)) {
                 Luma.lumaExecutorService.submit(() -> {
                     try {
-                        String loc = Database.getEffectiveLocale(event.getChannel());
+                        String loc = Luma.database.getEffectiveLocale(event.getChannel());
                         Localization localization = getLocalization(loc);
                         for (String name : command.getCommand().aliases()) {
                             String expectedCommand = generateCommandString(command, event.getChannel(), localization, name);
@@ -78,38 +83,57 @@ public class CommandExecutor {
     }
 
     public boolean canRun(MCommand command, User user, Optional<Server> serverO){
-        AtomicBoolean hasPerms = new AtomicBoolean(true);
-        if (!command.getCommand().neededGuildPerms().isEmpty()) {
-            serverO.ifPresent(server -> {
-                try {
-                    Database.getServerPermsForUser(server, user).ifPresentOrElse(list -> {
-                        if(hasPermission(list, command.getCommand().neededGuildPerms())){
-                            hasPerms.set(true);
-                        } else {
-                            hasPerms.set(false);
+        try {
+            if (!command.getCommand().neededPerms().isEmpty()) {
+                PermissionSet.Permission neededPermission = PermissionSet.Permission.valueOf(command.getCommand().neededPerms());
+                if (neededPermission == PermissionSet.Permission.DEVELOPER) {
+                    for (PermissionSet checkPerm : Luma.database.getPermissionByTargetId(user.getId())) {
+                        if (checkPerm.effectivelyHasPermission(neededPermission)) {
+                            return true;
                         }
-                    }, () -> hasPerms.set(false));
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                    hasPerms.set(false);
-                }
-            });
-        }
-        if(!command.getCommand().neededGlobalPerms().isEmpty()){
-            try{
-                Database.getGlobalPermsForUser(user).ifPresentOrElse(list -> {
-                    if(hasPermission(list, command.getCommand().neededGuildPerms())){
-                        hasPerms.set(true);
-                    } else {
-                        hasPerms.set(false);
                     }
-                }, () -> hasPerms.set(false));
-            } catch (SQLException e){
-                e.printStackTrace();
-                hasPerms.set(false);
+                }
+                if (serverO.isPresent()) {
+                    Server server = serverO.get();
+                    //Check owner perms
+                    if (server.isOwner(user)) {
+                        for (PermissionSet checkPerm : Luma.database.getPermission(server, PermissionSet.PermissionTarget.OWNER, 0L)) {
+                            if (checkPerm.effectivelyHasPermission(neededPermission)) {
+                                return true;
+                            }
+                        }
+                    }
+                    //Check user perms
+                    for (PermissionSet checkPerm : Luma.database.getPermission(server, PermissionSet.PermissionTarget.USER, user.getId())) {
+                        if (checkPerm.effectivelyHasPermission(neededPermission)) {
+                            return true;
+                        }
+                    }
+                    for (Role checkRole : server.getRolesOf(user)) {
+                        //Check role perms
+                        for (PermissionSet checkPerm : Luma.database.getPermission(server, PermissionSet.PermissionTarget.ROLE, checkRole.getId())) {
+                            if (checkPerm.effectivelyHasPermission(neededPermission)) {
+                                return true;
+                            }
+                        }
+                        //Check discord perms
+                        for (PermissionType checkType : checkRole.getAllowedPermissions()) {
+                            for (PermissionSet checkPerm : Luma.database.getPermission(server, PermissionSet.PermissionTarget.PERMISSION, checkType.getValue())) {
+                                if (checkPerm.effectivelyHasPermission(neededPermission)) {
+                                    return true;
+                                }
+                            }
+                        }
+
+                    }
+                }
+                return false;
             }
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
         }
-        return hasPerms.get();
     }
 
     private void execute(MCommand command, String commandUsed, String[] commandTree, String[] messageSplit, MessageCreateEvent event, Localization localization , User user) throws Exception {
@@ -161,42 +185,15 @@ public class CommandExecutor {
     public String generateCommandString(MCommand command, TextChannel context, Localization localization, String name) throws SQLException {
         String expectedCommand;
         if(command.getCommand().parent().isEmpty()) {
-            expectedCommand = Database.getEffectivePrefix(context) + " " + localization.get(name + "_command");
+            expectedCommand = Luma.database.getEffectivePrefix(context) + " " + localization.get(name + "_command");
         }
         else {
-            expectedCommand = Database.getEffectivePrefix(context) + " " + Arrays.stream(command.getCommand().parent().split(" ")).map(str -> localization.get(str + "_command")).collect(Collectors.joining(" ")) + " " + localization.get(name + "_command");
+            expectedCommand = Luma.database.getEffectivePrefix(context) + " " + Arrays.stream(command.getCommand().parent().split(" ")).map(str -> localization.get(str + "_command")).collect(Collectors.joining(" ")) + " " + localization.get(name + "_command");
         }
         return expectedCommand;
     }
 
     public ArrayList<MCommand> getCommands() {
         return commands;
-    }
-
-    private boolean hasPermission(List<String> perms, String permission) {
-        if (permission.equals("none") || permission.equals("")) {
-            return true;
-        }
-        if (perms == null) {
-            return false;
-        }
-        for (String perm : perms) {
-            if (checkPermission(perm, permission)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean checkPermission(String has, String required) {
-        String[] splitHas = has.split("\\.");
-        String[] splitRequired = required.split("\\.");
-        int lower = splitHas.length > splitRequired.length ? splitRequired.length : splitHas.length;
-        for (int i = 0; i < lower; i++) {
-            if (!splitHas[i].equalsIgnoreCase(splitRequired[i])) {
-                return splitHas[i].equals("*");
-            }
-        }
-        return splitRequired.length == splitHas.length;
     }
 }

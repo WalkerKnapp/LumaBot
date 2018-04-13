@@ -13,6 +13,7 @@ import gq.luma.bot.render.renderer.RendererFactory;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.utils.FileReference;
 import gq.luma.bot.utils.LumaException;
+import io.humble.video.DemuxerFormat;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

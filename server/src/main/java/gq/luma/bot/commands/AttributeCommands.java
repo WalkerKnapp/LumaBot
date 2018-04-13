@@ -3,10 +3,10 @@ package gq.luma.bot.commands;
 import de.btobastian.javacord.entities.channels.ServerChannel;
 import de.btobastian.javacord.entities.channels.TextChannel;
 import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
+import gq.luma.bot.Luma;
 import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
-import gq.luma.bot.services.Database;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
 
 import java.sql.SQLException;
@@ -18,8 +18,8 @@ public class AttributeCommands {
         if(event.getCommandRemainder().isEmpty()){
             try {
                 if (event.getServer().isPresent()){
-                    String prefix = Database.getServerPrefix(event.getServer().get());
-                    String locale = Database.getServerLocale(event.getServer().get());
+                    String prefix = Luma.database.getServerPrefix(event.getServer().get());
+                    String locale = Luma.database.getServerLocale(event.getServer().get());
                     return new EmbedBuilder()
                             .setColor(BotReference.LUMA_COLOR)
                             .addField(event.getLocalization().get("server"), event.getServer().get().getName(), false)
@@ -34,13 +34,13 @@ public class AttributeCommands {
         return null;
     }
 
-    @Command(aliases = {"prefix"}, description = "prefix_server_description", usage = "prefix_server_usage", parent = "server set", neededGuildPerms = "server.manage")
+    @Command(aliases = {"prefix"}, description = "prefix_server_description", usage = "prefix_server_usage", parent = "server set", neededPerms = "CHANGE_PREFIX_OR_LANGUAGE")
     public EmbedBuilder onSetPrefix(CommandEvent event){
         try {
             if (event.getServer().isPresent()) {
                 if (event.getCommandArgs().length == 1) {
-                    String oldPrefix = Database.getEffectivePrefix(event.getChannel());
-                    Database.setServerPrefix(event.getServer().get(), event.getCommandRemainder());
+                    String oldPrefix = Luma.database.getEffectivePrefix(event.getChannel());
+                    Luma.database.setServerPrefix(event.getServer().get(), event.getCommandRemainder());
                     return EmbedUtilities.getSuccessMessage(String.format(event.getLocalization().get("server_prefix_changed_message"), event.getServer().get().getName(), oldPrefix, event.getCommandRemainder()), event.getLocalization());
                 } else if (event.getCommandArgs().length > 1) {
                     return EmbedUtilities.getErrorMessage(String.format(event.getLocalization().get("prefix_change_too_many_arguments"), event.getCommandRemainder()), event.getLocalization());
@@ -55,14 +55,14 @@ public class AttributeCommands {
         }
     }
 
-    @Command(aliases = {"lang", "locale"}, description = "locale_server_description", usage = "locale_server_usage", parent = "server set", neededGuildPerms = "server.manage")
+    @Command(aliases = {"lang", "locale"}, description = "locale_server_description", usage = "locale_server_usage", parent = "server set", neededPerms = "CHANGE_PREFIX_OR_LANGUAGE")
     public EmbedBuilder onSetLang(CommandEvent event){
         try {
             if (event.getCommandArgs().length == 1) {
                 if (event.getServer().isPresent()) {
-                    String oldLocale = Database.getEffectiveLocale(event.getChannel());
+                    String oldLocale = Luma.database.getEffectiveLocale(event.getChannel());
                     if(event.getExecutor().getLocalization(event.getCommandRemainder()) != null){
-                        Database.setServerLocale(event.getServer().get(), event.getCommandRemainder());
+                        Luma.database.setServerLocale(event.getServer().get(), event.getCommandRemainder());
                         return EmbedUtilities.getSuccessMessage(String.format(event.getLocalization().get("server_locale_changed_message"), event.getServer().get().getName(), oldLocale, event.getCommandRemainder()), event.getLocalization());
                     } else{
                         return EmbedUtilities.getErrorMessage(String.format(event.getLocalization().get("locale_not_found_message"), event.getCommandRemainder()), event.getLocalization());
@@ -92,8 +92,8 @@ public class AttributeCommands {
                 textChannel = tc.get();
             }
 
-            String prefix = Database.getChannelPrefix(textChannel);
-            String locale = Database.getChannelLocale(textChannel);
+            String prefix = Luma.database.getChannelPrefix(textChannel);
+            String locale = Luma.database.getChannelLocale(textChannel);
 
             return new EmbedBuilder()
                     .setColor(BotReference.LUMA_COLOR)
@@ -106,7 +106,7 @@ public class AttributeCommands {
         }
     }
 
-    @Command(aliases = {"prefix"}, description = "prefix_channel_description", usage = "prefix_channel_usage", parent = "channel set", neededGuildPerms = "server.manage")
+    @Command(aliases = {"prefix"}, description = "prefix_channel_description", usage = "prefix_channel_usage", parent = "channel set", neededPerms = "CHANGE_PREFIX_OR_LANGUAGE")
     public EmbedBuilder onChannelPrefix(CommandEvent event){
         try {
             if (event.getCommandArgs().length > 0) {
@@ -118,9 +118,9 @@ public class AttributeCommands {
                     }
                     textChannel = tc.get();
                 }
-                String current = Database.getChannelPrefix(textChannel);
+                String current = Luma.database.getChannelPrefix(textChannel);
 
-                Database.setChannelPrefix(textChannel, event.getCommandArgs()[0]);
+                Luma.database.setChannelPrefix(textChannel, event.getCommandArgs()[0]);
 
                 if (current == null) {
                     return EmbedUtilities.getSuccessMessage(String.format(event.getLocalization().get("channel_prefix_changed_message"), event.getCommandArgs()[0]), event.getLocalization());
@@ -135,7 +135,7 @@ public class AttributeCommands {
         }
     }
 
-    @Command(aliases = {"lang", "locale"}, description = "locale_channel_description", usage = "locale_channel_usage", parent = "channel set", neededGuildPerms = "server.manage")
+    @Command(aliases = {"lang", "locale"}, description = "locale_channel_description", usage = "locale_channel_usage", parent = "channel set", neededPerms = "CHANGE_PREFIX_OR_LANGUAGE")
     public EmbedBuilder onChannelLang(CommandEvent event){
         try {
             if (event.getCommandArgs().length > 0) {
@@ -147,10 +147,10 @@ public class AttributeCommands {
                     }
                     textChannel = tc.get();
                 }
-                String current = Database.getChannelLocale(textChannel);
+                String current = Luma.database.getChannelLocale(textChannel);
 
                 if(event.getExecutor().getLocalization(event.getCommandArgs()[0]) != null){
-                    Database.setChannelLocale(textChannel, event.getCommandArgs()[0]);
+                    Luma.database.setChannelLocale(textChannel, event.getCommandArgs()[0]);
                     if(current != null){
                         return EmbedUtilities.getSuccessMessage(String.format(event.getLocalization().get("channel_locale_replaced_message"), current, event.getCommandArgs()[0]), event.getLocalization());
                     } else {
@@ -167,7 +167,7 @@ public class AttributeCommands {
         }
     }
 
-    @Command(aliases = {"prefix"}, description = "channel_prefix_remove_description", usage = "channel_prefix_remove_usage", parent = "channel remove", neededGuildPerms = "server.manage")
+    @Command(aliases = {"prefix"}, description = "channel_prefix_remove_description", usage = "channel_prefix_remove_usage", parent = "channel remove", neededPerms = "CHANGE_PREFIX_OR_LANGUAGE")
     public EmbedBuilder onChannelRemovePrefix(CommandEvent event){
         TextChannel textChannel = event.getChannel();
         if (event.getCommandArgs().length > 0) {
@@ -179,14 +179,14 @@ public class AttributeCommands {
         }
 
         try {
-            Database.setChannelPrefix(textChannel, null);
+            Luma.database.setChannelPrefix(textChannel, null);
             return EmbedUtilities.getSuccessMessage(event.getLocalization().get("prefix_removed_success_message"), event.getLocalization());
         } catch (SQLException e) {
             return EmbedUtilities.getErrorMessage(e.getMessage(), event.getLocalization());
         }
     }
 
-    @Command(aliases = {"lang", "locale"}, description = "channel_locale_remove_description", usage = "channel_locale_remove_usage", parent = "channel remove", neededGuildPerms = "server.manage")
+    @Command(aliases = {"lang", "locale"}, description = "channel_locale_remove_description", usage = "channel_locale_remove_usage", parent = "channel remove", neededPerms = "CHANGE_PREFIX_OR_LANGUAGE")
     public EmbedBuilder onChannelRemoveLang(CommandEvent event){
         TextChannel textChannel = event.getChannel();
         if (event.getCommandArgs().length > 1) {
@@ -198,7 +198,7 @@ public class AttributeCommands {
         }
 
         try {
-            Database.setChannelLocale(textChannel, null);
+            Luma.database.setChannelLocale(textChannel, null);
             return EmbedUtilities.getSuccessMessage(event.getLocalization().get("locale_removed_success_message"), event.getLocalization());
         } catch (SQLException e) {
             return EmbedUtilities.getErrorMessage(e.getMessage(), event.getLocalization());

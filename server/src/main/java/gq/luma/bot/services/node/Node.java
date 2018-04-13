@@ -2,6 +2,7 @@ package gq.luma.bot.services.node;
 
 import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonObject;
+import gq.luma.bot.Luma;
 import gq.luma.bot.services.Database;
 import gq.luma.bot.utils.LumaException;
 import org.java_websocket.WebSocket;
@@ -27,12 +28,12 @@ public class Node {
     }
 
     public void updateSession(String session) throws SQLException {
-        Database.updateNodeSession(this.token, session);
+        Luma.database.updateNodeSession(this.token, session);
     }
 
     public String getLatestName() {
         try {
-            return Database.getNodeByToken(token).orElseThrow(IllegalArgumentException::new).getString("lastKnownName");
+            return Luma.database.getNodeByToken(token).orElseThrow(IllegalArgumentException::new).getString("lastKnownName");
         } catch (SQLException e) {
             e.printStackTrace();
             return null;

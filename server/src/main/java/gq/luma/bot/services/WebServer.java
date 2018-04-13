@@ -124,7 +124,7 @@ public class WebServer extends RouterNanoHTTPD implements Service {
                 String renderId = urlParams.get("renderid").split("\\.")[0];
                 int renderCode = WordEncoder.decode(renderId);
                 System.out.println("Decoded id: " + renderCode + " from string " + renderId);
-                ResultSet rs = Database.getResult(renderCode);
+                ResultSet rs = Luma.database.getResult(renderCode);
 
                 if (rs.next()) {
                     if (session.getQueryParameterString() != null && session.getQueryParameterString().equalsIgnoreCase("dl=1")) {

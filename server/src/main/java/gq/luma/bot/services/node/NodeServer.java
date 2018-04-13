@@ -1,11 +1,13 @@
 package gq.luma.bot.services.node;
 
 import com.eclipsesource.json.JsonObject;
+import gq.luma.bot.Luma;
 import gq.luma.bot.services.Database;
 import gq.luma.bot.services.Service;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.reference.KeyReference;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.java_websocket.WebSocket;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.exceptions.InvalidDataException;
@@ -23,7 +25,6 @@ import javax.net.ssl.TrustManagerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.sql.SQLException;
@@ -38,7 +39,7 @@ public class NodeServer extends WebSocketServer implements Service {
 
     private Map<String, Node> currentConnections = new ConcurrentHashMap<>();
 
-    public NodeServer() throws UnknownHostException {
+    public NodeServer() {
         super(new InetSocketAddress("10.0.0.24", 8887));
     }
 
@@ -95,13 +96,13 @@ public class NodeServer extends WebSocketServer implements Service {
         try {
             String host = connection.getRemoteSocketAddress().getHostName();
             String token = handshake.getFieldValue("token");
-            if (Database.getNodeByToken(token).isPresent()) {
+            if (Luma.database.getNodeByToken(token).isPresent()) {
                 if (currentConnections.containsKey(host)) {
                     throw new InvalidDataException(CloseFrame.POLICY_VALIDATION, "Preexisting frames exist. Please retry.");
                 }
                 logger.info("Client authenticated at: " + host + " with token: " + token);
                 currentConnections.put(host, new Node(token, host, connection));
-                Database.updateNode(token, host, host, handshake.getFieldValue("name"));
+                Luma.database.updateNode(token, host, host, handshake.getFieldValue("name"));
             } else {
                 throw new InvalidDataException(CloseFrame.POLICY_VALIDATION, "Unauthorized");
             }
@@ -115,23 +116,6 @@ public class NodeServer extends WebSocketServer implements Service {
     @Override
     public void onOpen(org.java_websocket.WebSocket webSocket, ClientHandshake clientHandshake) {
         logger.info("Connection opened with client: " + webSocket.getRemoteSocketAddress().toString());
-        /*try {
-            System.out.println("Test1");
-            String text = "Test file wow!";
-            String name = "Test.txt";
-            System.out.println("Test2");
-            byte[] data = new byte[256 + text.length()];
-            System.out.println("Test3");
-            System.arraycopy(name.getBytes(), 0, data, 0, name.length());
-            System.out.println("Test4");
-            System.arraycopy(text.getBytes(), 0, data, 256, text.length());
-            System.out.println("Test5");
-            System.out.println("Trying to send data: " + new String(data));
-            webSocket.send(data);
-            System.out.println("Test6");
-        } catch (Exception e){
-            e.printStackTrace();
-        }*/
     }
 
     @Override
@@ -162,7 +146,7 @@ public class NodeServer extends WebSocketServer implements Service {
                     if (r.equalsIgnoreCase("steam")) {
                         ret.set("steam", KeyReference.steamKey);
                     } else if (r.equalsIgnoreCase("gdrive")) {
-                        ret.set("gdrive", new String(NodeServer.class.getResourceAsStream("/LumaBot-449002735b83.json").readAllBytes()));
+                        ret.set("gdrive", new String(IOUtils.toByteArray(KeyReference.gdriveServiceAcc.toURI())));
                     }
                 }
                 System.out.println("Sending: " + ret.toString());

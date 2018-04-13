@@ -10,7 +10,6 @@ import gq.luma.bot.utils.WordEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -20,6 +19,7 @@ public class Luma {
     private static Logger logger = LoggerFactory.getLogger(Luma.class);
 
     public static ScheduledExecutorService lumaExecutorService = Executors.newScheduledThreadPool(64);
+    public static Database database;
     public static NodeServer nodeServer;
     public static Clarifai clarifai;
     public static GDrive gDrive;
@@ -28,24 +28,19 @@ public class Luma {
     private static List<Service> services;
 
     static {
-        try {
-            services = new ArrayList<>();
-            services.add(new FileReference());
-            services.add(new KeyReference());
-            services.add(new Database());
-            services.add(new WordEncoder());
-            services.add(youtubeApi = new YoutubeApi());
-            services.add(nodeServer = new NodeServer());
-            services.add(new TaskScheduler());
-            services.add(new WebServer());
-            services.add(clarifai = new Clarifai());
-            services.add(new TesseractApi());
-            services.add(gDrive = new GDrive());
-            services.add(new Bot());
-        } catch (UnknownHostException e) {
-            logger.error("Encountered error while initializing services:", e);
-            System.exit(-1);
-        }
+        services = new ArrayList<>();
+        services.add(new FileReference());
+        services.add(new KeyReference());
+        services.add(database = new Database());
+        services.add(new WordEncoder());
+        services.add(youtubeApi = new YoutubeApi());
+        services.add(nodeServer = new NodeServer());
+        services.add(new TaskScheduler());
+        services.add(new WebServer());
+        services.add(clarifai = new Clarifai());
+        services.add(new TesseractApi());
+        services.add(gDrive = new GDrive());
+        services.add(new Bot());
     }
 
     public static void main(String[] args){

@@ -36,3 +36,4 @@ node/src/main/resources/
 build/
 .idea/
 .gradle/
+*.json

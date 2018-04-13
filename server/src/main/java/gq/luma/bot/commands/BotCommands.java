@@ -14,14 +14,14 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class BotCommands {
-    @Command(aliases = {"stop"}, description = "stop_usage", usage = "", neededGlobalPerms = "developer.stop")
+    @Command(aliases = {"stop"}, description = "stop_usage", usage = "", neededPerms = "DEVELOPER")
     public void onStop(CommandEvent event){
         event.getChannel().sendMessage(EmbedUtilities.getSuccessMessage(event.getLocalization().get("stop_message"), event.getLocalization())).join();
         event.getApi().disconnect();
         System.exit(0);
     }
 
-    @Command(aliases = {"reload"}, description = "reload_usage", usage = "", neededGuildPerms = "developer.reload")
+    @Command(aliases = {"reload"}, description = "reload_usage", usage = "", neededPerms = "DEVELOPER")
     public EmbedBuilder onReload(CommandEvent event){
         if(event.getCommandArgs().length > 0){
             for(String file : event.getCommandArgs()){

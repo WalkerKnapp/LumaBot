@@ -4,17 +4,16 @@ import de.btobastian.javacord.entities.Server;
 import de.btobastian.javacord.entities.User;
 import de.btobastian.javacord.entities.channels.ServerTextChannel;
 import de.btobastian.javacord.entities.channels.TextChannel;
+import gq.luma.bot.commands.subsystem.permissions.PermissionSet;
 import gq.luma.bot.reference.DefaultReference;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.reference.KeyReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.sql.*;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -22,52 +21,55 @@ import java.util.stream.Stream;
 public class Database implements Service {
     private static final Logger logger = LoggerFactory.getLogger(Database.class);
 
-    private static Connection conn;
+    private Connection conn;
 
-    private static PreparedStatement getChannel;
-    private static PreparedStatement updateChannelPrefix;
-    private static PreparedStatement updateChannelLocale;
-    private static PreparedStatement updateChannelNotify;
-    private static PreparedStatement insertChannel;
+    private PreparedStatement getChannel;
+    private PreparedStatement updateChannelPrefix;
+    private PreparedStatement updateChannelLocale;
+    private PreparedStatement updateChannelNotify;
+    private PreparedStatement insertChannel;
 
-    private static PreparedStatement getServer;
-    private static PreparedStatement updateServerPrefix;
-    private static PreparedStatement updateServerLocale;
-    private static PreparedStatement updateServerMembers;
-    private static PreparedStatement updateServerRoles;
-    private static PreparedStatement updateServerNotify;
-    private static PreparedStatement updateClarifaiMonthlyCap;
-    private static PreparedStatement updateClarifaiCount;
-    private static PreparedStatement updateClarifaiResetDate;
-    private static PreparedStatement insertServer;
+    private PreparedStatement getServer;
+    private PreparedStatement updateServerPrefix;
+    private PreparedStatement updateServerLocale;
+    private PreparedStatement updateServerNotify;
+    private PreparedStatement updateClarifaiMonthlyCap;
+    private PreparedStatement updateClarifaiCount;
+    private PreparedStatement updateClarifaiResetDate;
+    private PreparedStatement insertServer;
 
-    private static PreparedStatement getUser;
-    private static PreparedStatement updateUserNotify;
-    private static PreparedStatement updateUserPermissions;
-    private static PreparedStatement insertUser;
+    private PreparedStatement getUser;
+    private PreparedStatement updateUserNotify;
+    private PreparedStatement updateUserPermissions;
+    private PreparedStatement insertUser;
 
-    private static PreparedStatement getResult;
-    private static PreparedStatement insertResult;
+    private PreparedStatement getResult;
+    private PreparedStatement insertResult;
 
-    private static PreparedStatement getRoleByName;
-    private static PreparedStatement getAllRoles;
+    private PreparedStatement getRoleByName;
+    private PreparedStatement getAllRoles;
 
-    private static PreparedStatement getNodeByToken;
-    private static PreparedStatement getNodeBySession;
-    private static PreparedStatement getAllNodes;
-    private static PreparedStatement updateNodeSession;
-    private static PreparedStatement updateNodeTask;
-    private static PreparedStatement updateNode;
+    private PreparedStatement getNodeByToken;
+    private PreparedStatement getNodeBySession;
+    private PreparedStatement getAllNodes;
+    private PreparedStatement updateNodeSession;
+    private PreparedStatement updateNodeTask;
+    private PreparedStatement updateNode;
+
+    private PreparedStatement getEnabledPermission;
+    private PreparedStatement getEnabledPermissionByTargetId;
+
+
 
     private static PreparedStatement getFilterByServer;
 
     @Override
     public void startService() throws SQLException, ClassNotFoundException {
         open();
-        Runtime.getRuntime().addShutdownHook(new Thread(Database::close));
+        Runtime.getRuntime().addShutdownHook(new Thread(this::close));
     }
 
-    public static void open() throws SQLException, ClassNotFoundException {
+    private void open() throws SQLException, ClassNotFoundException {
 
         //Class.forName("com.mysql.jdbc.Driver");
 
@@ -82,11 +84,9 @@ public class Database implements Service {
         getServer = conn.prepareStatement("SELECT * FROM servers WHERE id = ?");
         updateServerPrefix = conn.prepareStatement("UPDATE servers SET prefix = ? WHERE id = ?");
         updateServerLocale = conn.prepareStatement("UPDATE servers SET locale = ? WHERE id = ?");
-        updateServerMembers = conn.prepareStatement("UPDATE servers SET members = ? WHERE id = ?");
-        updateServerRoles = conn.prepareStatement("UPDATE servers SET roles = ? WHERE id = ?");
         updateServerNotify = conn.prepareStatement("UPDATE servers SET notify = ? WHERE id = ?");
         updateClarifaiCount = conn.prepareStatement("UPDATE servers SET clarifai_count = ? WHERE id = ?");
-        insertServer = conn.prepareStatement("INSERT INTO servers (prefix, locale, members, roles, notify, monthly_clarifai_cap, clarifai_count, clarifai_reset_date, id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        insertServer = conn.prepareStatement("INSERT INTO servers (prefix, locale, notify, monthly_clarifai_cap, clarifai_count, clarifai_reset_date, id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         getUser = conn.prepareStatement("SELECT * FROM users WHERE id = ?");
         updateUserPermissions = conn.prepareStatement("UPDATE users SET permissions = ? WHERE id = ?");
@@ -106,17 +106,20 @@ public class Database implements Service {
         updateNodeTask = conn.prepareStatement("UPDATE nodes SET task = ? WHERE token = ?");
         updateNode = conn.prepareStatement("UPDATE nodes SET session = ?, last_known_host = ?, last_known_name = ? WHERE token = ?");
 
+        getEnabledPermission = conn.prepareStatement("SELECT * FROM permissions WHERE enabled = 1 AND server = ? AND target = ? AND target_id = ?");
+        getEnabledPermissionByTargetId = conn.prepareStatement("SELECT * FROM permissions WHERE enabled = 1 AND target_id = ?");
+
         getFilterByServer = conn.prepareStatement("SELECT * FROM filters WHERE server = ?");
     }
 
     //Results
 
-    public static synchronized ResultSet getResult(int id) throws SQLException {
+    public synchronized ResultSet getResult(int id) throws SQLException {
         getResult.setInt(1, id);
         return getResult.executeQuery();
     }
 
-    public static synchronized void addResult(int id, String name, String type, String code, String thumbnail, long requester, int width, int height) throws SQLException {
+    public synchronized void addResult(int id, String name, String type, String code, String thumbnail, long requester, int width, int height) throws SQLException {
         insertResult.setInt(1, id);
         insertResult.setString(2, name);
         insertResult.setString(3, type);
@@ -128,7 +131,7 @@ public class Database implements Service {
         insertResult.execute();
     }
 
-    public static synchronized String getEffectivePrefix(TextChannel channel) throws SQLException {
+    public synchronized String getEffectivePrefix(TextChannel channel) throws SQLException {
         String channelPrefix = getChannelPrefix(channel.getId());
         if(channelPrefix != null){
             return channelPrefix;
@@ -147,11 +150,11 @@ public class Database implements Service {
 
     //Channels
 
-    public static synchronized String getChannelPrefix(TextChannel channel) throws SQLException {
+    public synchronized String getChannelPrefix(TextChannel channel) throws SQLException {
         return getChannelPrefix(channel.getId());
     }
 
-    private static synchronized String getChannelPrefix(long id) throws SQLException {
+    private synchronized String getChannelPrefix(long id) throws SQLException {
         getChannel.setLong(1, id);
         ResultSet rs = getChannel.executeQuery();
         if(rs.next()) {
@@ -162,7 +165,7 @@ public class Database implements Service {
 
     //Servers
 
-    public static boolean isServerPresent(Server server) {
+    public synchronized boolean isServerPresent(Server server) {
         try {
             getServer.setLong(1, server.getId());
             return getServer.executeQuery().next();
@@ -172,7 +175,7 @@ public class Database implements Service {
         }
     }
 
-    public static void addServer(Server server, int clarifaiCap, Instant clarifaiResetDate) throws SQLException {
+    public synchronized void addServer(Server server, int clarifaiCap, Instant clarifaiResetDate) throws SQLException {
         insertServer.setString(1, null);
         insertServer.setString(2, null);
         insertServer.setString(3, null);
@@ -185,7 +188,7 @@ public class Database implements Service {
         insertServer.execute();
     }
 
-    public static long getServerClarifaiResetDate(Server server) throws SQLException {
+    public synchronized long getServerClarifaiResetDate(Server server) throws SQLException {
         getServer.setLong(1, server.getId());
         ResultSet rs = getServer.executeQuery();
         if(rs.next()){
@@ -194,18 +197,18 @@ public class Database implements Service {
         return 0;
     }
 
-    public static void setServerClarifaiResetDate(Server server, long date) throws SQLException {
+    public synchronized void setServerClarifaiResetDate(Server server, long date) throws SQLException {
         updateClarifaiResetDate.setLong(1, date);
         updateClarifaiResetDate.setLong(2, server.getId());
         updateClarifaiResetDate.execute();
     }
 
-    public static ResultSet getServerFilters(Server server) throws SQLException {
+    public synchronized ResultSet getServerFilters(Server server) throws SQLException {
         getFilterByServer.setLong(1, server.getId());
         return getFilterByServer.executeQuery();
     }
 
-    public static synchronized Optional<List<String>> getServerPermsForUser(Server server, User user) throws SQLException {
+    public synchronized Optional<List<String>> getServerPermsForUser(Server server, User user) throws SQLException {
         getServer.setLong(1, server.getId());
         ResultSet rs = getServer.executeQuery();
         if(rs.next() && rs.getString("members") != null){
@@ -222,7 +225,7 @@ public class Database implements Service {
         return Optional.empty();
     }
 
-    public static synchronized Optional<List<String>> getGlobalPermsForUser(User user) throws SQLException {
+    public synchronized Optional<List<String>> getGlobalPermsForUser(User user) throws SQLException {
         getUser.setLong(1, user.getId());
         ResultSet rs = getUser.executeQuery();
         if(rs.next()){
@@ -230,11 +233,11 @@ public class Database implements Service {
         }
         return Optional.empty();
     }
-    public static synchronized String getServerPrefix(Server server) throws SQLException {
+    public synchronized String getServerPrefix(Server server) throws SQLException {
         return getServerPrefix(server.getId());
     }
 
-    private static synchronized String getServerPrefix(long id) throws SQLException {
+    private synchronized String getServerPrefix(long id) throws SQLException {
         getServer.setLong(1, id);
         ResultSet rs = getServer.executeQuery();
         if(rs.next()) {
@@ -243,7 +246,7 @@ public class Database implements Service {
         return null;
     }
 
-    public static synchronized String getEffectiveLocale(TextChannel channel) throws SQLException {
+    public synchronized String getEffectiveLocale(TextChannel channel) throws SQLException {
         String channelLocale = getChannelLocale(channel.getId());
         if(channelLocale != null){
             return channelLocale;
@@ -260,11 +263,11 @@ public class Database implements Service {
         return DefaultReference.DEFAULT_LOCALE;
     }
 
-    public static synchronized String getChannelLocale(TextChannel channel) throws SQLException {
+    public synchronized String getChannelLocale(TextChannel channel) throws SQLException {
         return getChannelLocale(channel.getId());
     }
 
-    private static synchronized String getChannelLocale(long id) throws SQLException {
+    private synchronized String getChannelLocale(long id) throws SQLException {
         getChannel.setLong(1, id);
         ResultSet rs = getChannel.executeQuery();
         if(rs.next()){
@@ -273,11 +276,11 @@ public class Database implements Service {
         return null;
     }
 
-    public static synchronized String getServerLocale(Server server) throws SQLException {
+    public synchronized String getServerLocale(Server server) throws SQLException {
         return getServerLocale(server.getId());
     }
 
-    private static synchronized String getServerLocale(long id) throws SQLException {
+    private synchronized String getServerLocale(long id) throws SQLException {
         getServer.setLong(1, id);
         ResultSet rs = getServer.executeQuery();
         if(rs.next()){
@@ -286,7 +289,7 @@ public class Database implements Service {
         return null;
     }
 
-    public static synchronized void setServerPrefix(Server server, String prefix) throws SQLException {
+    public synchronized void setServerPrefix(Server server, String prefix) throws SQLException {
         getServer.setLong(1, server.getId());
         ResultSet rs = getServer.executeQuery();
 
@@ -299,7 +302,7 @@ public class Database implements Service {
         }
     }
 
-    public static synchronized void setChannelPrefix(TextChannel channel, String prefix) throws SQLException {
+    public synchronized void setChannelPrefix(TextChannel channel, String prefix) throws SQLException {
         getChannel.setLong(1, channel.getId());
         ResultSet rs = getChannel.executeQuery();
 
@@ -316,7 +319,7 @@ public class Database implements Service {
         }
     }
 
-    public static synchronized void setServerLocale(Server server, String locale) throws SQLException {
+    public synchronized void setServerLocale(Server server, String locale) throws SQLException {
         getServer.setLong(1, server.getId());
         ResultSet rs = getServer.executeQuery();
 
@@ -329,7 +332,7 @@ public class Database implements Service {
         }
     }
 
-    public static synchronized void setChannelLocale(TextChannel channel, String locale) throws SQLException {
+    public synchronized void setChannelLocale(TextChannel channel, String locale) throws SQLException {
         getChannel.setLong(1, channel.getId());
         ResultSet rs = getChannel.executeQuery();
 
@@ -347,7 +350,7 @@ public class Database implements Service {
         }
     }
 
-    public static synchronized Optional<Long> getRoleByName(String name) throws SQLException {
+    public synchronized Optional<Long> getRoleByName(String name) throws SQLException {
         getRoleByName.setString(1, name.substring(0, 1).toUpperCase() + name.substring(1));
         ResultSet rs = getRoleByName.executeQuery();
 
@@ -358,7 +361,7 @@ public class Database implements Service {
         }
     }
 
-    public static synchronized List<String> getAvailibeRoles() throws SQLException {
+    public synchronized List<String> getAvailibeRoles() throws SQLException {
         ResultSet rs = getAllRoles.executeQuery();
         List<String> ret = new ArrayList<>();
         while(rs.next()){
@@ -369,7 +372,7 @@ public class Database implements Service {
 
     //Nodes
 
-    public static synchronized Optional<ResultSet> getNodeByToken(String token) throws SQLException {
+    public synchronized Optional<ResultSet> getNodeByToken(String token) throws SQLException {
         getNodeByToken.setString(1, token);
         ResultSet rs = getNodeByToken.executeQuery();
         if(rs.next()){
@@ -379,13 +382,13 @@ public class Database implements Service {
         }
     }
 
-    public static synchronized void updateNodeSession(String token, String session) throws SQLException {
+    public synchronized void updateNodeSession(String token, String session) throws SQLException {
         updateNodeSession.setString(1, session);
         updateNodeSession.setString(2, token);
         updateNodeSession.execute();
     }
 
-    public static synchronized void updateNode(String token, String session, String lastKnownHost, String lastKnownName) throws SQLException {
+    public synchronized void updateNode(String token, String session, String lastKnownHost, String lastKnownName) throws SQLException {
         updateNode.setString(1, session);
         updateNode.setString(2, lastKnownHost);
         updateNode.setString(3, lastKnownName);
@@ -393,7 +396,29 @@ public class Database implements Service {
         updateNode.execute();
     }
 
-    public static void close(){
+    public synchronized ArrayList<PermissionSet> getPermission(Server server, PermissionSet.PermissionTarget target, long targetId) throws SQLException {
+        getEnabledPermission.setLong(1, server.getId());
+        getEnabledPermission.setString(2, target.name());
+        getEnabledPermission.setLong(3, targetId);
+        ArrayList<PermissionSet> ret = new ArrayList<>();
+        ResultSet rs = getEnabledPermission.executeQuery();
+        while(rs.next()){
+            ret.add(new PermissionSet(rs));
+        }
+        return ret;
+    }
+
+    public synchronized ArrayList<PermissionSet> getPermissionByTargetId(long targetId) throws SQLException {
+        getEnabledPermissionByTargetId.setLong(1, targetId);
+        ArrayList<PermissionSet> ret = new ArrayList<>();
+        ResultSet rs = getEnabledPermissionByTargetId.executeQuery();
+        while(rs.next()){
+            ret.add(new PermissionSet(rs));
+        }
+        return ret;
+    }
+
+    private void close(){
         if(conn == null) {
             return;
         }

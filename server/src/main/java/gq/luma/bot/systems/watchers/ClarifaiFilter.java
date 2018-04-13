@@ -26,7 +26,7 @@ public class ClarifaiFilter implements MessageCreateListener {
     public void onMessageCreate(MessageCreateEvent event) {
         event.getServer().ifPresent(server -> Luma.lumaExecutorService.submit(() -> {
             try {
-                ResultSet rs = Database.getServerFilters(server);
+                ResultSet rs = Luma.database.getServerFilters(server);
                 if(rs.next()) {
                     FileInput input = ParamUtilities.analyzeMessage(event.getMessage(), InputType.IMAGE, InputType.VIDEO);
                     if (input != null) {

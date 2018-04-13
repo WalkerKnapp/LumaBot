@@ -1,6 +1,7 @@
 package gq.luma.bot.commands.params.io.output;
 
 import com.eclipsesource.json.JsonObject;
+import gq.luma.bot.Luma;
 import gq.luma.bot.services.Database;
 import gq.luma.bot.utils.FileUtilities;
 import gq.luma.bot.utils.WordEncoder;
@@ -21,7 +22,7 @@ public class WebserverOutputter  implements FileOutputter {
         buffer.rewind();
         int id = buffer.getInt();
 
-        Database.addResult(id,
+        Luma.database.addResult(id,
                 name,
                 data.getString("upload-type", "none"),
                 data.getString("code", "none"),

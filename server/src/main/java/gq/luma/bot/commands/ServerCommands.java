@@ -7,6 +7,7 @@ import de.btobastian.javacord.entities.message.Message;
 import de.btobastian.javacord.entities.message.MessageSet;
 import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
 import de.btobastian.javacord.entities.permissions.Role;
+import gq.luma.bot.Luma;
 import gq.luma.bot.services.Bot;
 import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.commands.subsystem.Command;
@@ -20,7 +21,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class ServerCommands {
-    @Command(aliases = {"slow"}, description = "slow_description", usage = "slow_usage", neededGuildPerms = "mod", whilelistedGuilds = "146404426746167296")
+    @Command(aliases = {"slow"}, description = "slow_description", usage = "slow_usage", neededPerms = "SET_SLOW_MODE", whilelistedGuilds = "146404426746167296")
     public EmbedBuilder onSlow(CommandEvent event){
         if(event.getCommandArgs().length >= 2){
             String channelMention = event.getCommandArgs()[0];
@@ -40,7 +41,7 @@ public class ServerCommands {
         return null;
     }
 
-    @Command(aliases = {"cleanup"}, description = "cleanup_description", usage = "cleanup_usage", neededGuildPerms = "mod", whilelistedGuilds = "146404426746167296")
+    @Command(aliases = {"cleanup"}, description = "cleanup_description", usage = "cleanup_usage", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296")
     public void onCleanup(CommandEvent event){
         if(event.getCommandArgs().length >= 1){
             int messageCount = Integer.valueOf(event.getCommandArgs()[0]);
@@ -61,7 +62,7 @@ public class ServerCommands {
         User user = event.getMessage().getAuthor().asUser().orElseThrow(IllegalArgumentException::new);
         Server server = event.getMessage().getServer().orElseThrow(IllegalArgumentException::new);
         if(event.getCommandArgs().length >= 1){
-            Optional<Role> roleOptional = Database.getRoleByName(event.getCommandArgs()[0]).flatMap(event.getApi()::getRoleById);
+            Optional<Role> roleOptional = Luma.database.getRoleByName(event.getCommandArgs()[0]).flatMap(event.getApi()::getRoleById);
             if(roleOptional.isPresent()){
                 Role role = roleOptional.get();
                 if(!server.getRolesOf(user).contains(role)){
@@ -80,7 +81,7 @@ public class ServerCommands {
                 return EmbedUtilities.getErrorMessage(String.format(event.getLocalization().get("role_not_found_message"), event.getCommandArgs()[0]), event.getLocalization());
             }
         } else {
-            return new EmbedBuilder().setColor(BotReference.LUMA_COLOR).addField(event.getLocalization().get("role_available_title"), String.join("\n", Database.getAvailibeRoles()), false);
+            return new EmbedBuilder().setColor(BotReference.LUMA_COLOR).addField(event.getLocalization().get("role_available_title"), String.join("\n", Luma.database.getAvailibeRoles()), false);
         }
     }
 }
