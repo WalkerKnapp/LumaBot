@@ -60,7 +60,7 @@ public class RenderCommand {
         Map<String, String> params = ParamUtilities.getParams(event.getCommandRemainder());
 
         try {
-            FileInput input = ParamUtilities.getInput(event.getMessage(), InputType.DEMO, InputType.COMPRESSED);
+            FileInput input = ParamUtilities.getFirstInput(event.getMessage(), InputType.DEMO, InputType.COMPRESSED);
             InputType type = input.getInputType();
 
             long workingDir = System.currentTimeMillis();

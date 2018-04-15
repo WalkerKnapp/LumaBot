@@ -1,22 +1,23 @@
 package gq.luma.bot.services;
 
 import de.btobastian.javacord.entities.Server;
-import de.btobastian.javacord.entities.User;
 import de.btobastian.javacord.entities.channels.ServerTextChannel;
 import de.btobastian.javacord.entities.channels.TextChannel;
 import gq.luma.bot.commands.subsystem.permissions.PermissionSet;
 import gq.luma.bot.reference.DefaultReference;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.reference.KeyReference;
+import gq.luma.bot.systems.filtering.filters.ImageFilter;
+import gq.luma.bot.systems.filtering.filters.LinkFilter;
+import gq.luma.bot.systems.filtering.filters.SimpleFilter;
+import gq.luma.bot.systems.filtering.filters.VirusFilter;
+import gq.luma.bot.systems.filtering.filters.types.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
+import java.util.*;
 
 public class Database implements Service {
     private static final Logger logger = LoggerFactory.getLogger(Database.class);
@@ -40,7 +41,6 @@ public class Database implements Service {
 
     private PreparedStatement getUser;
     private PreparedStatement updateUserNotify;
-    private PreparedStatement updateUserPermissions;
     private PreparedStatement insertUser;
 
     private PreparedStatement getResult;
@@ -59,9 +59,8 @@ public class Database implements Service {
     private PreparedStatement getEnabledPermission;
     private PreparedStatement getEnabledPermissionByTargetId;
 
+    private PreparedStatement getAllFilters;
 
-
-    private static PreparedStatement getFilterByServer;
 
     @Override
     public void startService() throws SQLException, ClassNotFoundException {
@@ -89,9 +88,8 @@ public class Database implements Service {
         insertServer = conn.prepareStatement("INSERT INTO servers (prefix, locale, notify, monthly_clarifai_cap, clarifai_count, clarifai_reset_date, id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         getUser = conn.prepareStatement("SELECT * FROM users WHERE id = ?");
-        updateUserPermissions = conn.prepareStatement("UPDATE users SET permissions = ? WHERE id = ?");
         updateUserNotify = conn.prepareStatement("UPDATE users SET notify = ? WHERE id = ?");
-        insertUser = conn.prepareStatement("INSERT INTO users (permissions, notify, id) VALUES (?, ?, ?)");
+        insertUser = conn.prepareStatement("INSERT INTO users (notify, id) VALUES (?, ?, ?)");
 
         getResult = conn.prepareStatement("SELECT * FROM render_results WHERE id = ?");
         insertResult = conn.prepareStatement("INSERT INTO render_results (id, name, type, code, thumbnail, requester, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
@@ -109,7 +107,7 @@ public class Database implements Service {
         getEnabledPermission = conn.prepareStatement("SELECT * FROM permissions WHERE enabled = 1 AND server = ? AND target = ? AND target_id = ?");
         getEnabledPermissionByTargetId = conn.prepareStatement("SELECT * FROM permissions WHERE enabled = 1 AND target_id = ?");
 
-        getFilterByServer = conn.prepareStatement("SELECT * FROM filters WHERE server = ?");
+        getAllFilters = conn.prepareStatement("SELECT * FROM filters");
     }
 
     //Results
@@ -203,36 +201,6 @@ public class Database implements Service {
         updateClarifaiResetDate.execute();
     }
 
-    public synchronized ResultSet getServerFilters(Server server) throws SQLException {
-        getFilterByServer.setLong(1, server.getId());
-        return getFilterByServer.executeQuery();
-    }
-
-    public synchronized Optional<List<String>> getServerPermsForUser(Server server, User user) throws SQLException {
-        getServer.setLong(1, server.getId());
-        ResultSet rs = getServer.executeQuery();
-        if(rs.next() && rs.getString("members") != null){
-            return Stream.of(rs.getString("members")
-                    .split(";"))
-                    .map(s -> s.split(":"))
-                    .filter(a -> a[0].equalsIgnoreCase(user.getIdAsString()))
-                    .map(a -> a[1])
-                    .map(s -> s.split(","))
-                    .map(List::of)
-                    .findAny();
-
-        }
-        return Optional.empty();
-    }
-
-    public synchronized Optional<List<String>> getGlobalPermsForUser(User user) throws SQLException {
-        getUser.setLong(1, user.getId());
-        ResultSet rs = getUser.executeQuery();
-        if(rs.next()){
-            return Optional.of(List.of(rs.getString("permissions").split(",")));
-        }
-        return Optional.empty();
-    }
     public synchronized String getServerPrefix(Server server) throws SQLException {
         return getServerPrefix(server.getId());
     }
@@ -287,6 +255,23 @@ public class Database implements Service {
             return rs.getString("locale");
         }
         return null;
+    }
+
+    public synchronized Optional<Long> getServerLog(Server server) {
+        try {
+            getServer.setLong(1, server.getId());
+            ResultSet rs = getServer.executeQuery();
+            if (rs.next()) {
+                long res = rs.getLong("logging_channel");
+                if (res != 0) {
+                    return Optional.of(res);
+                }
+            }
+            return Optional.empty();
+        } catch (SQLException e){
+            logger.error("Encountered error: ", e);
+            return Optional.empty();
+        }
     }
 
     public synchronized void setServerPrefix(Server server, String prefix) throws SQLException {
@@ -414,6 +399,31 @@ public class Database implements Service {
         ResultSet rs = getEnabledPermissionByTargetId.executeQuery();
         while(rs.next()){
             ret.add(new PermissionSet(rs));
+        }
+        return ret;
+    }
+
+    public synchronized Map<Long, Collection<Filter>> getAllFilters() throws SQLException {
+        ResultSet rs = getAllFilters.executeQuery();
+        Map<Long, Collection<Filter>> ret = new HashMap<>();
+        while (rs.next()){
+            switch(rs.getInt("type")){
+                case 0:
+                    ret.computeIfAbsent(rs.getLong("server"), (id) -> new ArrayList<>()).add(new ImageFilter(rs));
+                    break;
+                case 1:
+                    //Video Filter
+                    break;
+                case 2:
+                    ret.computeIfAbsent(rs.getLong("server"), (id) -> new ArrayList<>()).add(new VirusFilter(rs));
+                    break;
+                case 3:
+                    ret.computeIfAbsent(rs.getLong("server"), (id) -> new ArrayList<>()).add(new LinkFilter(rs));
+                    break;
+                case 4:
+                    ret.computeIfAbsent(rs.getLong("server"), (id) -> new ArrayList<>()).add(new SimpleFilter(rs));
+                    break;
+            }
         }
         return ret;
     }

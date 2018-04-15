@@ -42,7 +42,7 @@ public class AnalyzeCommand {
         List<InputStream> openedStreams = new ArrayList<>();
 
         try {
-            FileInput input = ParamUtilities.getInput(event.getMessage(), InputType.IMAGE, InputType.VIDEO, InputType.AUDIO, InputType.DEMO);
+            FileInput input = ParamUtilities.getFirstInput(event.getMessage(), InputType.IMAGE, InputType.VIDEO, InputType.AUDIO, InputType.DEMO);
             Map<String, String> params = ParamUtilities.getParams(event.getCommandRemainder());
             InputType type = input.getInputType();
 

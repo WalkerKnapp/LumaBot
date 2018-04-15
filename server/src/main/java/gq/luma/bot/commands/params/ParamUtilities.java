@@ -42,28 +42,30 @@ public class ParamUtilities {
         return params;
     }
 
-    public static FileInput getInput(Message originalMessage, InputType... inputTypes) throws MalformedURLException, LumaException {
-        FileInput originalAnalysis = analyzeMessage(originalMessage, inputTypes);
-        if(originalAnalysis != null) return originalAnalysis;
+    public static FileInput getFirstInput(Message originalMessage, InputType... inputTypes) throws MalformedURLException, LumaException {
+        ArrayList<FileInput> originalAnalysis = analyzeMessage(originalMessage, inputTypes);
+        if(originalAnalysis.size() > 0) return originalAnalysis.get(0);
 
         NavigableSet<Message> history = originalMessage.getMessagesBefore(100).join().descendingSet();
 
         for(Message message : history){
-            FileInput analysis = analyzeMessage(message, inputTypes);
-            if(analysis != null) return analysis;
+            ArrayList<FileInput> analysis = analyzeMessage(message, inputTypes);
+            if(analysis.size() > 0) return analysis.get(0);
         }
 
         throw new LumaException("Failed to find a valid file in the last 100 messages.");
     }
 
-    public static FileInput analyzeMessage(Message message, InputType... types) throws MalformedURLException {
+    public static ArrayList<FileInput> analyzeMessage(Message message, InputType... types) throws MalformedURLException {
+        ArrayList<FileInput> ret = new ArrayList<>();
+
         ArrayList<String> arrayList = new ArrayList<>();
         Stream.of(types).map(InputType::getExtensions).forEach(strings -> arrayList.addAll(Arrays.asList(strings)));
         String[] allExtensions = arrayList.toArray(new String[0]);
 
         for(MessageAttachment attachment : message.getAttachments()){
             if(StringUtilities.equalsAny(StringUtilities.getExtension(attachment.getFileName()), allExtensions)){
-                return new AttachmentInput(attachment);
+                ret.add(new AttachmentInput(attachment));
             }
         }
 
@@ -71,9 +73,9 @@ public class ParamUtilities {
         for(String url : split){
             FileInput urlIn = getURLInput(url, allExtensions, types);
             if(urlIn != null)
-                return urlIn;
+                ret.add(urlIn);
         }
-        return null;
+        return ret;
     }
 
     public static FileInput getURLInput(String url, String[] extensions, InputType[] types) throws MalformedURLException {

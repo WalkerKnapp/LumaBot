@@ -5,6 +5,8 @@ public enum InputType {
     DEMO("dem"),
     VIDEO("avi", "mp4", "flv"),
     AUDIO("wav", "mp3", "aav", "ogg"),
+    DOCUMENT("doc", "docx", "htm", "html", "pdf", "rtf", "ppt", "xml", "ott", "tex", "gdoc", "info"),
+    EXECUTABLE("exe", "run", "bat", "apk", "jsk", "jar", "ipa", "bin", "sh", "cmd", "app", "vbscript", "ezt", "com"),
     COMPRESSED("7-zip", "zip", "rar", "tar", "split", "lzma", "iso", "hfs", "gzip", "cpio", "bzip2", "z", "arj", "chm", "lhz", "nsis", "deb", "rpm", "wim", "udf"),
     OTHER;
 

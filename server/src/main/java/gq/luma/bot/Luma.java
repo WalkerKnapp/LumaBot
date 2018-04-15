@@ -6,6 +6,7 @@ import gq.luma.bot.services.*;
 import gq.luma.bot.services.node.NodeServer;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.reference.KeyReference;
+import gq.luma.bot.systems.filtering.FilterManager;
 import gq.luma.bot.utils.WordEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +23,8 @@ public class Luma {
     public static Database database;
     public static NodeServer nodeServer;
     public static Clarifai clarifai;
+    public static ClamAV clamAV;
+    public static FilterManager filterManager;
     public static GDrive gDrive;
     public static YoutubeApi youtubeApi;
 
@@ -38,7 +41,9 @@ public class Luma {
         services.add(new TaskScheduler());
         services.add(new WebServer());
         services.add(clarifai = new Clarifai());
+        services.add(clamAV = new ClamAV());
         services.add(new TesseractApi());
+        services.add(filterManager = new FilterManager());
         services.add(gDrive = new GDrive());
         services.add(new Bot());
     }

@@ -44,7 +44,7 @@ public class MemeCommands {
 
         BufferedImage input;
         try {
-            input = ImageIO.read(ParamUtilities.getInput(event.getMessage(), InputType.IMAGE).getStream());
+            input = ImageIO.read(ParamUtilities.getFirstInput(event.getMessage(), InputType.IMAGE).getStream());
         } catch (IOException | LumaException e) {
             return EmbedUtilities.getErrorMessage(e.getMessage(), event.getLocalization());
         }

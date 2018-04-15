@@ -8,12 +8,15 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
+import gq.luma.bot.reference.FileReference;
+import gq.luma.bot.reference.KeyReference;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -26,8 +29,10 @@ public class GDrive implements Service {
     @Override
     public void startService() throws Exception {
         HttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
-        Credential credential = GoogleCredential.fromStream(GDrive.class.getResourceAsStream("/LumaBot-449002735b83.json")).createScoped(DriveScopes.all());
-        drive = new Drive.Builder(transport, JacksonFactory.getDefaultInstance(), credential).setApplicationName("LumaBot").build();
+        try(FileInputStream fis = new FileInputStream(KeyReference.gdriveServiceAcc)) {
+            Credential credential = GoogleCredential.fromStream(fis).createScoped(DriveScopes.all());
+            drive = new Drive.Builder(transport, JacksonFactory.getDefaultInstance(), credential).setApplicationName("LumaBot").build();
+        }
     }
 
     public String getUrlof(String code) throws IOException {

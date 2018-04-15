@@ -30,7 +30,7 @@ public class IdentifyCommand {
         Localization loc = event.getLocalization();
         CompletableFuture<Message> responseMessage = event.getMessage().getChannel().sendMessage(loc.get("analyze_pending"));
         try {
-            FileInput fi = ParamUtilities.getInput(event.getMessage(), InputType.IMAGE);
+            FileInput fi = ParamUtilities.getFirstInput(event.getMessage(), InputType.IMAGE);
             try(InputStream is = fi.getStream()){
                 byte[] imageStream = is.readAllBytes();
                 List<ClarifaiOutput<Concept>> conceptList = Luma.clarifai.analyzeImageGeneral(imageStream);
@@ -56,7 +56,7 @@ public class IdentifyCommand {
         Localization loc = event.getLocalization();
         CompletableFuture<Message> responseMessage = event.getMessage().getChannel().sendMessage(loc.get("analyze_pending"));
         try {
-            FileInput fi = ParamUtilities.getInput(event.getMessage(), InputType.IMAGE);
+            FileInput fi = ParamUtilities.getFirstInput(event.getMessage(), InputType.IMAGE);
             try(InputStream is = fi.getStream()){
                 String meme = TesseractApi.doOcr(ImageIO.read(is));
                 responseMessage.join().edit("", new EmbedBuilder().setColor(BotReference.LUMA_COLOR).setTitle("Found the following text: ").setDescription(meme));

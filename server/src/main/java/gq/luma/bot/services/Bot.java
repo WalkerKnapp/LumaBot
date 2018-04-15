@@ -9,7 +9,7 @@ import gq.luma.bot.commands.subsystem.Localization;
 import gq.luma.bot.reference.DefaultReference;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.reference.KeyReference;
-import gq.luma.bot.systems.watchers.ClarifaiFilter;
+import gq.luma.bot.systems.DiscordLogger;
 import gq.luma.bot.systems.watchers.SlowMode;
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
@@ -57,7 +57,7 @@ public class Bot implements Service {
         executor.registerCommand(new ServerCommands());
 
         api.addMessageCreateListener(new SlowMode());
-        api.addMessageCreateListener(new ClarifaiFilter());
+        api.addMessageCreateListener(Luma.filterManager);
 
         api.getServers().forEach(server -> {
             try {
@@ -77,5 +77,11 @@ public class Bot implements Service {
                 e.printStackTrace();
             }
         });
+
+        DiscordLogger discordLogger = new DiscordLogger();
+        api.addMessageDeleteListener(discordLogger);
+        api.addMessageEditListener(discordLogger);
     }
+
+
 }
