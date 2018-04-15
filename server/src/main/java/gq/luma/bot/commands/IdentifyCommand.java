@@ -2,6 +2,7 @@ package gq.luma.bot.commands;
 
 import clarifai2.dto.model.output.ClarifaiOutput;
 import clarifai2.dto.prediction.Concept;
+import clarifai2.dto.prediction.Prediction;
 import de.btobastian.javacord.entities.message.Message;
 import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
 import gq.luma.bot.Luma;
@@ -33,10 +34,10 @@ public class IdentifyCommand {
             FileInput fi = ParamUtilities.getFirstInput(event.getMessage(), InputType.IMAGE);
             try(InputStream is = fi.getStream()){
                 byte[] imageStream = is.readAllBytes();
-                List<ClarifaiOutput<Concept>> conceptList = Luma.clarifai.analyzeImageGeneral(imageStream);
+                List<? extends ClarifaiOutput<? extends Prediction>> conceptList = Luma.clarifai.analyzeImage(Luma.clarifai.getGeneralModel(), imageStream);
                 EmbedBuilder eb = new EmbedBuilder().setColor(BotReference.LUMA_COLOR).setTitle("Found the following:");
                 AtomicInteger featurecount = new AtomicInteger();
-                conceptList.forEach(output -> output.data().forEach(concept -> {
+                conceptList.forEach(output -> output.data().stream().map(prediction -> (Concept)prediction).forEach(concept -> {
                     if(featurecount.get() < 4) {
                         eb.addField(concept.name(), Float.toString(concept.value() * 100) + "%", false);
                         featurecount.getAndIncrement();

@@ -1,6 +1,7 @@
 package gq.luma.bot.commands;
 
 import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
+import gq.luma.bot.Luma;
 import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
 import gq.luma.bot.commands.subsystem.Localization;
@@ -22,8 +23,12 @@ public class BotCommands {
     }
 
     @Command(aliases = {"reload"}, description = "reload_usage", usage = "", neededPerms = "DEVELOPER")
-    public EmbedBuilder onReload(CommandEvent event){
+    public EmbedBuilder onReload(CommandEvent event) throws Exception {
         if(event.getCommandArgs().length > 0){
+            if(event.getCommandArgs()[0].equalsIgnoreCase("filters")){
+                Luma.filterManager.startService();
+                return EmbedUtilities.getSuccessMessage("Reloaded filters.", event.getLocalization());
+            }
             for(String file : event.getCommandArgs()){
                 try {
                     InputStream stream = new FileInputStream(new File(FileReference.localesDir, file));

@@ -11,6 +11,8 @@ import gq.luma.bot.systems.filtering.filters.types.FileFilter;
 import gq.luma.bot.systems.filtering.FilteringResult;
 import gq.luma.bot.utils.LumaException;
 import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -20,6 +22,8 @@ import java.sql.SQLException;
 import java.util.*;
 
 public class ImageFilter extends FileFilter {
+    private static final Logger logger = LoggerFactory.getLogger(ImageFilter.class);
+
     private String modelName;
     private String concept;
     private float threshold;
@@ -57,6 +61,7 @@ public class ImageFilter extends FileFilter {
     public FilteringResult checkInputStream(InputStream is) throws IOException, LumaException {
         try(ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             IOUtils.copy(is, baos);
+            logger.debug("Scanning image...");
             List<? extends ClarifaiOutput<? extends Prediction>> outputList = Luma.clarifai.analyzeImage(model, baos.toByteArray());
             for(ClarifaiOutput<? extends Prediction> output : outputList){
                 for(Prediction prediction : output.data()){
@@ -69,10 +74,11 @@ public class ImageFilter extends FileFilter {
                         throw new LumaException("Unknown prediction type: " + prediction.getClass().getSimpleName());
                     }
                     for(Concept testConcept : conceptList){
+                        logger.debug("Concept {} returned score {}", testConcept.name(), testConcept.value());
                         if(Objects.requireNonNull(testConcept.name()).equalsIgnoreCase(concept) && (greaterThan ? testConcept.value() >= threshold : testConcept.value() <= threshold)){
                             return new FilteringResult(false, "Message predicted to have " +
                                     testConcept.value() + " " + testConcept.name() + ", " +
-                                    (greaterThan ? "greater than " : "less than ") + " the threshold of " + threshold);
+                                    (greaterThan ? "greater than " : "less than ") + "the threshold of " + threshold);
                         }
                     }
                 }

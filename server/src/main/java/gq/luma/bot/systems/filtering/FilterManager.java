@@ -20,10 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class FilterManager implements Service, MessageCreateListener {
     private static final Logger logger = LoggerFactory.getLogger(FilterManager.class);
@@ -46,7 +43,16 @@ public class FilterManager implements Service, MessageCreateListener {
                             .flatMap(fileFilter -> fileFilter.checkTypes().stream())
                             .distinct()
                             .toArray(InputType[]::new);
+                    logger.debug("Needed types: {}", Arrays.toString(neededTypes));
                     ArrayList<FileInput> inputs = ParamUtilities.analyzeMessage(event.getMessage(), neededTypes);
+                    logger.debug("Found types: {}", Arrays.toString(inputs.stream().map(in -> {
+                        try {
+                            return in.getInputType();
+                        } catch (IOException | LumaException e) {
+                            e.printStackTrace();
+                        }
+                        return null;
+                    }).map(InputType::name).toArray()));
 
                     for (Filter filter : filterCache.get(server.getId())) {
                         if (canRunFilter(filter, event)) {
@@ -75,7 +81,7 @@ public class FilterManager implements Service, MessageCreateListener {
                                             //TODO: Filter Strikes
                                         } else {
                                             actionType = 2;
-                                            logConsequences.add("Removed message by");
+                                            logConsequences.add("Removed message from");
                                             addressedConsequences.add("Your message has been removed");
                                             generalConsequences.add("Message removed");
                                             event.getMessage().delete().exceptionally(Javacord::exceptionLogger);
@@ -87,11 +93,13 @@ public class FilterManager implements Service, MessageCreateListener {
                                             //TODO: Filter Strikes
                                         } else {
                                             actionType = 2;
-                                            event.getApi().getRoleById(filter.getEffect().get("given_role").asLong()).ifPresentOrElse(role -> {
-                                                logConsequences.add("Gave role " + role.getName() + " to");
-                                                addressedConsequences.add("You have been given the " + role.getName() + " role");
-                                                generalConsequences.add("Given the " + role.getName() + " role");
-                                                author.asUser().ifPresent(user -> server.getUpdater().addRoleToUser(user, role).update().exceptionally(Javacord::exceptionLogger));
+                                            server.getRoleById(filter.getEffect().get("given_role").asLong()).ifPresentOrElse(role -> {
+                                                if(!author.asUser().map(user -> server.getRolesOf(user).contains(role)).orElse(true)) {
+                                                    logConsequences.add("Gave role " + role.getName() + " to");
+                                                    addressedConsequences.add("You have been given the " + role.getName() + " role");
+                                                    generalConsequences.add("Given the " + role.getName() + " role");
+                                                    author.asUser().ifPresent(user -> server.getUpdater().addRoleToUser(user, role).update().exceptionally(Javacord::exceptionLogger));
+                                                }
                                             }, () -> logger.error("Unable to find role by id: " +
                                                     filter.getEffect().get("given_role").asLong() +
                                                     " for filter: " + filter.getId() +
@@ -123,7 +131,7 @@ public class FilterManager implements Service, MessageCreateListener {
                                         }
                                     }
 
-                                    String logConsequence = constructList(logConsequences);
+                                    String logConsequence = constructList(logConsequences) + " ";
                                     String addressedConsequence = constructList(addressedConsequences);
                                     String generalConsequence = constructList(generalConsequences);
 
@@ -153,8 +161,7 @@ public class FilterManager implements Service, MessageCreateListener {
                                         }
                                     }
                                     if (filter.getEffect().contains("log")) {
-                                        event.getApi()
-                                                .getTextChannelById(filter.getEffect().get("log").asLong())
+                                        server.getTextChannelById(filter.getEffect().get("log").asLong())
                                                 .ifPresentOrElse(channel -> channel.sendMessage(generateLogEmbed(logConsequence, author, filter, result, channel)),
                                                         () -> logger.error("Unabled to find text channel for id: " + filter.getEffect().get("log").asLong()));
                                     }
@@ -177,12 +184,12 @@ public class FilterManager implements Service, MessageCreateListener {
                 sb.append(",");
             }
             sb.append(" ");
-            if(i - 1 == list.size()){
+            if(i + 1 == list.size()){
                 sb.append("and ");
             }
-            sb.append(list.get(i));
+            sb.append(Character.toLowerCase(list.get(1).charAt(0)));
+            sb.append(list.get(i).substring(1));
         }
-        sb.append(" ");
         return sb.toString();
     }
 
