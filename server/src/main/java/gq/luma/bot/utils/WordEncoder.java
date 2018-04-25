@@ -1,14 +1,18 @@
 package gq.luma.bot.utils;
 
 import gq.luma.bot.services.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.CompletionException;
 import java.util.stream.Stream;
 
 public class WordEncoder implements Service {
+    private static final Logger logger = LoggerFactory.getLogger(WordEncoder.class);
 
     public static final int MAX_VALUE = 0xFFFFFF;
     private static String[] keyWords;
@@ -18,17 +22,8 @@ public class WordEncoder implements Service {
         try(InputStream is = WordEncoder.class.getResourceAsStream("/words.txt")){
             keyWords = new String(is.readAllBytes()).split("\r\n");
         }
-        System.out.println("Loaded " + keyWords.length + " words.");
-    }
-
-    public static void main(String[] args) throws Exception {
-        new URL("https://board.iverb.me/getDemo?id=79120").openConnection().getHeaderFields().forEach((s, l) -> System.out.println(s + ": " + Arrays.toString(l.toArray())));
-        new WordEncoder().startService();
-        int num = 1234;
-        String encodedString = encode(num);
-        System.out.println(num);
-        System.out.println(encodedString);
-        System.out.println(decode(encodedString));
+        logger.info("Loaded {} words.", keyWords.length);
+        logger.debug("Words: {}", String.join(",", keyWords));
     }
 
     public static String encode(int input){
@@ -40,7 +35,15 @@ public class WordEncoder implements Service {
 
     public static int decode(String input){
         String[] words = breakByCapital(input);
-        return Integer.parseInt(String.join("", Stream.of(words).mapToInt(WordEncoder::findIntInKeys).mapToObj(Integer::toBinaryString).map(s -> pad(s, 6)).toArray(String[]::new)), 2);
+        return Integer.parseInt(
+                String.join("",
+                        Stream.of(words)
+                                .mapToInt(WordEncoder::findIntInKeys)
+                                .mapToObj(Integer::toBinaryString)
+                                .map(s -> pad(s, 6))
+                                .toArray(String[]::new)
+                ),
+                2);
     }
 
     public static String[] splitInto(String input, int length){
@@ -66,7 +69,7 @@ public class WordEncoder implements Service {
         if(accumulator.length() > 0){
             finalStrings.add(accumulator.toString());
         }
-        return finalStrings.toArray(new String[finalStrings.size()]);
+        return finalStrings.toArray(new String[0]);
     }
 
     private static int findIntInKeys(String s){
@@ -75,7 +78,7 @@ public class WordEncoder implements Service {
                 return i;
             }
         }
-        return -1;
+        throw new CompletionException(new LumaException("Unable to find key " + s + " in words list."));
     }
 
     private static String pad(String s, int finalLength){
