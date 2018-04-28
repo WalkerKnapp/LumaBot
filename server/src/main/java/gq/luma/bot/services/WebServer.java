@@ -80,17 +80,11 @@ public class WebServer extends NanoHTTPD implements Service {
                         if (rs.next()) {
                             if (session.getQueryParameterString() != null && session.getQueryParameterString().equalsIgnoreCase("dl=1")) {
                                 if(extension.equalsIgnoreCase("png")){
-                                    Response response = NanoHTTPD.newFixedLengthResponse(MOVED_TEMPORARILY, "text/plain", "");
-                                    response.addHeader("Location", Luma.gDrive.getUrlof(rs.getString("thumbnail")));
-                                    return response;
+                                    return getRedirect(Luma.gDrive.getUrlof(rs.getString("thumbnail")));
                                 }
-                                Response response = NanoHTTPD.newFixedLengthResponse(MOVED_TEMPORARILY, "text/plain", "");
-                                response.addHeader("Location", Luma.gDrive.getUrlof(rs.getString("code")));
-                                return response;
+                                return getRedirect(Luma.gDrive.getUrlof(rs.getString("code")));
                             } else {
-                                Response response = NanoHTTPD.newFixedLengthResponse(Response.Status.REDIRECT, "text/html", "");
-                                response.addHeader("Location", Luma.gDrive.getViewUrlof(rs.getString("code")));
-                                return response;
+                                return getRedirect(Luma.gDrive.getUrlof(rs.getString("code")));
                             }
                         } else {
                             return NanoHTTPD.newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "Whoops! We were unable to find this file.");
@@ -106,6 +100,12 @@ public class WebServer extends NanoHTTPD implements Service {
             return NanoHTTPD.newFixedLengthResponse(Response.Status.OK, "text/html", indexPage);
         }
         return NanoHTTPD.newFixedLengthResponse(Response.Status.NOT_FOUND, "text/html", "Please retype the URL.");
+    }
+
+    private Response getRedirect(String url){
+        Response response = NanoHTTPD.newFixedLengthResponse(MOVED_TEMPORARILY, "text/plain", "");
+        response.addHeader("Location", url);
+        return response;
     }
 
 }

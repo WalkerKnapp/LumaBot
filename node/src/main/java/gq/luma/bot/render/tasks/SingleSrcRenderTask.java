@@ -8,6 +8,7 @@ import gq.luma.bot.render.SrcRenderTask;
 import gq.luma.bot.render.fs.FuseRenderFS;
 import gq.luma.bot.render.renderer.FFRenderer;
 import gq.luma.bot.render.renderer.RendererFactory;
+import gq.luma.bot.render.renderer.SinglePassFFRenderer;
 import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.render.structure.VideoOutputFormat;
 import gq.luma.bot.utils.FileReference;
@@ -62,11 +63,12 @@ public class SingleSrcRenderTask extends SrcRenderTask {
 
             File finalFile = new File(baseDir, FilenameUtils.removeExtension(demoFile.getName()) + "." + settings.getFormat().getOutputContainer());
 
-            //if(settings.isTwoPass() && settings.getFormat() == VideoOutputFormat.H264) {
-            //    this.renderer = RendererFactory.createTwoPass(settings, finalFile);
-            //} else {
+            if(settings.isTwoPass() && settings.getFormat() == VideoOutputFormat.H264) {
+                this.renderer = RendererFactory.createTwoPass(settings, finalFile);
+            } else {
                 this.renderer = RendererFactory.createSinglePass(settings, finalFile);
-            //}
+            }
+            ((SinglePassFFRenderer) this.renderer).setSampleOffset(4410);
             this.renderer.setIgnoreTime(settings.shouldRemoveBroken() ? demo.getFirstPlaybackTick()/60d : 0d);
             ClientSocket.renderFS.getRenderFS().configure(settings, renderer);
             ClientSocket.renderFS.getRenderFS().getErrorHandler().exceptionally(this::handleError);
@@ -80,7 +82,7 @@ public class SingleSrcRenderTask extends SrcRenderTask {
 
             if(settings.shouldReallyStartOdd(demo)) {
                 System.out.println("Starting odd! Specified start odd: " + settings.specifiedStartOdd() + " and first playback tick: " + demo.getFirstPlaybackTick());
-                if(!demo.getMapName().contains("mp")) {
+                if(!demo.getMapName().contains("mp_")) {
                     SourceLogMonitor.monitor("Redownloading all lightmaps", demo.getGame().getLog()).join();
                     Thread.sleep(700);
                 } else {
@@ -98,6 +100,9 @@ public class SingleSrcRenderTask extends SrcRenderTask {
             waitForDemStop(demo.getGame());
             sendCommand("endmovie", demo.getGame()).join();
 
+            Thread.sleep(1000);
+
+            killGame(demo.getGame());
             ClientSocket.renderFS.getRenderFS().waitToFinish();
             ((FuseRenderFS)ClientSocket.renderFS.getRenderFS()).resetStatus();
 

@@ -17,6 +17,7 @@ import jnr.ffi.Struct;
 import jnr.ffi.types.mode_t;
 import jnr.ffi.types.off_t;
 import jnr.ffi.types.size_t;
+import org.apache.commons.codec.binary.Hex;
 import ru.serce.jnrfuse.ErrorCodes;
 import ru.serce.jnrfuse.FuseStubFS;
 import ru.serce.jnrfuse.struct.*;
@@ -62,14 +63,14 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
         if (settings.getFrameblendIndex() == 1) {
             this.currentFrame = new UnweightedFrame(resampleFrame, videoPicture);
         } else {
-            System.out.println("Pixel count: " + pixelCount);
+            //System.out.println("Pixel count: " + pixelCount);
             //this.currentFrame = new WeightedFrame(resampleFrame, videoPicture, pixelCount);
             this.currentFrame = new AparapiAccumulatorFrame(resampleFrame, videoPicture, pixelCount);
             if (settings.getWeighterType() == RenderWeighterType.LINEAR) {
-                System.out.println("Setting weighter to linear");
+                //System.out.println("Setting weighter to linear");
                 this.weighter = new LinearDemoWeighter(settings.getFrameblendIndex());
             } else if (settings.getWeighterType() == RenderWeighterType.GAUSSIAN) {
-                System.out.println("Setting weighter to gaussian");
+                //System.out.println("Setting weighter to gaussian");
                 this.weighter = new QueuedGaussianDemoWeighter(settings.getFrameblendIndex(), 0, 5d);
             }
         }
@@ -117,14 +118,14 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
             stat.st_size.set(0);
             stat.st_uid.set(getContext().uid.get());
             stat.st_gid.set(getContext().pid.get());
-            //System.out.println("Getattr: " + path + " exists! Returning " + 0);
+            //System.out.println("Getattr: " + path + " exists! Returning 0 due to equalling last created");
             return 0;
         } else if(!latestCreated.isEmpty() && path.substring(path.length() - 3).equalsIgnoreCase("wav")){
             stat.st_mode.set(FileStat.S_IFREG | 0777);
             stat.st_size.set(0);
             stat.st_uid.set(getContext().uid.get());
             stat.st_gid.set(getContext().pid.get());
-            //System.out.println("Getattr: " + path + " exists! Returning " + 0);
+            //System.out.println("Getattr: " + path + " exists! Returning 0 due to lastcreated being present and audio");
             return 0;
         } else  {
             //System.out.println("Getattr: " + path + " does not exist! Returning " + -ErrorCodes.ENOENT());
@@ -155,6 +156,9 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
                     addFrame(index, buf, offset, size);
                 }
             } else if (extension.equalsIgnoreCase("wav")) {
+                byte[] debugArray = new byte[(int) size];
+                buf.get(0, debugArray, 0, (int) size);
+                //System.out.println("Got original audio write: " + new String(Hex.encodeHex(debugArray)));
                 audioProcessor.packet(buf, offset, size, this.renderer::encodeSamples);
             }
         } catch (Throwable e){

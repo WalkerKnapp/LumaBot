@@ -26,6 +26,7 @@ import java.util.Date;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+@Deprecated
 public class DokanyRenderFS extends DokanyFileSystem implements RenderFS {
     private int frameSize;
     private int topFrame;

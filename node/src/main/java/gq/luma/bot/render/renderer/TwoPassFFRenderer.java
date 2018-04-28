@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 
 public class TwoPassFFRenderer extends SinglePassFFRenderer {
     private static final Logger logger = LoggerFactory.getLogger(TwoPassFFRenderer.class);
@@ -60,6 +61,8 @@ public class TwoPassFFRenderer extends SinglePassFFRenderer {
         Process secondPassProcess = secondPassPB.start();
         secondPassProcess.waitFor();
         logger.debug("Finished final task!");
+
+        Files.delete(tempHuffyFile.toPath());
 
     }
 }

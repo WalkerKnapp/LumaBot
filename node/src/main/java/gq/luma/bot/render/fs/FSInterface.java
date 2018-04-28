@@ -33,6 +33,7 @@ public class FSInterface {
         return mountPoint;
     }
 
+    @Deprecated
     public static CompletableFuture<FSInterface> openDokany(RenderSettings settings, FFRenderer renderer){
         CompletableFuture<FSInterface> cf = new CompletableFuture<>();
         new Thread(() -> {

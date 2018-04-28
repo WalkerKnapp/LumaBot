@@ -156,10 +156,10 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
 
                 Thread.sleep(5000);
             }
-
+            killGame(currentGame);
             this.renderer.finish();
             this.renderer.forcefullyClose();
-            killGame(currentGame);
+
             cf.complete(finalFile);
             cleanup();
 

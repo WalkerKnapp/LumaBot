@@ -35,6 +35,8 @@ import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class ClientSocket extends WebSocketClient {
     public static final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(6);
@@ -51,8 +53,24 @@ public class ClientSocket extends WebSocketClient {
     private CompletableFuture<String> keysReceived;
     private CompletableFuture<String> fileReceive;
 
+    private BiConsumer<JsonObject, File> finalOp;
+
     private ClientSocket(URI serverUri, Map<String,String> httpHeaders) {
         super(serverUri, new Draft_6455(), httpHeaders, 0);
+        finalOp = (data, f) -> {
+            try {
+                JsonObject result = new JsonObject();
+                result.set("upload-type", data.get("upload-type"));
+                result.set("code", data.get("no-upload").asBoolean() ? "none" : uploader.uploadFile(f));
+                result.set("no-upload", data.get("no-upload").asBoolean());
+                result.set("code", "");
+                result.set("thumbnail", this.currentTask.getThumbnail());
+                result.set("dir", data.get("dir"));
+                send("RenderFinished>>" + result.toString());
+            } catch (Exception e){
+                logger.error("Encountered an error while uploading file: ", e);
+            }
+        };
     }
 
     @Override
@@ -114,20 +132,7 @@ public class ClientSocket extends WebSocketClient {
             fileReceive.join();
         }
 
-        this.currentTask.execute().thenAccept(f -> {
-            try {
-                JsonObject result = new JsonObject();
-                result.set("upload-type", data.get("upload-type"));
-                result.set("code", data.get("no-upload").asBoolean() ? "none" : uploader.uploadFile(f));
-                result.set("no-upload", data.get("no-upload").asBoolean());
-                result.set("code", "");
-                result.set("thumbnail", this.currentTask.getThumbnail());
-                result.set("dir", data.get("dir"));
-                send("RenderFinished>>" + result.toString());
-            } catch (Exception e){
-                logger.error("Encountered an error while uploading file: ", e);
-            }
-        }).exceptionally(t -> {
+        this.currentTask.execute().thenAccept(f -> finalOp.accept(data, f)).exceptionally(t -> {
             logger.error("Got Error in Task execute: ", t);
             send("RenderError>>" + t.getMessage());
             return null;

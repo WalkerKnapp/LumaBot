@@ -2,6 +2,7 @@ package gq.luma.bot.render.renderer;
 
 import gq.luma.bot.render.fs.frame.Frame;
 import io.humble.video.*;
+import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +11,8 @@ import java.util.function.Consumer;
 
 public class SinglePassFFRenderer implements FFRenderer {
     private static final Logger logger = LoggerFactory.getLogger(SinglePassFFRenderer.class);
+
+    public static final boolean FORCE_INTERLEAVE = true;
 
     private Muxer muxer;
 
@@ -70,7 +73,7 @@ public class SinglePassFFRenderer implements FFRenderer {
         do {
             videoEncoder.encode(videoPacket, finalPacket);
             if (videoPacket.isComplete()) {
-                muxer.write(videoPacket, false);
+                muxer.write(videoPacket, FORCE_INTERLEAVE);
             }
         } while (videoPacket.isComplete());
     }
@@ -87,6 +90,7 @@ public class SinglePassFFRenderer implements FFRenderer {
 
     @Override
     public void encodeSamples(MediaAudio samples){
+        System.out.println("Encoding samples");
         this.latestSample = samples.getTimeStamp() + this.sampleOffset;
 
         samples.setTimeStamp(this.latestSample);
@@ -109,10 +113,12 @@ public class SinglePassFFRenderer implements FFRenderer {
             logger.trace("Audio needed resample. Original count: {} Sample Count: {}", originalCount, sampleCount);
         }
 
+        //logger.debug("Encoding samples: {} of data: {}", usedAudio.getData(0).toString(), new String(Hex.encodeHex(usedAudio.getData(0).getByteArray(0, usedAudio.getDataPlaneSize(0)))));
+
         do {
             audioEncoder.encodeAudio(audioPacket, usedAudio);
             if (audioPacket.isComplete()) {
-                muxer.write(audioPacket, false);
+                muxer.write(audioPacket, FORCE_INTERLEAVE);
             }
         } while (audioPacket.isComplete());
 
@@ -126,7 +132,7 @@ public class SinglePassFFRenderer implements FFRenderer {
             videoEncoder.encode(videoPacket, null);
             if (videoPacket.isComplete())
             {
-                muxer.write(videoPacket, false);
+                muxer.write(videoPacket, FORCE_INTERLEAVE);
             }
         } while (videoPacket.isComplete());
 
@@ -136,7 +142,7 @@ public class SinglePassFFRenderer implements FFRenderer {
             audioEncoder.encode(audioPacket, null);
             if (audioPacket.isComplete())
             {
-                muxer.write(audioPacket, false);
+                muxer.write(audioPacket, FORCE_INTERLEAVE);
             }
         } while (audioPacket.isComplete());
         logger.info("All streams finished!");

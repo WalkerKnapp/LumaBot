@@ -27,7 +27,7 @@ public class FileUtilities {
             ZipEntry zipEntry;
             while ((zipEntry = zis.getNextEntry()) != null) {
                 File newOut = new File(directory, zipEntry.getName());
-                try (FileOutputStream fos = new FileOutputStream(newOut);){
+                try (FileOutputStream fos = new FileOutputStream(newOut)){
                     int len;
                     while ((len = zis.read(buffer)) > 0) {
                         fos.write(buffer, 0, len);
