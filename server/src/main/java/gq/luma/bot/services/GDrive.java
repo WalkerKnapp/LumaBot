@@ -40,14 +40,14 @@ public class GDrive implements Service {
         String privateUrl = file.getWebContentLink();
 
         //Queries the url
-        URLConnection connection = new URL(privateUrl).openConnection();
+        /*URLConnection connection = new URL(privateUrl).openConnection();
         if(connection.getContentType().split(";")[0].equalsIgnoreCase("text/html")){
             //Google has given the "Cant scan this file for viruses" page.
             String webpage = new String(connection.getInputStream().readAllBytes());
             Document webDoc = Jsoup.parse(webpage);
             Element dlLink = webDoc.select("#uc-download-link").first();
             privateUrl = "https://drive.google.com" + dlLink.attr("href");
-        }
+        }*/
 
         logger.debug(privateUrl);
         return privateUrl;

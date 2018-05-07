@@ -11,6 +11,14 @@ import gq.luma.bot.utils.WordEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
+import java.math.BigInteger;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -48,8 +56,21 @@ public class Luma {
         services.add(new Bot());
     }
 
-    public static void main(String[] args){
+    public static void main(String[] args) throws NoSuchAlgorithmException, KeyStoreException {
         logger.info("Starting Services.");
+
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        tmf.init((KeyStore)null);
+
+        for(TrustManager manager : tmf.getTrustManagers()){
+            if(manager instanceof X509TrustManager){
+                for(X509Certificate cert : ((X509TrustManager)manager).getAcceptedIssuers()){
+                    logger.debug("Loaded cert: " + cert.getSerialNumber());
+                    if(cert.getSerialNumber().equals(new BigInteger("158646793650523935")))
+                        logger.debug("Found google!");
+                }
+            }
+        }
 
         try {
             for (Service s : services) {

@@ -42,7 +42,7 @@ public class Bot implements Service {
             }
         }
 
-        api = new DiscordApiBuilder().setToken(KeyReference.discordToken).login().join();
+        api = new DiscordApiBuilder().setTotalShards(3).setToken(KeyReference.discordToken).login().join();
 
         api.updateActivity("?L help");
         CommandExecutor executor = new CommandExecutor(api);

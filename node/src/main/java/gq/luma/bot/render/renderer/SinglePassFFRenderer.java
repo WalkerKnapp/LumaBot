@@ -146,6 +146,7 @@ public class SinglePassFFRenderer implements FFRenderer {
             }
         } while (audioPacket.isComplete());
         logger.info("All streams finished!");
+        muxer.close();
     }
 
     @Override

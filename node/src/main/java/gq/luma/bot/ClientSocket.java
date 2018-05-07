@@ -19,10 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.*;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.net.URI;
 import java.nio.ByteBuffer;
@@ -47,6 +44,7 @@ public class ClientSocket extends WebSocketClient {
 
     private static final Logger logger = LoggerFactory.getLogger(ClientSocket.class);
     private static final String VERSION = "0.0.1-dev";
+    private static final long FILE_PACKET_SIZE = 25 * 1024 * 1024;
 
     private GoogleDriveUploader uploader;
     private Task currentTask;
@@ -63,7 +61,6 @@ public class ClientSocket extends WebSocketClient {
                 result.set("upload-type", data.get("upload-type"));
                 result.set("code", data.get("no-upload").asBoolean() ? "none" : uploader.uploadFile(f));
                 result.set("no-upload", data.get("no-upload").asBoolean());
-                result.set("code", "");
                 result.set("thumbnail", this.currentTask.getThumbnail());
                 result.set("dir", data.get("dir"));
                 send("RenderFinished>>" + result.toString());
@@ -184,6 +181,23 @@ public class ClientSocket extends WebSocketClient {
     @Override
     public void onError(Exception t) {
         logger.error("Encountered Error: ", t);
+    }
+
+    public void sendFile(File f) throws IOException {
+        try(FileInputStream fis = new FileInputStream(f)){
+            sendStream(fis);
+        }
+    }
+
+    public void sendStream(InputStream is) throws IOException {
+        byte[] buf = new byte[(int) FILE_PACKET_SIZE];
+        int bytesRead;
+        do {
+            bytesRead = is.read(buf);
+            if(bytesRead > 0){
+                send(ByteBuffer.allocate(bytesRead).put(buf, 0, bytesRead));
+            }
+        } while (bytesRead == FILE_PACKET_SIZE);
     }
 
     public static void main(String[] args) throws Exception {

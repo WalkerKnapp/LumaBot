@@ -5,6 +5,7 @@ import io.humble.video.MuxerFormat;
 
 public enum VideoOutputFormat {
     H264("mp4", Codec.ID.CODEC_ID_H264, Codec.ID.CODEC_ID_AAC),
+    GIF("gif", Codec.ID.CODEC_ID_GIF, null),
     DNXHD("mov", Codec.ID.CODEC_ID_DNXHD, Codec.ID.CODEC_ID_AAC),
     HUFFYUV("avi", MuxerFormat.guessFormat("huffyuv", null, null), Codec.ID.CODEC_ID_HUFFYUV, Codec.ID.CODEC_ID_AAC),
     RAW("mov", Codec.ID.CODEC_ID_RAWVIDEO, Codec.ID.CODEC_ID_AAC);

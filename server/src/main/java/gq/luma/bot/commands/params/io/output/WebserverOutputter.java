@@ -12,7 +12,7 @@ import java.sql.SQLException;
 
 public class WebserverOutputter  implements FileOutputter {
 
-    private static final String URL_STUB = "https://luma.gq/renders/";
+    private static final String URL_STUB = "https://render.luma.gq/";
 
     @Override
     public String uploadFile(JsonObject data, long workingDir, String name, long requester, int width, int height) throws SQLException {

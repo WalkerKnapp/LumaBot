@@ -30,6 +30,7 @@ public class RendererFactory {
             //videoEncoder.setProperty("an", true);
         } else if(settings.getFormat() == VideoOutputFormat.HUFFYUV){
             videoEncoder.setPixelFormat(PixelFormat.Type.PIX_FMT_YUV422P);
+        } else if(settings.getFormat() == VideoOutputFormat.GIF){
         }
 
         Codec audioCodec = Codec.findEncodingCodec(settings.getFormat().getAudioCodec());

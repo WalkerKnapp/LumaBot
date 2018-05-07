@@ -33,7 +33,7 @@ public class TwoPassFFRenderer extends SinglePassFFRenderer {
                 "-report",
                 "-y",
                 "-i", tempHuffyFile.getAbsolutePath(),
-                "-c:v", "libx264",
+                "-c:v", "libx265",
                 "-b:v", finalExportSettings.getKBBBitrate() + "k",
                 "-pass", "1",
                 "-c:a", "aac",
@@ -49,7 +49,7 @@ public class TwoPassFFRenderer extends SinglePassFFRenderer {
         ProcessBuilder secondPassPB = new ProcessBuilder(FileReference.ffmpeg.getAbsolutePath(),
                 "-report",
                 "-i", tempHuffyFile.getAbsolutePath(),
-                "-c:v", "libx264",
+                "-c:v", "libx265",
                 "-b:v", finalExportSettings.getKBBBitrate() + "k",
                 "-pass", "2",
                 "-c:a", "aac",
@@ -61,6 +61,8 @@ public class TwoPassFFRenderer extends SinglePassFFRenderer {
         Process secondPassProcess = secondPassPB.start();
         secondPassProcess.waitFor();
         logger.debug("Finished final task!");
+
+        Thread.sleep(500);
 
         Files.delete(tempHuffyFile.toPath());
 
