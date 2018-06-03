@@ -9,3 +9,5 @@
 
 rootProject.name = 'LumaBot'
 include "server", "node"
+include 'common'
+

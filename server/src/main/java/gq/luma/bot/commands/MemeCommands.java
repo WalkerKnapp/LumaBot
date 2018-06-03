@@ -5,7 +5,7 @@ import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
 import gq.luma.bot.commands.params.ParamUtilities;
 import gq.luma.bot.commands.params.io.input.InputType;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
 
 import javax.imageio.ImageIO;

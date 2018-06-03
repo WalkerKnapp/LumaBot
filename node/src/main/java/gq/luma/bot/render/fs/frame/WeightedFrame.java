@@ -166,6 +166,8 @@ public class WeightedFrame implements Frame {
 
     @Override
     public MediaPicture getUnprocessed(long timestamp){
+        buffer.put(totalData);
+
         in.setTimeStamp(timestamp);
         in.setComplete(true);
 

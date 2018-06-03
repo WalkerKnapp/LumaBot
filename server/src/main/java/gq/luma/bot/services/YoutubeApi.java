@@ -9,7 +9,7 @@ import com.google.api.services.youtube.YouTubeRequestInitializer;
 import com.google.api.services.youtube.model.Channel;
 import com.google.api.services.youtube.model.Video;
 import gq.luma.bot.reference.KeyReference;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 
 import java.io.IOException;
 import java.net.URL;

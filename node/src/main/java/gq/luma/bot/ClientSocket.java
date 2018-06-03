@@ -9,8 +9,8 @@ import gq.luma.bot.render.fs.FSInterface;
 import gq.luma.bot.render.Task;
 import gq.luma.bot.uploader.GoogleDriveUploader;
 import gq.luma.bot.utils.FileReference;
-import gq.luma.bot.utils.LumaException;
 import okhttp3.OkHttpClient;
+import okhttp3.WebSocket;
 import org.apache.commons.io.IOUtils;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft_6455;
@@ -34,9 +34,10 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 public class ClientSocket extends WebSocketClient {
-    public static final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(6);
+    public static final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(64);
 
     public static OkHttpClient okhttpClient;
     public static FSInterface renderFS;
@@ -118,15 +119,17 @@ public class ClientSocket extends WebSocketClient {
                 logger.debug("Sending: RenderError>>{}", e.getMessage());
                 send("RenderError>>" + e.getMessage());
             }
-        }
+        }            
     }
 
     private void processCurrentTask(JsonObject data){
         for(JsonValue v : data.get("requiredFiles").asArray().values()){
-            fileReceive = new CompletableFuture<>();
-            send("FileRequest>>" + v.asString());
-            if(logger.isDebugEnabled()) logger.debug("Requesting file: {}", v.asString());
-            fileReceive.join();
+            if(!new File(FileReference.tempDir, v.asString()).exists()) {
+                fileReceive = new CompletableFuture<>();
+                send("FileRequest>>" + v.asString());
+                if (logger.isDebugEnabled()) logger.debug("Requesting file: {}", v.asString());
+                fileReceive.join();
+            }
         }
 
         this.currentTask.execute().thenAccept(f -> finalOp.accept(data, f)).exceptionally(t -> {
@@ -185,16 +188,19 @@ public class ClientSocket extends WebSocketClient {
 
     public void sendFile(File f) throws IOException {
         try(FileInputStream fis = new FileInputStream(f)){
-            sendStream(fis);
+            sendStream(f.getName(), fis);
         }
     }
 
-    public void sendStream(InputStream is) throws IOException {
+    public void sendStream(String name, InputStream is) throws IOException {
         byte[] buf = new byte[(int) FILE_PACKET_SIZE];
         int bytesRead;
+        long offest;
         do {
             bytesRead = is.read(buf);
             if(bytesRead > 0){
+                //ByteBuffer buffer = ByteBuffer.allocate(bytesRead +);
+                //new BinaryStreamFrame(name, )
                 send(ByteBuffer.allocate(bytesRead).put(buf, 0, bytesRead));
             }
         } while (bytesRead == FILE_PACKET_SIZE);

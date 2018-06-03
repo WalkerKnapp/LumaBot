@@ -1,10 +1,13 @@
 package gq.luma.bot;
 
 import com.eclipsesource.json.JsonObject;
-import gq.luma.bot.utils.LumaException;
 
+import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.IntBuffer;
+import java.util.Scanner;
 import java.util.concurrent.CompletionException;
-import java.util.stream.Stream;
 
 public class SrcDemo {
     private String filestamp;
@@ -49,6 +52,72 @@ public class SrcDemo {
         } catch (LumaException e) {
             throw new CompletionException(e);
         }
+    }
+
+    public static SrcDemo parse(String associatedFile, InputStream is) throws IOException, LumaException {
+        SrcDemo result = new SrcDemo();
+
+        result.filestamp = nextString(is, 8);
+
+        if(!result.filestamp.equals("HL2DEMO\0")){
+            throw new LumaException("Unknown demo file: Not HL2 Branch");
+        }
+
+        result.protocol = nextInt(is);
+        result.networkProtocol = nextInt(is);
+        result.serverName = nextString(is, 260);
+        result.clientName = nextString(is, 260);
+        result.mapName = nextString(is, 260);
+        result.game = SrcGame.getByDirName(nextString(is, 260));
+        result.playbackTime = nextFloat(is);
+        result.playbackTicks = nextInt(is);
+        result.playbackFrames = nextInt(is);
+        result.signOnLength = nextInt(is);
+
+        result.associatedFile = associatedFile;
+
+        return result;
+    }
+
+    private static int nextInt(InputStream is) throws IOException, LumaException {
+        ByteBuffer buffer = ByteBuffer.allocate(4);
+        int read;
+        int i = 0;
+        while ((read = is.read()) != -1 && i < 4){
+            buffer.put((byte) read);
+            i++;
+        }
+        if(read == -1){
+            throw new LumaException("Prematurely reached end of demo file.");
+        }
+        return buffer.getInt();
+    }
+
+    private static float nextFloat(InputStream is) throws LumaException, IOException {
+        ByteBuffer buffer = ByteBuffer.allocate(4);
+        int read;
+        int i = 0;
+        while ((read = is.read()) != -1 && i < 4){
+            buffer.put((byte) read);
+            i++;
+        }
+        if(read == -1){
+            throw new LumaException("Prematurely reached end of demo file.");
+        }
+        return buffer.getFloat();
+    }
+
+    private static String nextString(InputStream is, int bytes) throws IOException, LumaException {
+        byte[] cBuf = new byte[bytes];
+        int read;
+        int i = 0;
+        while ((read = is.read()) != -1 && i < bytes){
+            cBuf[i] = (byte) read;
+        }
+        if(read == -1){
+            throw new LumaException("Prematurely reached end of demo file.");
+        }
+        return new String(cBuf);
     }
 
     public String getFilestamp() {

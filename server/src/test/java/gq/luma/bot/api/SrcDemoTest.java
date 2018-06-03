@@ -3,7 +3,7 @@ package gq.luma.bot.api;
 import com.eclipsesource.json.WriterConfig;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.systems.srcdemo.SrcDemo;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 import org.junit.Before;
 import org.junit.Test;
 

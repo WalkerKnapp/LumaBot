@@ -37,7 +37,7 @@ public class GDrive implements Service {
 
     public String getUrlof(String code) throws IOException {
         File file = drive.files().get(code).setFields("*").execute();
-        String privateUrl = file.getWebContentLink();
+        String privateUrl = file.getWebViewLink();
 
         //Queries the url
         /*URLConnection connection = new URL(privateUrl).openConnection();
@@ -51,6 +51,10 @@ public class GDrive implements Service {
 
         logger.debug(privateUrl);
         return privateUrl;
+    }
+
+    public String getFallbackUrlOf(String code){
+        return "https://drive.google.com/open?id=" + code;
     }
 
     public String getViewUrlof(String code) throws IOException {

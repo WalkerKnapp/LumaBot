@@ -3,7 +3,7 @@ package gq.luma.bot.systems.ffprobe;
 import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonObject;
 import gq.luma.bot.reference.FileReference;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 import org.apache.commons.io.IOUtils;
 
 import java.io.*;

@@ -85,7 +85,7 @@ public class Database implements Service {
         updateServerLocale = conn.prepareStatement("UPDATE servers SET locale = ? WHERE id = ?");
         updateServerNotify = conn.prepareStatement("UPDATE servers SET notify = ? WHERE id = ?");
         updateClarifaiCount = conn.prepareStatement("UPDATE servers SET clarifai_count = ? WHERE id = ?");
-        insertServer = conn.prepareStatement("INSERT INTO servers (prefix, locale, notify, monthly_clarifai_cap, clarifai_count, clarifai_reset_date, id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        insertServer = conn.prepareStatement("INSERT INTO servers (prefix, locale, logging_channel, notify, monthly_clarifai_cap, clarifai_count, clarifai_reset_date, id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         getUser = conn.prepareStatement("SELECT * FROM users WHERE id = ?");
         updateUserNotify = conn.prepareStatement("UPDATE users SET notify = ? WHERE id = ?");
@@ -177,12 +177,11 @@ public class Database implements Service {
         insertServer.setString(1, null);
         insertServer.setString(2, null);
         insertServer.setString(3, null);
-        insertServer.setString(4, null);
-        insertServer.setInt(5, 0);
-        insertServer.setInt(6, clarifaiCap);
-        insertServer.setInt(7, 0);
-        insertServer.setTimestamp(8, Timestamp.from(clarifaiResetDate));
-        insertServer.setLong(9, server.getId());
+        insertServer.setInt(4, 0);
+        insertServer.setInt(5, clarifaiCap);
+        insertServer.setInt(6, 0);
+        insertServer.setTimestamp(7, Timestamp.from(clarifaiResetDate));
+        insertServer.setLong(8, server.getId());
         insertServer.execute();
     }
 

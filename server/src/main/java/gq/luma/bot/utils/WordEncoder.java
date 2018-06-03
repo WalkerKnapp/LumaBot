@@ -1,13 +1,12 @@
 package gq.luma.bot.utils;
 
+import gq.luma.bot.LumaException;
 import gq.luma.bot.services.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
-import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Stream;
 

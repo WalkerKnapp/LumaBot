@@ -1,8 +1,8 @@
 package gq.luma.bot.render.renderer;
 
-import gq.luma.bot.render.structure.RenderSettings;
-import gq.luma.bot.render.structure.VideoOutputFormat;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.RenderSettings;
+import gq.luma.bot.VideoOutputFormat;
+import gq.luma.bot.LumaException;
 import io.humble.video.*;
 import org.apache.commons.io.FilenameUtils;
 
@@ -13,7 +13,7 @@ public class RendererFactory {
     public static SinglePassFFRenderer createSinglePass(RenderSettings settings, File exportFile) throws IOException, InterruptedException, LumaException {
         Muxer m = Muxer.make(exportFile.getAbsolutePath(), null, null);
 
-        Codec codec = Codec.findEncodingCodec(settings.getFormat().getVideoCodec());
+        Codec codec = Codec.findEncodingCodecByIntID(settings.getFormat().getVideoCodec());
         System.out.println("Video Codec: " + codec.getName());
         Encoder videoEncoder = Encoder.make(codec);
         videoEncoder.setWidth(settings.getWidth());
@@ -33,7 +33,7 @@ public class RendererFactory {
         } else if(settings.getFormat() == VideoOutputFormat.GIF){
         }
 
-        Codec audioCodec = Codec.findEncodingCodec(settings.getFormat().getAudioCodec());
+        Codec audioCodec = Codec.findEncodingCodecByIntID(settings.getFormat().getAudioCodec());
         System.out.println("Audio Codec: " + audioCodec.getName());
         Encoder audioEncoder = Encoder.make(audioCodec);
 
@@ -73,16 +73,16 @@ public class RendererFactory {
 
     public static TwoPassFFRenderer createTwoPass(RenderSettings settings, File exportFile) throws LumaException, IOException, InterruptedException {
         File huffyFile = new File(exportFile.getParent(), FilenameUtils.removeExtension(exportFile.getName()) + "." + VideoOutputFormat.HUFFYUV.getOutputContainer());
-        Muxer m = Muxer.make(huffyFile.getAbsolutePath(), VideoOutputFormat.HUFFYUV.getFormat(), null);
+        Muxer m = Muxer.make(huffyFile.getAbsolutePath(), MuxerFormat.guessFormat(VideoOutputFormat.HUFFYUV.getFormat(), null, null), null);
 
-        Codec codec = Codec.findEncodingCodec(VideoOutputFormat.HUFFYUV.getVideoCodec());
+        Codec codec = Codec.findEncodingCodecByIntID(VideoOutputFormat.HUFFYUV.getVideoCodec());
         Encoder videoEncoder = Encoder.make(codec);
         videoEncoder.setWidth(settings.getWidth());
         videoEncoder.setHeight(settings.getHeight());
         videoEncoder.setPixelFormat(PixelFormat.Type.PIX_FMT_YUV422P);
         videoEncoder.setTimeBase(Rational.make(1, settings.getFps()));
 
-        Codec audioCodec = Codec.findEncodingCodec(VideoOutputFormat.HUFFYUV.getAudioCodec());
+        Codec audioCodec = Codec.findEncodingCodecByIntID(VideoOutputFormat.HUFFYUV.getAudioCodec());
         Encoder audioEncoder = Encoder.make(audioCodec);
 
         AudioFormat.Type findType = null;

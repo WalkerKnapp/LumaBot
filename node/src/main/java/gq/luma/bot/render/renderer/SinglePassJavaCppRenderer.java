@@ -3,21 +3,23 @@ package gq.luma.bot.render.renderer;
 import gq.luma.bot.render.fs.frame.Frame;
 import io.humble.video.MediaAudio;
 import io.humble.video.MediaPicture;
-import io.humble.video.PixelFormat;
 
-public class NullFFRenderer implements FFRenderer {
+import static org.bytedeco.javacpp.avcodec.*;
+import static org.bytedeco.javacpp.avformat.*;
+import static org.bytedeco.javacpp.avutil.*;
+import static org.bytedeco.javacpp.swscale.*;
 
-    private int width;
-    private int height;
+import java.io.IOException;
 
-    public NullFFRenderer(int width, int height){
-        this.width = width;
-        this.height = height;
+public class SinglePassJavaCppRenderer implements FFRenderer {
+
+    public SinglePassJavaCppRenderer(){
+        //AVCodec codec =
     }
 
     @Override
     public boolean checkFrame(int rawIndex) {
-        return true;
+        return false;
     }
 
     @Override
@@ -27,7 +29,7 @@ public class NullFFRenderer implements FFRenderer {
 
     @Override
     public boolean checkSamples(MediaAudio samples) {
-        return true;
+        return false;
     }
 
     @Override
@@ -36,7 +38,7 @@ public class NullFFRenderer implements FFRenderer {
     }
 
     @Override
-    public void finish() {
+    public void finish() throws IOException, InterruptedException {
 
     }
 
@@ -62,12 +64,12 @@ public class NullFFRenderer implements FFRenderer {
 
     @Override
     public MediaPicture generateResampledTemplate() {
-        return MediaPicture.make(width, height, PixelFormat.Type.PIX_FMT_YUV420P);
+        return null;
     }
 
     @Override
     public MediaPicture generateOriginalTemplate() {
-        return MediaPicture.make(width, height, PixelFormat.Type.PIX_FMT_BGR24);
+        return null;
     }
 
     @Override

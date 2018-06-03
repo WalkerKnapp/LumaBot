@@ -29,7 +29,7 @@ public class CommandExecutor {
         this.localizations = new HashMap<>();
 
         api.addMessageCreateListener(messageCreateEvent -> {
-            //System.out.println("Got Event!");
+            System.out.println("Got Event! Content: " + messageCreateEvent.getMessage().getContent());
             if(messageCreateEvent.getMessage().getAuthor().asUser().isPresent() && !messageCreateEvent.getMessage().getAuthor().asUser().get().isBot() && !messageCreateEvent.getMessage().getAuthor().asUser().get().isYourself()) {
                 String[] split = StringUtilities.splitString(messageCreateEvent.getMessage().getContent());
                 if (split.length > 0) {

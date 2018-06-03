@@ -3,7 +3,7 @@ package gq.luma.bot.systems.srcdemo;
 import com.eclipsesource.json.JsonObject;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.utils.FileUtilities;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 
 import java.io.*;
 import java.util.regex.Matcher;

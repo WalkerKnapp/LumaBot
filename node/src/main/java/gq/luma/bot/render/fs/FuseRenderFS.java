@@ -2,8 +2,8 @@ package gq.luma.bot.render.fs;
 
 import gq.luma.bot.render.fs.frame.*;
 import gq.luma.bot.render.renderer.FFRenderer;
-import gq.luma.bot.render.structure.RenderSettings;
-import gq.luma.bot.render.structure.RenderWeighterType;
+import gq.luma.bot.RenderSettings;
+import gq.luma.bot.RenderWeighterType;
 import gq.luma.bot.render.audio.AudioProcessor;
 import gq.luma.bot.render.audio.BufferedAudioProcessor;
 import gq.luma.bot.render.fs.weighters.DemoWeighter;
@@ -13,11 +13,9 @@ import io.humble.video.MediaPicture;
 import jnr.ffi.Platform;
 import jnr.ffi.Pointer;
 import jnr.ffi.Runtime;
-import jnr.ffi.Struct;
 import jnr.ffi.types.mode_t;
 import jnr.ffi.types.off_t;
 import jnr.ffi.types.size_t;
-import org.apache.commons.codec.binary.Hex;
 import ru.serce.jnrfuse.ErrorCodes;
 import ru.serce.jnrfuse.FuseStubFS;
 import ru.serce.jnrfuse.struct.*;
@@ -61,7 +59,7 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
         this.settings = settings;
 
         if (settings.getFrameblendIndex() == 1) {
-            this.currentFrame = new UnweightedFrame(resampleFrame, videoPicture);
+            this.currentFrame = new UnsafeFrame(resampleFrame, videoPicture);
         } else {
             //System.out.println("Pixel count: " + pixelCount);
             //this.currentFrame = new WeightedFrame(resampleFrame, videoPicture, pixelCount);

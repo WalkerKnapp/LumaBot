@@ -2,6 +2,8 @@ package gq.luma.bot.services.node;
 
 import com.eclipsesource.json.JsonObject;
 import gq.luma.bot.Luma;
+import gq.luma.bot.WebsocketDecoder;
+import gq.luma.bot.WebsocketDestination;
 import gq.luma.bot.services.Database;
 import gq.luma.bot.services.Service;
 import gq.luma.bot.reference.FileReference;
@@ -25,19 +27,24 @@ import javax.net.ssl.TrustManagerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class NodeServer extends WebSocketServer implements Service {
 
     private static final Logger logger = LoggerFactory.getLogger(NodeServer.class);
-
     private Map<String, Node> currentConnections = new ConcurrentHashMap<>();
+
+    private Collection<WebsocketDecoder> activeDecoders;
 
     public NodeServer() {
         super(new InetSocketAddress("10.0.0.24", 8887));
@@ -59,7 +66,7 @@ public class NodeServer extends WebSocketServer implements Service {
     @Override
     public void startService() throws Exception {
 
-        //WebSocketImpl.DEBUG = true;
+        //WebSocketImpl.DEBvUG = true;
 
         char[] keystorePass = KeyReference.keystorePass.toCharArray();
         KeyStore ks = KeyStore.getInstance("JKS");
@@ -184,6 +191,47 @@ public class NodeServer extends WebSocketServer implements Service {
         } else {
             logger.error(host + " made a request without being in the connections.");
         }
+    }
+
+    @Override
+    public void onMessage(WebSocket webSocket, ByteBuffer b){
+        String fileName = readString(b);
+        int offset = b.getInt();
+        int flag = b.getInt();
+        WebsocketDestination destination = WebsocketDestination.getById(b.getInt());
+
+        activeDecoders.stream().filter(wd -> wd.getFileName().equals(fileName))
+                .findFirst().ifPresentOrElse(decoder -> writeToDecoder(webSocket, decoder, b, flag), () -> {
+            try {
+                WebsocketDecoder decoder;
+                if (destination == WebsocketDestination.WEBSERVER) {
+                    decoder = new CdnDecoder(fileName);
+                } else {
+                    throw new AssertionError("Other types not yet implemented");
+                }
+                activeDecoders.add(decoder);
+                writeToDecoder(webSocket, decoder, b, flag);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void writeToDecoder(WebSocket webSocket, WebsocketDecoder decoder, ByteBuffer b, int flag){
+        try {
+            decoder.write(b);
+            if(flag == 1){
+                webSocket.send("FinishedSend>>" + decoder.finish());
+            }
+        } catch (IOException e) {
+            throw new CompletionException(e);
+        }
+    }
+
+    private String readString(ByteBuffer buffer){
+        byte[] buf = new byte[255];
+        buffer.get(buf, 0, 255);
+        return new String(buf);
     }
 
     @Override

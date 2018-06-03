@@ -4,18 +4,12 @@ import com.carrotsearch.junitbenchmarks.AbstractBenchmark;
 import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
 import com.eclipsesource.json.Json;
 import gq.luma.bot.render.SourceLogMonitor;
-import gq.luma.bot.render.SrcRenderTask;
 import gq.luma.bot.render.fs.FSInterface;
 import gq.luma.bot.render.fs.FuseRenderFS;
 import gq.luma.bot.render.renderer.FFRenderer;
-import gq.luma.bot.render.renderer.NullFFRenderer;
 import gq.luma.bot.render.renderer.RendererFactory;
-import gq.luma.bot.render.structure.RenderSettings;
 import gq.luma.bot.utils.FileReference;
-import gq.luma.bot.utils.LumaException;
-import io.humble.video.DemuxerFormat;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +65,7 @@ public class P2Benchmark extends AbstractBenchmark {
 
         sendCommand("exec autorecord");
         System.out.println("Starting odd! Specified start odd: " + benchSettings.specifiedStartOdd() + " and first playback tick: " + benchDemo.getFirstPlaybackTick());
-        SourceLogMonitor.monitor("Demo message, tick 0", benchDemo.getGame().getLog()).join();
+        new SourceLogMonitor(benchDemo.getGame().getLog(), "Demo message, tick 0").monitor().join();
         Thread.sleep(1000);
         sendCommand("demo_pauseatservertick 1;demo_resume");
         Thread.sleep(3000);
@@ -81,10 +75,10 @@ public class P2Benchmark extends AbstractBenchmark {
 
     @BenchmarkOptions(benchmarkRounds = 1, warmupRounds = 0)
     @Test
-    public void aparapiImmediateBenchmark(){
+    public void aparapiImmediateBenchmark() throws InterruptedException {
         long startTime = System.nanoTime();
         sendCommand("exec restarter");
-        SourceLogMonitor.monitor("dem_stop", benchDemo.getGame().getLog()).join();
+        new SourceLogMonitor(benchDemo.getGame().getLog(), "dem_stop").monitor().join();
         long endTime = System.nanoTime();
         System.out.println("Spent: " + (endTime - startTime)/1_000_000_000d + " seconds");
     }
@@ -147,7 +141,7 @@ public class P2Benchmark extends AbstractBenchmark {
 
         System.out.println("---------------Opening game---------------------");
         Desktop.getDesktop().browse(new URI("steam://rungameid/" + game.getAppCode()));
-        SourceLogMonitor.monitor("cl_thirdperson", game.getLog(), 50).join();
+        new SourceLogMonitor(game.getLog(), 50, "cl_thirdperson").monitor().join();
 
         Thread.sleep(3000);
     }

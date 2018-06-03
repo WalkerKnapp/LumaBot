@@ -5,19 +5,16 @@ import com.eclipsesource.json.JsonObject;
 import gq.luma.bot.ClientSocket;
 import gq.luma.bot.SrcDemo;
 import gq.luma.bot.SrcGame;
-import gq.luma.bot.render.structure.RenderSettings;
+import gq.luma.bot.RenderSettings;
 import gq.luma.bot.utils.FileReference;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 import okhttp3.HttpUrl;
 import okhttp3.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.awt.*;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -26,6 +23,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -64,24 +62,25 @@ public abstract class SrcRenderTask implements Task {
 
     public abstract void executeAsync();
 
-    protected CompletableFuture<Void> sendCommand(String command, SrcGame game){
-        return CompletableFuture.runAsync(() -> {
-            try {
-                ProcessBuilder pb = new ProcessBuilder(game.getExe(), "-hijack", "-console", "+" + command);
-                logger.debug("---------------Injecting {}---------------", command);
-                pb.start().waitFor();
-            } catch (IOException | InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        });
+    protected CompletableFuture<Void> sendCommand(SrcGame game, String... command) throws IOException {
+        String[] args = new String[3 + command.length];
+        args[0] = game.getExe();
+        args[1] = "-hijack";
+        args[2] = "-console";
+        for(int i = 3; i < args.length; i++){
+            args[i] = "+" + command[i - 3];
+        }
+
+        ProcessBuilder pb = new ProcessBuilder(args);
+        System.out.println("Sending command: " + Arrays.toString(args));
+        logger.debug("---------------Injecting {}---------------", Arrays.toString(command));
+        return pb.start().onExit().thenApply(p -> null);
     }
 
-    protected void waitForDemStop(SrcGame game){
+    protected void waitForDemStop(SrcGame game) throws InterruptedException {
         long renderingStartTime = System.currentTimeMillis();
 
-        CompletableFuture<?>[] demoWatcherCfs = {SourceLogMonitor.monitor("dem_stop", game.getLog()), SourceLogMonitor.monitor("leaderboard_open", game.getLog(), 1000)};
-        CompletableFuture.anyOf(demoWatcherCfs).join();
-        Stream.of(demoWatcherCfs).forEach(demoWatcherCf -> demoWatcherCf.cancel(true));
+        new SourceLogMonitor(game.getLog(), 15, "dem_stop", "leaderboard_open").monitor().join();
 
         long renderingStopTime = System.currentTimeMillis();
         System.out.println("Time Spent rendering: " + (renderingStopTime - renderingStartTime)/1000);
@@ -124,8 +123,11 @@ public abstract class SrcRenderTask implements Task {
 
         checkResources(game, settings);
 
-        if (game.getLog().exists() && !game.getLog().delete()) {
-            throw new LumaException("Unable to delete console log. Please contact the developer.");
+        try{
+            Files.deleteIfExists(game.getLog().toPath());
+        } catch (Exception e){
+            e.printStackTrace();
+            throw new LumaException("Failed to remove the console.log");
         }
 
         File mountPoint = new File(game.getGameDir(), "export");
@@ -140,7 +142,7 @@ public abstract class SrcRenderTask implements Task {
 
         System.out.println("---------------Opening game---------------------");
         Desktop.getDesktop().browse(new URI(SrcRenderTask.STEAM_SHORTCUT_HEADER + game.getAppCode()));
-        SourceLogMonitor.monitor("cl_thirdperson", game.getLog(), 50).join();
+        new SourceLogMonitor(game.getLog(), 50, "cl_thirdperson").monitor().join();
 
         Thread.sleep(3000);
 

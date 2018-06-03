@@ -2,6 +2,7 @@ package gq.luma.bot.services;
 
 import de.btobastian.javacord.DiscordApi;
 import de.btobastian.javacord.DiscordApiBuilder;
+import de.btobastian.javacord.entities.message.Reaction;
 import gq.luma.bot.Luma;
 import gq.luma.bot.commands.*;
 import gq.luma.bot.commands.subsystem.CommandExecutor;
@@ -42,7 +43,7 @@ public class Bot implements Service {
             }
         }
 
-        api = new DiscordApiBuilder().setTotalShards(3).setToken(KeyReference.discordToken).login().join();
+        api = new DiscordApiBuilder().setToken(KeyReference.discordToken).login().join();
 
         api.updateActivity("?L help");
         CommandExecutor executor = new CommandExecutor(api);

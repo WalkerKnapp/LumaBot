@@ -3,8 +3,7 @@ package gq.luma.bot.services.node;
 import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonObject;
 import gq.luma.bot.Luma;
-import gq.luma.bot.services.Database;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 import org.java_websocket.WebSocket;
 
 import java.io.IOException;
@@ -33,7 +32,7 @@ public class Node {
 
     public String getLatestName() {
         try {
-            return Luma.database.getNodeByToken(token).orElseThrow(IllegalArgumentException::new).getString("lastKnownName");
+            return Luma.database.getNodeByToken(token).orElseThrow(IllegalArgumentException::new).getString("last_known_name");
         } catch (SQLException e) {
             e.printStackTrace();
             return null;

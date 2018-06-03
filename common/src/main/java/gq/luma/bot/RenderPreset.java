@@ -1,4 +1,4 @@
-package gq.luma.bot.systems.demorender;
+package gq.luma.bot;
 
 public enum RenderPreset {
     DIRT (854, 480, 30, 1, 22, true, false),

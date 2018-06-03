@@ -7,7 +7,7 @@ import com.dokany.java.structure.DeviceOptions;
 import com.dokany.java.structure.EnumIntegerSet;
 import com.dokany.java.structure.VolumeInformation;
 import gq.luma.bot.render.renderer.FFRenderer;
-import gq.luma.bot.render.structure.RenderSettings;
+import gq.luma.bot.RenderSettings;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;

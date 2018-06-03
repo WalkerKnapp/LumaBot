@@ -9,7 +9,7 @@ import gq.luma.bot.Luma;
 import gq.luma.bot.commands.params.io.input.InputType;
 import gq.luma.bot.systems.filtering.filters.types.FileFilter;
 import gq.luma.bot.systems.filtering.FilteringResult;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

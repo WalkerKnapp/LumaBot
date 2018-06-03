@@ -15,7 +15,7 @@ import gq.luma.bot.services.Service;
 import gq.luma.bot.systems.filtering.filters.types.FileFilter;
 import gq.luma.bot.systems.filtering.filters.types.Filter;
 import gq.luma.bot.systems.filtering.filters.types.TextFilter;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

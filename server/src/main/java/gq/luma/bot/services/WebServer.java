@@ -10,6 +10,7 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLHandshakeException;
 import java.io.*;
 import java.nio.file.Files;
 import java.sql.ResultSet;
@@ -89,13 +90,17 @@ public class WebServer extends NanoHTTPD implements Service {
                         if (rs.next()) {
                             String dlCode = rs.getString("code");
                             System.out.println("Found dl code: " + dlCode);
-                            if (session.getQueryParameterString() != null && session.getQueryParameterString().equalsIgnoreCase("dl=1")) {
-                                if (extension.equalsIgnoreCase("png")) {
-                                    return getRedirect(Luma.gDrive.getUrlof(rs.getString("thumbnail")));
+                            try {
+                                if (session.getQueryParameterString() != null && session.getQueryParameterString().equalsIgnoreCase("dl=1")) {
+                                    if (extension.equalsIgnoreCase("png")) {
+                                        return getRedirect(Luma.gDrive.getUrlof(rs.getString("thumbnail")));
+                                    }
+                                    return getRedirect(Luma.gDrive.getUrlof(dlCode));
+                                } else {
+                                    return getRedirect(Luma.gDrive.getUrlof(dlCode));
                                 }
-                                return getRedirect(Luma.gDrive.getUrlof(dlCode));
-                            } else {
-                                return getRedirect(Luma.gDrive.getUrlof(dlCode));
+                            } catch (SSLHandshakeException e){
+                                return getRedirect(Luma.gDrive.getFallbackUrlOf(dlCode));
                             }
                         } else {
                             return NanoHTTPD.newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "Whoops! We were unable to find this file.");

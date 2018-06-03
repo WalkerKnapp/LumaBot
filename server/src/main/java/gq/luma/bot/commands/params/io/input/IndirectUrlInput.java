@@ -1,7 +1,7 @@
 package gq.luma.bot.commands.params.io.input;
 
 import de.btobastian.javacord.Javacord;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.IOException;

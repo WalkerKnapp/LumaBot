@@ -10,7 +10,7 @@ import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
 import gq.luma.bot.commands.subsystem.Localization;
 import gq.luma.bot.systems.demorender.CoalescedSrcDemoRenderTask;
-import gq.luma.bot.systems.demorender.RenderSettings;
+import gq.luma.bot.RenderSettings;
 import gq.luma.bot.systems.demorender.SingleSrcRenderTask;
 import gq.luma.bot.commands.params.ParamUtilities;
 import gq.luma.bot.commands.params.io.input.FileInput;
@@ -20,7 +20,7 @@ import gq.luma.bot.services.TaskScheduler;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.utils.AlphanumComparator;
 import gq.luma.bot.utils.FileUtilities;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
 import org.apache.commons.io.FilenameUtils;
 

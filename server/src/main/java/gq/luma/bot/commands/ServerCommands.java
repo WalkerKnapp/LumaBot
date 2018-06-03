@@ -44,7 +44,7 @@ public class ServerCommands {
     @Command(aliases = {"cleanup"}, description = "cleanup_description", usage = "cleanup_usage", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296")
     public void onCleanup(CommandEvent event){
         if(event.getCommandArgs().length >= 1){
-            int messageCount = Integer.valueOf(event.getCommandArgs()[0]);
+            int messageCount = Math.max(Integer.valueOf(event.getCommandArgs()[0]), 0);
             MessageSet history = event.getChannel().getMessages(messageCount).join();
             event.getChannel().bulkDelete(history).exceptionally(t -> {
                 for(Message m : history){

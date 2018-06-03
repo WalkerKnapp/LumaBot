@@ -3,7 +3,7 @@ package gq.luma.bot.commands.params;
 import de.btobastian.javacord.entities.message.Message;
 import de.btobastian.javacord.entities.message.MessageAttachment;
 import gq.luma.bot.commands.params.io.input.*;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 import gq.luma.bot.utils.StringUtilities;
 import org.apache.commons.validator.routines.UrlValidator;
 

@@ -1,6 +1,6 @@
 package gq.luma.bot.commands.params.io.input;
 
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;

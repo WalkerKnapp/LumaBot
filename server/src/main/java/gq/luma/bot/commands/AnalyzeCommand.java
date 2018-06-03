@@ -11,7 +11,7 @@ import gq.luma.bot.commands.subsystem.Localization;
 import gq.luma.bot.commands.params.ParamUtilities;
 import gq.luma.bot.commands.params.io.input.*;
 import gq.luma.bot.reference.FileReference;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
 import gq.luma.bot.utils.embeds.FilteredEmbed;
 import org.apache.commons.imaging.ImageInfo;
@@ -51,7 +51,7 @@ public class AnalyzeCommand {
 
             if(type == InputType.IMAGE){
                 embed.setThumbnail("https://i.imgur.com/tCCBstl.png")
-                    .addFieldTitle(loc.get("media_type"), loc.get("media_type_image"), false);
+                    .addFieldTitle(loc.get("media_type"), loc.get("media_type_image"), true);
 
                 InputStream imageStream = input.getStream();
                 openedStreams.add(imageStream);
@@ -64,7 +64,7 @@ public class AnalyzeCommand {
                         .orElseThrow(() -> new LumaException(loc.get("analyze_error_parse_image") + " " + extension));
                 ImageInfo imageInfo = parser.getImageInfo(new ByteSourceInputStream(imageStream, input.getName()));
 
-                embed.addField(loc.get("delivery_type"), loc.get(input.getInputName()), false)
+                embed.addField(loc.get("delivery_type"), loc.get(input.getInputName()), true)
                         .addField(loc.get("name"), input.getName(), false)
                         .addField(loc.get("size"), size / 1000 + " kb", false)
                         .addFieldTitle(BotReference.ZERO_LENGTH_CHAR, "**__" + loc.get("image_details") + "__**", false)
@@ -85,8 +85,8 @@ public class AnalyzeCommand {
             }
             else if(type == InputType.VIDEO){
                 embed.setThumbnail("https://i.imgur.com/GzCnShr.png")
-                        .addFieldTitle(loc.get("media_type"), loc.get("media_type_video"), false)
-                        .addField(loc.get("delivery_type"), input.getInputName(), false)
+                        .addFieldTitle(loc.get("media_type"), loc.get("media_type_video"), true)
+                        .addField(loc.get("delivery_type"), input.getInputName(), true)
                         .addField(loc.get("name"), input.getName(), false);
 
                 InputStream stream = input.getStream();
@@ -213,7 +213,7 @@ public class AnalyzeCommand {
                 }
 
                 embed.setThumbnail("https://i.imgur.com/Dsu7JWF.png")
-                        .addFieldTitle(loc.get("media_type"), loc.get("media_type_demo"), false)
+                        .addFieldTitle(loc.get("media_type"), loc.get("media_type_demo"), true)
                         .addField(loc.get("delivery_type"), loc.get(input.getInputName()), true)
                         .addField(loc.get("name"), input.getName(), true)
                         .addFieldTitle(loc.get("game"), demo.getGame().getDirectoryName(), false)

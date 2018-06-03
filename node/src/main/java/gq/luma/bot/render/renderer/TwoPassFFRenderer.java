@@ -1,6 +1,6 @@
 package gq.luma.bot.render.renderer;
 
-import gq.luma.bot.render.structure.RenderSettings;
+import gq.luma.bot.RenderSettings;
 import gq.luma.bot.utils.FileReference;
 import io.humble.video.Encoder;
 import io.humble.video.Muxer;
@@ -33,9 +33,10 @@ public class TwoPassFFRenderer extends SinglePassFFRenderer {
                 "-report",
                 "-y",
                 "-i", tempHuffyFile.getAbsolutePath(),
-                "-c:v", "libx265",
+                "-c:v", "libx264",
                 "-b:v", finalExportSettings.getKBBBitrate() + "k",
                 "-pass", "1",
+                "-pix_fmt", "yuv420p",
                 "-c:a", "aac",
                 "-b:a", "128k",
                 "-max_muxing_queue_size", "700",
@@ -49,9 +50,10 @@ public class TwoPassFFRenderer extends SinglePassFFRenderer {
         ProcessBuilder secondPassPB = new ProcessBuilder(FileReference.ffmpeg.getAbsolutePath(),
                 "-report",
                 "-i", tempHuffyFile.getAbsolutePath(),
-                "-c:v", "libx265",
+                "-c:v", "libx264",
                 "-b:v", finalExportSettings.getKBBBitrate() + "k",
                 "-pass", "2",
+                "-pix_fmt", "yuv420p",
                 "-c:a", "aac",
                 "-b:a", "128k",
                 "-max_muxing_queue_size", "700",

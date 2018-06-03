@@ -9,10 +9,10 @@ import gq.luma.bot.render.fs.FuseRenderFS;
 import gq.luma.bot.render.renderer.FFRenderer;
 import gq.luma.bot.render.renderer.RendererFactory;
 import gq.luma.bot.render.renderer.SinglePassFFRenderer;
-import gq.luma.bot.render.structure.RenderSettings;
-import gq.luma.bot.render.structure.VideoOutputFormat;
+import gq.luma.bot.RenderSettings;
+import gq.luma.bot.VideoOutputFormat;
 import gq.luma.bot.utils.FileReference;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.*;
@@ -78,27 +78,27 @@ public class SingleSrcRenderTask extends SrcRenderTask {
             writeCfg().join();
             setupGame(demo.getGame(), settings);
 
-            sendCommand("exec autorecord", demo.getGame());
+            sendCommand(demo.getGame(), "exec autorecord");
 
             if(settings.shouldReallyStartOdd(demo)) {
                 System.out.println("Starting odd! Specified start odd: " + settings.specifiedStartOdd() + " and first playback tick: " + demo.getFirstPlaybackTick());
                 if(!demo.getMapName().contains("mp_")) {
-                    SourceLogMonitor.monitor("Redownloading all lightmaps", demo.getGame().getLog()).join();
+                    new SourceLogMonitor(demo.getGame().getLog(), "Redownloading all lightmaps").monitor().join();
                     Thread.sleep(700);
                 } else {
-                    SourceLogMonitor.monitor("Demo message, tick 0", demo.getGame().getLog()).join();
+                    new SourceLogMonitor(demo.getGame().getLog(), "Demo message, tick 0").monitor().join();
                     Thread.sleep(1000);
                 }
-                sendCommand("demo_pauseatservertick 1;demo_resume", demo.getGame());
+                sendCommand(demo.getGame(), "demo_pauseatservertick 1;demo_resume");
                 Thread.sleep(3000);
-                sendCommand("sv_alternateticks 1", demo.getGame());
+                sendCommand(demo.getGame(), "sv_alternateticks 1");
                 Thread.sleep(3000);
-                sendCommand("exec restarter", demo.getGame());
+                sendCommand(demo.getGame(), "exec restarter");
             }
 
             this.status = "Rendering";
             waitForDemStop(demo.getGame());
-            sendCommand("endmovie", demo.getGame()).join();
+            sendCommand(demo.getGame(), "endmovie").join();
 
             Thread.sleep(1000);
 
@@ -159,6 +159,14 @@ public class SingleSrcRenderTask extends SrcRenderTask {
                 if(settings.isDemohack()) bw.write("portal_demohack 1\n");
 
                 if(demo.getMapName().contains("mp_")){
+                    //l_enable_remote_splitscreen 1
+                    //ss_pip_bottom_offset 0
+                    //ss_pip_right_offset 0
+                    //ss_pipscale 1f
+                    //bw.write("l_enable_remote_splitscreen 1\n");
+                    //bw.write("ss_pip_bottom_offset 0\n");
+                    //bw.write("ss_pip_right_offset 0\n");
+                    //bw.write("ss_pipscale 1f\n");
                     bw.write("cl_enable_remote_splitscreen 1\n");
                 }
 
@@ -168,13 +176,14 @@ public class SingleSrcRenderTask extends SrcRenderTask {
                 bw.write("demo_debug 1\n");
                 if(!settings.shouldReallyStartOdd(demo)) bw.write("startmovie \"export\\tga_\" raw\n");
                 bw.write("playdemo \"" + demoFile.getAbsolutePath() + "\"\n");
+                bw.write("hud_reloadscheme\n");
 
                 bw.close();
                 fw.close();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        });
+        }, ClientSocket.executorService);
     }
 
     @Override

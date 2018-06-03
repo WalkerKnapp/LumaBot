@@ -10,10 +10,10 @@ import gq.luma.bot.render.SrcRenderTask;
 import gq.luma.bot.render.fs.FuseRenderFS;
 import gq.luma.bot.render.renderer.FFRenderer;
 import gq.luma.bot.render.renderer.RendererFactory;
-import gq.luma.bot.render.structure.RenderSettings;
-import gq.luma.bot.render.structure.VideoOutputFormat;
+import gq.luma.bot.RenderSettings;
+import gq.luma.bot.VideoOutputFormat;
 import gq.luma.bot.utils.FileReference;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 import jnr.ffi.Pointer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,17 +81,17 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
                     killGame(currentGame);
                     writeSettings(currentGame = demo.getGame());
                     setupGame(currentGame, settings);
-                    sendCommand("exec rendersettings.cfg", currentGame);
+                    sendCommand(currentGame, "exec rendersettings.cfg");
                     Thread.sleep(3000);
                 }
 
                 scanForWorkshop(currentGame, demo);
 
-                if (demo.getPlaybackTicks() > 2) {
+                if (demo.getPlaybackFrames() > 2) {
                     if (settings.shouldReallyStartOdd(demo)) {
-                        sendCommand("demo_pauseatservertick 1;sv_alternateticks 0", currentGame);
+                        sendCommand(currentGame, "demo_pauseatservertick 1;sv_alternateticks 0");
                     } else {
-                        sendCommand("exec restarter", currentGame);
+                        sendCommand(currentGame, "exec restarter");
                     }
 
                     if(settings.shouldRemoveBroken()) {
@@ -101,60 +101,55 @@ public class CoalescedSrcDemoRenderTask extends SrcRenderTask {
                     Thread.sleep(1000);
 
                     writePlayDemo(demoFile.getAbsolutePath(), currentGame);
-                    sendCommand("exec autoplay", currentGame);
+                    sendCommand(currentGame, "exec autoplay");
 
                     if (settings.shouldReallyStartOdd(demo)) {
                         if (!demo.getMapName().contains("mp_")) {
-                            SourceLogMonitor.monitor("Redownloading all lightmaps", demo.getGame().getLog()).join();
+                            new SourceLogMonitor(demo.getGame().getLog(), "Redownloading all lightmaps").monitor().join();
                             Thread.sleep(700);
                         } else {
-                            SourceLogMonitor.monitor("Demo message, tick 0", demo.getGame().getLog()).join();
+                            new SourceLogMonitor(demo.getGame().getLog(), "Demo message, tick 0").monitor().join();
                             Thread.sleep(1000);
                         }
-                        sendCommand("demo_pauseatservertick 1;demo_resume", currentGame);
+                        sendCommand(currentGame, "demo_pauseatservertick 1", "demo_resume");
                         Thread.sleep(3000);
-                        sendCommand("sv_alternateticks 1", currentGame);
+                        sendCommand(currentGame, "sv_alternateticks 1");
                         Thread.sleep(500);
-                        sendCommand("exec restarter", currentGame);
+                        sendCommand(currentGame, "exec restarter");
                     }
 
                     this.status = "Rendering";
                     waitForDemStop(currentGame);
-                    sendCommand("endmovie", currentGame);
+                    sendCommand(currentGame, "endmovie");
 
                 } else {
-                    sendCommand("demo_pauseatservertick 1", currentGame);
-                    sendCommand("cl_screenshotname export/tga0000_", currentGame);
-                    Thread.sleep(3000);
                     writePlayDemo(demoFile.getAbsolutePath(), currentGame);
-                    sendCommand("exec autoplay", currentGame);
+                    sendCommand(currentGame, "demo_pauseatservertick 1", "cl_screenshotname export/tga0000_", "exec autoplay");
 
                     if (!demo.getMapName().contains("mp_")) {
-                        SourceLogMonitor.monitor("Redownloading all lightmaps", demo.getGame().getLog()).join();
-                        Thread.sleep(2000);
+                        new SourceLogMonitor(demo.getGame().getLog(),5,  "Redownloading all lightmaps").monitor().join();
+                        Thread.sleep(500);
                     } else {
-                        SourceLogMonitor.monitor("Demo message, tick 0", demo.getGame().getLog()).join();
-                        Thread.sleep(2000);
+                        new SourceLogMonitor(demo.getGame().getLog(), 5, "Demo message, tick 0").monitor().join();
+                        Thread.sleep(500);
                     }
 
-                    sendCommand("screenshot", currentGame);
+                    sendCommand(currentGame, "screenshot");
 
-                    Thread.sleep(3000);
+                    Thread.sleep(500);
 
                     byte[] data = Files.readAllBytes(new File(currentGame.getGameDir(), "screenshots/export/tga0000_.tga").toPath());
                     logger.trace("Reading " + data.length + " bytes vs an ideal count of " + ((settings.getWidth() * settings.getHeight() * 3) + 18));
                     FuseRenderFS fs = ((FuseRenderFS)ClientSocket.renderFS.getRenderFS());
                     fs.write("/tga000_.tga", Pointer.wrap(fs.getRuntime(), ByteBuffer.wrap(data)), data.length, 0, null);
 
-                    Thread.sleep(1000);
-
-                    sendCommand("stopdemo", currentGame);
+                    sendCommand(currentGame, "stopdemo");
                 }
 
                 renderer.setFrameOffset(renderer.getLatestFrame() + 1);
                 ((FuseRenderFS)ClientSocket.renderFS.getRenderFS()).resetStatus();
 
-                Thread.sleep(5000);
+                Thread.sleep(500);
             }
             killGame(currentGame);
             this.renderer.finish();

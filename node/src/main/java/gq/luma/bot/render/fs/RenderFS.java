@@ -1,7 +1,7 @@
 package gq.luma.bot.render.fs;
 
 import gq.luma.bot.render.renderer.FFRenderer;
-import gq.luma.bot.render.structure.RenderSettings;
+import gq.luma.bot.RenderSettings;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;

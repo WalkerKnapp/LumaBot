@@ -2,9 +2,8 @@ package gq.luma.bot.commands.params.io.input;
 
 import com.google.api.services.youtube.model.Video;
 import gq.luma.bot.Luma;
-import gq.luma.bot.services.YoutubeApi;
 import gq.luma.bot.reference.FileReference;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 
 import java.io.File;
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package gq.luma.bot.systems.demorender;
+package gq.luma.bot;
 
 public enum RenderWeighterType {
     LINEAR,

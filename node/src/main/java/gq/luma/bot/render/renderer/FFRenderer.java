@@ -29,4 +29,6 @@ public interface FFRenderer {
     MediaPicture generateResampledTemplate();
 
     MediaPicture generateOriginalTemplate();
+
+    void resample(MediaPicture out, MediaPicture in);
 }

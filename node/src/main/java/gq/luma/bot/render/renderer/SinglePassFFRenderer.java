@@ -2,12 +2,10 @@ package gq.luma.bot.render.renderer;
 
 import gq.luma.bot.render.fs.frame.Frame;
 import io.humble.video.*;
-import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.function.Consumer;
 
 public class SinglePassFFRenderer implements FFRenderer {
     private static final Logger logger = LoggerFactory.getLogger(SinglePassFFRenderer.class);
@@ -173,6 +171,11 @@ public class SinglePassFFRenderer implements FFRenderer {
     @Override
     public MediaPicture generateOriginalTemplate() {
         return MediaPicture.make(videoEncoder.getWidth(), videoEncoder.getHeight(), PixelFormat.Type.PIX_FMT_BGR24);
+    }
+
+    @Override
+    public void resample(MediaPicture out, MediaPicture in) {
+
     }
 
     @Override

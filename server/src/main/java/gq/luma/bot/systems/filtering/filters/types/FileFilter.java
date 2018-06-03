@@ -2,7 +2,7 @@ package gq.luma.bot.systems.filtering.filters.types;
 
 import gq.luma.bot.commands.params.io.input.InputType;
 import gq.luma.bot.systems.filtering.FilteringResult;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 
 import java.io.IOException;
 import java.io.InputStream;

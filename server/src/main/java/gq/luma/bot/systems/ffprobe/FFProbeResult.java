@@ -2,7 +2,7 @@ package gq.luma.bot.systems.ffprobe;
 
 import com.eclipsesource.json.JsonObject;
 import com.eclipsesource.json.JsonValue;
-import gq.luma.bot.utils.LumaException;
+import gq.luma.bot.LumaException;
 
 import java.util.ArrayList;
 import java.util.HashMap;

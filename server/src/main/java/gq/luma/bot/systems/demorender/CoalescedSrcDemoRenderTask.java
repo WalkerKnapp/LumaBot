@@ -5,6 +5,7 @@ import com.eclipsesource.json.JsonArray;
 import com.eclipsesource.json.JsonObject;
 import de.btobastian.javacord.DiscordApi;
 import de.btobastian.javacord.entities.User;
+import gq.luma.bot.RenderSettings;
 import gq.luma.bot.systems.srcdemo.SrcDemo;
 
 import java.io.File;
