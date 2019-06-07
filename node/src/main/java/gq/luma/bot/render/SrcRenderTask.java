@@ -242,14 +242,14 @@ public abstract class SrcRenderTask implements Task {
         cf.completeExceptionally(t);
         try {
             cleanup();
-        } catch (IOException e) {
+        } catch (IOException | LumaException e) {
             e.printStackTrace();
         }
         killNow();
         return null;
     }
 
-    protected abstract void cleanup() throws IOException;
+    protected abstract void cleanup() throws IOException, LumaException;
 
     private static String lastOf(String[] array){
         return array[array.length - 1];

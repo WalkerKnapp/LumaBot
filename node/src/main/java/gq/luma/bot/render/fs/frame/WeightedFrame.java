@@ -1,11 +1,7 @@
 package gq.luma.bot.render.fs.frame;
 
 import gq.luma.bot.render.fs.weighters.DemoWeighter;
-import io.humble.ferry.Buffer;
-import io.humble.video.MediaPicture;
-import io.humble.video.MediaPictureResampler;
 import jnr.ffi.Pointer;
-import ru.serce.jnrfuse.LibFuse;
 
 import java.nio.ByteBuffer;
 
@@ -14,8 +10,6 @@ public class WeightedFrame implements Frame {
     private byte[] totalData;
     private int bufferPointer;
 
-    private MediaPicture in;
-    private MediaPicture out;
     private ByteBuffer buffer;
 
     private double latestWeight;
@@ -24,16 +18,9 @@ public class WeightedFrame implements Frame {
     private boolean flag2 = false;
     private boolean flag3 = false;
 
-    public WeightedFrame(MediaPicture inFrame, MediaPicture outFrame, int pixelCount){
-        this.in = inFrame.copyReference();
-        this.out = outFrame.copyReference();
-
+    public WeightedFrame(ByteBuffer buffer, int pixelCount){
         this.totalData = new byte[pixelCount];
-
-        Buffer buffer = in.getData(0);
-        int size = in.getDataPlaneSize(0);
-        this.buffer = buffer.getByteBuffer(0, size);
-        buffer.delete();
+        this.buffer = buffer;
     }
 
     @Override
@@ -131,7 +118,7 @@ public class WeightedFrame implements Frame {
     }
 
     @Override
-    public void packet(Pointer buf, LibFuse libFuse, long offset, long writeLength, DemoWeighter weighter, int position, int index) {
+    public void packet(Pointer buf, long offset, long writeLength, DemoWeighter weighter, int position, int index) {
         int frameOffset = 0;
         if(offset == 0){
             frameOffset = 18;
@@ -152,26 +139,8 @@ public class WeightedFrame implements Frame {
     }
 
     @Override
-    public MediaPicture writeMedia(MediaPictureResampler resampler, long timestamp) {
-
+    public void finishData() {
         buffer.put(totalData);
-
-        in.setTimeStamp(timestamp);
-        in.setComplete(true);
-
-        resampler.resample(out, in);
-
-        return out;
-    }
-
-    @Override
-    public MediaPicture getUnprocessed(long timestamp){
-        buffer.put(totalData);
-
-        in.setTimeStamp(timestamp);
-        in.setComplete(true);
-
-        return in;
     }
 
     @Override

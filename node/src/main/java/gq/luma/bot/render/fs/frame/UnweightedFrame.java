@@ -1,18 +1,11 @@
 package gq.luma.bot.render.fs.frame;
 
 import gq.luma.bot.render.fs.weighters.DemoWeighter;
-import io.humble.ferry.Buffer;
-import io.humble.video.MediaPicture;
-import io.humble.video.MediaPictureResampler;
 import jnr.ffi.Pointer;
-import ru.serce.jnrfuse.LibFuse;
 
 import java.nio.ByteBuffer;
 
 public class UnweightedFrame implements Frame {
-
-    private MediaPicture in;
-    private MediaPicture out;
 
     private ByteBuffer resampleBuffer;
 
@@ -20,14 +13,8 @@ public class UnweightedFrame implements Frame {
     private boolean flag2 = false;
     private boolean flag3 = false;
 
-    public UnweightedFrame(MediaPicture referenceIn, MediaPicture referenceOut){
-        this.in = referenceIn.copyReference();
-        this.out = referenceOut.copyReference();
-
-        Buffer buffer = in.getData(0);
-        int size = in.getDataPlaneSize(0);
-        this.resampleBuffer = buffer.getByteBuffer(0, size);
-        buffer.delete();
+    public UnweightedFrame(ByteBuffer buffer){
+        this.resampleBuffer = buffer;
     }
 
     @Override
@@ -79,7 +66,7 @@ public class UnweightedFrame implements Frame {
     }
 
     @Override
-    public void packet(Pointer buf, LibFuse lib, long offset, long writeLength, DemoWeighter weighter, int position, int index) {
+    public void packet(Pointer buf, long offset, long writeLength, DemoWeighter weighter, int position, int index) {
         int frameOffset = 0;
         if(offset == 0){
             frameOffset = 18;
@@ -90,21 +77,8 @@ public class UnweightedFrame implements Frame {
     }
 
     @Override
-    public MediaPicture writeMedia(MediaPictureResampler resampler, long timestamp) {
-        in.setTimeStamp(timestamp);
-        in.setComplete(true);
+    public void finishData() {
 
-        resampler.resample(out, in);
-
-        return out;
-    }
-
-    @Override
-    public MediaPicture getUnprocessed(long timestamp){
-        in.setTimeStamp(timestamp);
-        in.setComplete(true);
-
-        return in;
     }
 
     @Override

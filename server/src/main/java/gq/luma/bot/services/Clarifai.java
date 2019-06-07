@@ -48,7 +48,7 @@ public class Clarifai implements Service {
         logoModel = client.getDefaultModels().logoModel();
         nsfwVideoModel = client.getDefaultModels().nsfwVideoModel();
 
-        Luma.lumaExecutorService.scheduleAtFixedRate(() -> Bot.api.getServers().forEach(server -> {
+        Luma.schedulerService.scheduleAtFixedRate(() -> Bot.api.getServers().forEach(server -> {
             try {
                 if(ChronoUnit.MONTHS.between(Instant.ofEpochSecond(Luma.database.getServerClarifaiResetDate(server)), Instant.now()) > 1){
                     Luma.database.setServerClarifaiResetDate(server, Instant.now().getEpochSecond());

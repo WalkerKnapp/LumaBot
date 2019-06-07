@@ -1,9 +1,6 @@
 package gq.luma.bot.commands;
 
 import com.eclipsesource.json.JsonObject;
-import de.btobastian.javacord.entities.User;
-import de.btobastian.javacord.entities.message.Message;
-import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
 import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.systems.srcdemo.SrcDemo;
 import gq.luma.bot.commands.subsystem.Command;
@@ -23,6 +20,9 @@ import gq.luma.bot.utils.FileUtilities;
 import gq.luma.bot.LumaException;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
 import org.apache.commons.io.FilenameUtils;
+import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
+import org.javacord.api.entity.user.User;
 
 import java.io.File;
 import java.io.IOException;
@@ -80,7 +80,7 @@ public class RenderCommand {
 
             if (type == InputType.DEMO) {
                 RenderSettings settings = RenderSettings.parse(params);
-                TaskScheduler.scheduleTask(new SingleSrcRenderTask(author.getId(), SrcDemo.of(dlFile), settings, dlFile, renderBaseDir))
+                TaskScheduler.scheduleTask(new SingleSrcRenderTask(author.getId(), SrcDemo.of(dlFile, true), settings, dlFile, renderBaseDir))
                         .thenAccept(jsonObject -> {
                             try {
                                 String link;
@@ -113,7 +113,7 @@ public class RenderCommand {
                     List<File> demoFiles = unsortedFiles.stream().sorted(AlphanumComparator.FILE_COMPARATOR).collect(Collectors.toList());
                     List<SrcDemo> srcDemos = new ArrayList<>();
                     for(File f : demoFiles){
-                        srcDemos.add(SrcDemo.of(f));
+                        srcDemos.add(SrcDemo.of(f, true));
                     }
 
                     TaskScheduler.scheduleTask(
@@ -140,7 +140,7 @@ public class RenderCommand {
                     Collection<CompletableFuture<JsonObject>> futures = new ArrayList<>();
                     RenderSettings settings = RenderSettings.parse(params);
                     for(File file : FileUtilities.unzip(renderBaseDir, dlFile)){
-                        futures.add(TaskScheduler.scheduleTask(new SingleSrcRenderTask(author.getId(), SrcDemo.of(file), settings, file, renderBaseDir)));
+                        futures.add(TaskScheduler.scheduleTask(new SingleSrcRenderTask(author.getId(), SrcDemo.of(file, true), settings, file, renderBaseDir)));
                     }
                     /*CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]))
                             .thenAccept(v -> {

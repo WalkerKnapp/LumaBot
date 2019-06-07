@@ -6,6 +6,7 @@ import gq.luma.bot.utils.FileUtilities;
 import gq.luma.bot.LumaException;
 
 import java.io.*;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -53,7 +54,7 @@ public class SrcDemo {
         }
     }
 
-    private SrcDemo(BufferedReader reader) throws IOException, LumaException {
+    private SrcDemo(BufferedReader reader, boolean requireKnownGame) throws IOException, LumaException {
         String line;
         while((line = reader.readLine()) != null) {
             System.out.println("Line: " + line);
@@ -72,7 +73,10 @@ public class SrcDemo {
                     networkProtocol = Integer.parseInt(splitLine[1]);
                     break;
                 case "GameDirectory":
-                    game = SrcGame.getByDirectory(splitLine[1]).orElseThrow(() -> new LumaException("Unknown game directory: " + splitLine[1]));
+                    Optional<SrcGame> gameTest = SrcGame.getByDirectory(splitLine[1]);
+                    if(requireKnownGame) {
+                        game = gameTest.orElseThrow(() -> new LumaException("Unknown game directory: " + splitLine[1]));
+                    } else gameTest.ifPresent(srcGame -> game = srcGame);
                     break;
                 case "MapName":
                     mapName = splitLine[1];
@@ -103,7 +107,7 @@ public class SrcDemo {
     }
 
 
-    public static SrcDemo of(File file) throws IOException, LumaException {
+    public static SrcDemo of(File file, boolean requireKnownGame) throws IOException, LumaException {
         ProcessBuilder pb;
         String operSys = System.getProperty("os.name").toLowerCase();
         System.out.println("OS: " + operSys);
@@ -116,7 +120,7 @@ public class SrcDemo {
         System.out.println("Sending command: " + String.join(" ", pb.command()));
         pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
         Process p = pb.start();
-        SrcDemo srcDemo = new SrcDemo(new BufferedReader(new InputStreamReader(p.getInputStream())));
+        SrcDemo srcDemo = new SrcDemo(new BufferedReader(new InputStreamReader(p.getInputStream())), requireKnownGame);
         p.destroyForcibly();
 
         srcDemo.associatedFile = FileUtilities.relatavizePathToTemp(file);

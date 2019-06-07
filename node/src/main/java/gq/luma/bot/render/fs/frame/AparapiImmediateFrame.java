@@ -3,18 +3,15 @@ package gq.luma.bot.render.fs.frame;
 import com.aparapi.Kernel;
 import com.aparapi.Range;
 import gq.luma.bot.render.fs.weighters.DemoWeighter;
-import io.humble.video.MediaPicture;
-import io.humble.video.MediaPictureResampler;
 import jnr.ffi.Pointer;
-import ru.serce.jnrfuse.LibFuse;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class AparapiImmediateFrame implements Frame {
     private ProcessingKernel kernel;
 
-    private MediaPicture inFrame;
-    private MediaPicture outFrame;
+    private ByteBuffer byteBuffer;
 
     private int pixelCount;
 
@@ -43,9 +40,8 @@ public class AparapiImmediateFrame implements Frame {
         }
     }
 
-    public AparapiImmediateFrame(MediaPicture inFrame, MediaPicture outFrame, int pixelCount){
-        this.inFrame = inFrame;
-        this.outFrame = outFrame;
+    public AparapiImmediateFrame(ByteBuffer buffer, int pixelCount){
+        this.byteBuffer = buffer;
         this.pixelCount = pixelCount;
 
         this.kernel = new ProcessingKernel(new byte[pixelCount]);
@@ -78,34 +74,17 @@ public class AparapiImmediateFrame implements Frame {
     }
 
     @Override
-    public void packet(Pointer buf, LibFuse libFuse, long offset, long writeLength, DemoWeighter weighter, int position, int index) {
+    public void packet(Pointer buf, long offset, long writeLength, DemoWeighter weighter, int position, int index) {
         byte[] byteBuf = new byte[(int) writeLength];
         buf.get(0, byteBuf, 0, (int) writeLength);
         processData(byteBuf, (int)offset, (int)writeLength, weighter, position);
     }
 
     @Override
-    public MediaPicture writeMedia(MediaPictureResampler resampler, long timestamp) {
+    public void finishData() {
         kernel.get(kernel.exportBuffer);
-
-        inFrame.getData(0).put(kernel.exportBuffer, 0, 0, pixelCount);
-        inFrame.setTimeStamp(timestamp);
-        inFrame.setComplete(true);
-
-        resampler.resample(outFrame, inFrame);
-
-        return outFrame;
-    }
-
-    @Override
-    public MediaPicture getUnprocessed(long timestamp) {
-        kernel.get(kernel.exportBuffer);
-
-        inFrame.getData(0).put(kernel.exportBuffer, 0, 0, pixelCount);
-        inFrame.setTimeStamp(timestamp);
-        inFrame.setComplete(true);
-
-        return inFrame;
+        byteBuffer.rewind();
+        byteBuffer.put(kernel.exportBuffer);
     }
 
     @Override

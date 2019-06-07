@@ -7,7 +7,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-public class RenderSettings {
+public class RenderSettings implements Cloneable {
 
     private static final Pattern RESOLUTION_REGEX = Pattern.compile("(?<=^)(\\d+)x((\\d+)(?=$))");
     private static final Pattern RESOLUTION_P_REGEX = Pattern.compile("(?<=^)(\\d+)p(?=$)");
@@ -30,7 +30,7 @@ public class RenderSettings {
     private boolean noUpload = false;
 
     private VideoOutputFormat format = VideoOutputFormat.H264;
-    private RenderWeighterType weighterType = RenderWeighterType.GAUSSIAN;
+    private RenderWeighterType weighterType = RenderWeighterType.LINEAR;
 
     public JsonObject serialize(){
         return new JsonObject()
@@ -163,6 +163,15 @@ public class RenderSettings {
         renderSettings.format = Stream.of(VideoOutputFormat.values()).filter(f -> f.name().equals(json.get("format").asString())).findAny().orElseThrow(() -> new LumaException("Unable to find specified format"));
         renderSettings.weighterType = Stream.of(RenderWeighterType.values()).filter(t -> t.name().equals(json.get("weighterType").asString())).findAny().orElseThrow(() -> new LumaException("Unable to find specified weighter type"));
         return renderSettings;
+    }
+
+    public RenderSettings duplicate() throws CloneNotSupportedException {
+        return (RenderSettings) this.clone();
+    }
+
+    public RenderSettings setFormat(VideoOutputFormat format){
+        this.format = format;
+        return this;
     }
 
     public int getWidth(){

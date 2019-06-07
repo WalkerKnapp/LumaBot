@@ -1,7 +1,6 @@
 package gq.luma.bot.commands;
 
 import com.google.api.services.youtube.model.Video;
-import de.btobastian.javacord.entities.message.Message;
 import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.systems.ffprobe.*;
 import gq.luma.bot.systems.srcdemo.SrcDemo;
@@ -18,6 +17,7 @@ import org.apache.commons.imaging.ImageInfo;
 import org.apache.commons.imaging.ImageParser;
 import org.apache.commons.imaging.ImageReadException;
 import org.apache.commons.imaging.common.bytesource.ByteSourceInputStream;
+import org.javacord.api.entity.message.Message;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -207,7 +207,7 @@ public class AnalyzeCommand {
             }
             else if(type == InputType.DEMO){
                 File download = input.download(FileReference.tempDir);
-                SrcDemo demo = SrcDemo.of(download);
+                SrcDemo demo = SrcDemo.of(download, false);
                 if(!download.delete()){
                     System.err.println("Unable to delete file: " + download.getAbsolutePath());
                 }
@@ -216,7 +216,7 @@ public class AnalyzeCommand {
                         .addFieldTitle(loc.get("media_type"), loc.get("media_type_demo"), true)
                         .addField(loc.get("delivery_type"), loc.get(input.getInputName()), true)
                         .addField(loc.get("name"), input.getName(), true)
-                        .addFieldTitle(loc.get("game"), demo.getGame().getDirectoryName(), false)
+                        .addFieldTitle(loc.get("game"), demo.getGame() != null ? demo.getGame().getDirectoryName() : "Unknown", false)
                         .addField(loc.get("map_name"), demo.getMapName(), true)
                         .addField(loc.get("player_name"), demo.getClientName(), true)
                         .addField(loc.get("playback_time"), String.valueOf(demo.getPlaybackTime()), true)

@@ -1,8 +1,8 @@
 package gq.luma.bot.services.node;
 
 import com.eclipsesource.json.JsonObject;
-import de.btobastian.javacord.DiscordApi;
-import de.btobastian.javacord.entities.User;
+import org.javacord.api.DiscordApi;
+import org.javacord.api.entity.user.User;
 
 import java.io.File;
 import java.io.IOException;

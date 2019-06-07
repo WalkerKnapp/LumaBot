@@ -1,6 +1,6 @@
 package gq.luma.bot.utils.embeds;
 
-import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
 
 import java.awt.*;
 import java.util.ArrayList;

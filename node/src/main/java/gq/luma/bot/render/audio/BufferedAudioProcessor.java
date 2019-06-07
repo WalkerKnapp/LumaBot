@@ -3,44 +3,52 @@ package gq.luma.bot.render.audio;
 import io.humble.ferry.Buffer;
 import io.humble.video.*;
 import jnr.ffi.Pointer;
+import jnr.ffi.Runtime;
 import org.apache.commons.codec.binary.Hex;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class BufferedAudioProcessor implements AudioProcessor {
 
     private static final int bytesPerSample = 2;
-    private static final long sampleRate = 44100;
-    private static final int samplesPerFrame = 1024;
+    private final long sampleRate = 44100;
+    private final int samplesPerFrame = 1024;
     private static final int channels = 2;
-    private static final int bufferSize = bytesPerSample * samplesPerFrame * channels;
+    private int bufferSize = bytesPerSample * samplesPerFrame * channels;
+    //private int bufferSize;
 
     private int bufferPointer;
-    private MediaAudio rawAudio;
+    private ByteBuffer audioBuffer;
+    private Pointer wrappedBuffer;
+    private long address;
     private long latestCalc;
 
     private boolean headered;
     private CompletableFuture<Void> finished;
 
-    public BufferedAudioProcessor(){
-        byte[] backingBuffer = new byte[bufferSize];
+    public BufferedAudioProcessor(ByteBuffer audioBuffer){
         this.finished = new CompletableFuture<>();
-        Buffer directBuffer = Buffer.make(null, backingBuffer, 0, bufferSize);
-        rawAudio = MediaAudio.make(
-                directBuffer,
-                samplesPerFrame,
-                (int) sampleRate,
-                channels,
-                AudioChannel.Layout.CH_LAYOUT_STEREO,
-                AudioFormat.Type.SAMPLE_FMT_S16);
-        rawAudio.setTimeBase(Rational.make(1, (int) sampleRate));
-        System.out.println("Theroretical buffer size: " + bufferSize + " and real buffer size: " + rawAudio.getDataPlaneSize(0));
+        //this.bufferSize = audioBuffer.capacity();
+        this.audioBuffer = audioBuffer;
+        this.wrappedBuffer = Pointer.wrap(Runtime.getSystemRuntime(), audioBuffer);
+        this.address = wrappedBuffer.address();
+        System.out.println("Theroretical buffer size: " + bufferSize + " and real buffer size: " + audioBuffer.capacity());
+    }
+
+    public BufferedAudioProcessor(ByteBuffer audioBuffer, int capacity){
+        this.finished = new CompletableFuture<>();
+        //this.bufferSize = capacity;
+        this.audioBuffer = audioBuffer;
+        this.wrappedBuffer = Pointer.wrap(Runtime.getSystemRuntime(), audioBuffer);
+        System.out.println("Theroretical buffer size: " + bufferSize + " and real buffer size: " + capacity);
     }
 
     @Override
-    public void packet(byte[] data, int offset, int writeLength, Consumer<MediaAudio> audioConsumer) {
+    public void packet(byte[] data, int offset, int writeLength, Consumer<Long> audioConsumer) {
         if(offset == 0 && headered){
             addBufferAndFlush(data, writeLength, audioConsumer);
         }
@@ -57,7 +65,7 @@ public class BufferedAudioProcessor implements AudioProcessor {
     }
 
     @Override
-    public void packet(Pointer buf, long offset, long writeLength, Consumer<MediaAudio> audioConsumer) {
+    public void packet(Pointer buf, long offset, long writeLength, Consumer<Long> audioConsumer) {
         //System.out.println("Got audio write of length: " + writeLength + " with offset: " + offset);
         if(offset == 0 && headered){
             addBufferAndFlush(buf, (int)writeLength, audioConsumer);
@@ -79,16 +87,18 @@ public class BufferedAudioProcessor implements AudioProcessor {
         finished.get();
     }
 
-    private void addBufferAndFlush(byte[] data, int writeLength, Consumer<MediaAudio> audioConsumer){
+    private void addBufferAndFlush(byte[] data, int writeLength, Consumer<Long> audioConsumer){
         int inputIndex = 0;
         while (inputIndex < writeLength){
             if((writeLength - inputIndex) < (bufferSize - bufferPointer)){
-                rawAudio.getData(0).put(data, inputIndex, bufferPointer, writeLength - inputIndex);
+                audioBuffer.position(bufferPointer);
+                audioBuffer.put(data, inputIndex, writeLength - inputIndex);
                 bufferPointer += writeLength - inputIndex;
                 break;
             }
             else{
-                rawAudio.getData(0).put(data, inputIndex, bufferPointer, bufferSize - bufferPointer);
+                audioBuffer.position(bufferPointer);
+                audioBuffer.put(data, inputIndex, bufferSize - bufferPointer);
                 inputIndex += bufferSize - bufferPointer;
                 bufferPointer += bufferSize - bufferPointer;
                 flush(audioConsumer);
@@ -97,16 +107,16 @@ public class BufferedAudioProcessor implements AudioProcessor {
         }
     }
 
-    private void addBufferAndFlush(Pointer data, int writeLength, Consumer<MediaAudio> audioConsumer){
+    private void addBufferAndFlush(Pointer data, int writeLength, Consumer<Long> audioConsumer){
         int inputIndex = 0;
         while (inputIndex < writeLength){
             if((writeLength - inputIndex) < (bufferSize - bufferPointer)){
-                write(data, rawAudio.getData(0), inputIndex, bufferPointer, writeLength - inputIndex);
+                data.transferTo(inputIndex, wrappedBuffer, bufferPointer, writeLength - inputIndex);
                 bufferPointer += writeLength - inputIndex;
                 break;
             }
             else{
-                write(data, rawAudio.getData(0), inputIndex, bufferPointer, bufferSize - bufferPointer);
+                data.transferTo(inputIndex, wrappedBuffer, bufferPointer, bufferSize - bufferPointer);
                 //System.out.println("Finishing up a buffer. The pointer is: " + bufferPointer + " and we are writing: " + (bufferSize - bufferPointer));
                 //System.out.println("Read:         " + new String(Hex.encodeHex(buf)));
                 //System.out.println("Final buffer: " + new String(Hex.encodeHex(rawAudio.getData(0).getByteArray(0, rawAudio.getDataPlaneSize(0)))));
@@ -118,14 +128,7 @@ public class BufferedAudioProcessor implements AudioProcessor {
         }
     }
 
-    private void write(Pointer from, Buffer to, int inOffset, int outIndex, int length){
-        byte[] buf = new byte[length];
-        from.get(inOffset, buf, 0, length);
-        to.put(buf, 0, outIndex, length);
-        //return buf;
-    }
-
-    private void flush(Consumer<MediaAudio> audioConsumer){
+    private void flush(Consumer<Long> audioConsumer){
 
         int sampleCount = bufferPointer / (bytesPerSample * channels);
 
@@ -134,14 +137,14 @@ public class BufferedAudioProcessor implements AudioProcessor {
         //System.out.println("Buffer Pointer: " + bufferPointer);
         //System.out.println("Bytes per sample: " + bytesPerSample);
 
-        rawAudio.setNumSamples(sampleCount);
-        rawAudio.setTimeStamp(latestCalc);
+        //rawAudio.setNumSamples(sampleCount);
+        //rawAudio.setTimeStamp(latestCalc);
         latestCalc += sampleCount;
 
         //System.out.println("Encoding audio at " + (latestCalc/sampleRate) + " seconds.");
 
-        rawAudio.setComplete(true);
+        //rawAudio.setComplete(true);
 
-        audioConsumer.accept(rawAudio);
+        audioConsumer.accept(latestCalc);
     }
 }

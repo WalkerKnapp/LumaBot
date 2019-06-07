@@ -57,7 +57,7 @@ public class DokanyRenderFS extends DokanyFileSystem implements RenderFS {
 
             this.renderer = renderer;
 
-            MediaPicture videoPicture = renderer.generateResampledTemplate();
+            /*MediaPicture videoPicture = renderer.generateResampledTemplate();
             MediaPicture resampleFrame = renderer.generateOriginalTemplate();
 
             this.audioProcessor = new BufferedAudioProcessor();
@@ -75,7 +75,7 @@ public class DokanyRenderFS extends DokanyFileSystem implements RenderFS {
                     System.out.println("Setting weighter to gaussian");
                     this.demoWeighter = new QueuedGaussianDemoWeighter(settings.getFrameblendIndex(), 0, 5d);
                 }
-            }
+            }*/
 
             this.timeOutThread = new Thread(() -> {
                 try {
@@ -92,7 +92,7 @@ public class DokanyRenderFS extends DokanyFileSystem implements RenderFS {
     }
 
     @Override
-    public void waitToFinish() throws IOException, InterruptedException {
+    public void waitToFinish() throws IOException, InterruptedException, LumaException {
         this.timeOutThread.interrupt();
         this.renderer.finish();
     }
@@ -129,7 +129,7 @@ public class DokanyRenderFS extends DokanyFileSystem implements RenderFS {
         try {
             String extension = path.substring(path.length() - 3);
             if (extension.equalsIgnoreCase("tga")) {
-                int index = extractIndex(path);
+                int index = extractIndex(path.toCharArray());
                 addFrame(index, data, offset, writeLength);
             } else if (extension.equalsIgnoreCase("wav")) {
                 audioProcessor.packet(data, offset, writeLength, this.renderer::encodeSamples);
@@ -142,7 +142,7 @@ public class DokanyRenderFS extends DokanyFileSystem implements RenderFS {
         return writeLength;
     }
 
-    private void addFrame(int index, byte[] data, int offset, int writeLength) {
+    private void addFrame(int index, byte[] data, int offset, int writeLength) throws LumaException {
         int position = index % settings.getFrameblendIndex();
 
         currentFrame.packet(data, offset, writeLength, demoWeighter, position, index);

@@ -2,8 +2,6 @@ package gq.luma.bot.render.fs.frame;
 
 import com.kenai.jffi.MemoryIO;
 import gq.luma.bot.render.fs.weighters.DemoWeighter;
-import io.humble.video.MediaPicture;
-import io.humble.video.MediaPictureResampler;
 import jnr.ffi.Pointer;
 import jnr.ffi.Runtime;
 import jnr.ffi.Struct;
@@ -16,11 +14,9 @@ import java.nio.ByteBuffer;
 public interface Frame {
     void packet(byte[] data, int offset, int writeLength, DemoWeighter weighter, int position, int index);
 
-    void packet(Pointer buf, LibFuse libFuse, long offset, long writeLength, DemoWeighter weighter, int position, int index);
+    void packet(Pointer buf, long offset, long writeLength, DemoWeighter weighter, int position, int index);
 
-    MediaPicture writeMedia(MediaPictureResampler resampler, long timestamp);
-
-    MediaPicture getUnprocessed(long timestamp);
+    void finishData();
 
     void reset();
 

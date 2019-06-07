@@ -6,6 +6,7 @@ import gq.luma.bot.services.*;
 import gq.luma.bot.services.node.NodeServer;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.reference.KeyReference;
+import gq.luma.bot.services.web.WebServer;
 import gq.luma.bot.systems.filtering.FilterManager;
 import gq.luma.bot.utils.WordEncoder;
 import org.slf4j.Logger;
@@ -21,13 +22,13 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.*;
 
 public class Luma {
     private static Logger logger = LoggerFactory.getLogger(Luma.class);
 
-    public static ScheduledExecutorService lumaExecutorService = Executors.newScheduledThreadPool(64);
+    public static ScheduledExecutorService schedulerService = Executors.newScheduledThreadPool(4);
+    public static ExecutorService executorService = new ThreadPoolExecutor(4, Integer.MAX_VALUE, 5, TimeUnit.MINUTES, new SynchronousQueue<>());
     public static Database database;
     public static NodeServer nodeServer;
     public static Clarifai clarifai;
@@ -35,6 +36,8 @@ public class Luma {
     public static FilterManager filterManager;
     public static GDrive gDrive;
     public static YoutubeApi youtubeApi;
+    public static SteamApi steamApi;
+    public static Bot bot;
 
     private static List<Service> services;
 
@@ -53,7 +56,9 @@ public class Luma {
         services.add(new TesseractApi());
         services.add(filterManager = new FilterManager());
         services.add(gDrive = new GDrive());
-        services.add(new Bot());
+        services.add(steamApi = new SteamApi());
+        services.add(bot = new Bot());
+        //services.add(new TwitchNotifier());
     }
 
     public static void main(String[] args) throws NoSuchAlgorithmException, KeyStoreException {
@@ -74,6 +79,7 @@ public class Luma {
 
         try {
             for (Service s : services) {
+                System.out.println("Starting " + s.getClass().getSimpleName());
                 logger.info("Starting " + s.getClass().getSimpleName());
                 s.startService();
             }

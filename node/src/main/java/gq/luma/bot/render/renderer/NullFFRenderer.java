@@ -1,9 +1,11 @@
 package gq.luma.bot.render.renderer;
 
+import gq.luma.bot.LumaException;
 import gq.luma.bot.render.fs.frame.Frame;
 import io.humble.video.MediaAudio;
 import io.humble.video.MediaPicture;
 import io.humble.video.PixelFormat;
+import jnr.ffi.Pointer;
 
 public class NullFFRenderer implements FFRenderer {
 
@@ -21,6 +23,16 @@ public class NullFFRenderer implements FFRenderer {
     }
 
     @Override
+    public void handleVideoData(int index, Pointer buf, long offset, long writeLength) throws LumaException {
+
+    }
+
+    @Override
+    public void handleAudioData(Pointer buf, long offset, long size) {
+
+    }
+
+    @Override
     public void encodeFrame(Frame frame, long index) {
 
     }
@@ -31,7 +43,7 @@ public class NullFFRenderer implements FFRenderer {
     }
 
     @Override
-    public void encodeSamples(MediaAudio samples) {
+    public void encodeSamples(Long index) {
 
     }
 
@@ -61,17 +73,12 @@ public class NullFFRenderer implements FFRenderer {
     }
 
     @Override
-    public MediaPicture generateResampledTemplate() {
-        return MediaPicture.make(width, height, PixelFormat.Type.PIX_FMT_YUV420P);
+    public void setSampleOffset(long offset) {
+
     }
 
     @Override
-    public MediaPicture generateOriginalTemplate() {
-        return MediaPicture.make(width, height, PixelFormat.Type.PIX_FMT_BGR24);
-    }
-
-    @Override
-    public void resample(MediaPicture out, MediaPicture in) {
-
+    public long getLatestSample() {
+        return 0;
     }
 }

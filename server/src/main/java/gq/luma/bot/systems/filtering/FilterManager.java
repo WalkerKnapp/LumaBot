@@ -1,12 +1,5 @@
 package gq.luma.bot.systems.filtering;
 
-import de.btobastian.javacord.Javacord;
-import de.btobastian.javacord.entities.channels.ServerChannel;
-import de.btobastian.javacord.entities.channels.TextChannel;
-import de.btobastian.javacord.entities.message.MessageAuthor;
-import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
-import de.btobastian.javacord.events.message.MessageCreateEvent;
-import de.btobastian.javacord.listeners.message.MessageCreateListener;
 import gq.luma.bot.Luma;
 import gq.luma.bot.commands.params.ParamUtilities;
 import gq.luma.bot.commands.params.io.input.FileInput;
@@ -16,10 +9,18 @@ import gq.luma.bot.systems.filtering.filters.types.FileFilter;
 import gq.luma.bot.systems.filtering.filters.types.Filter;
 import gq.luma.bot.systems.filtering.filters.types.TextFilter;
 import gq.luma.bot.LumaException;
+import org.javacord.api.entity.channel.ServerChannel;
+import org.javacord.api.entity.channel.TextChannel;
+import org.javacord.api.entity.message.MessageAuthor;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
+import org.javacord.api.event.message.MessageCreateEvent;
+import org.javacord.api.listener.message.MessageCreateListener;
+import org.javacord.api.util.logging.ExceptionLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.*;
 
 public class FilterManager implements Service, MessageCreateListener {
@@ -84,7 +85,7 @@ public class FilterManager implements Service, MessageCreateListener {
                                             logConsequences.add("Removed message from");
                                             addressedConsequences.add("Your message has been removed");
                                             generalConsequences.add("Message removed");
-                                            event.getMessage().delete().exceptionally(Javacord::exceptionLogger);
+                                            event.getMessage().delete().exceptionally(ExceptionLogger.get());
                                         }
                                     }
                                     if (filter.getEffect().get("should_give_role").asBoolean()) {
@@ -94,11 +95,11 @@ public class FilterManager implements Service, MessageCreateListener {
                                         } else {
                                             actionType = 2;
                                             server.getRoleById(filter.getEffect().get("given_role").asLong()).ifPresentOrElse(role -> {
-                                                if(!author.asUser().map(user -> server.getRolesOf(user).contains(role)).orElse(true)) {
+                                                if(!author.asUser().map(user -> server.getRoles(user).contains(role)).orElse(true)) {
                                                     logConsequences.add("Gave role " + role.getName() + " to");
                                                     addressedConsequences.add("You have been given the " + role.getName() + " role");
                                                     generalConsequences.add("Given the " + role.getName() + " role");
-                                                    author.asUser().ifPresent(user -> server.getUpdater().addRoleToUser(user, role).update().exceptionally(Javacord::exceptionLogger));
+                                                    author.asUser().ifPresent(user -> server.createUpdater().addRoleToUser(user, role).update().exceptionally(ExceptionLogger.get()));
                                                 }
                                             }, () -> logger.error("Unable to find role by id: " +
                                                     filter.getEffect().get("given_role").asLong() +
@@ -198,7 +199,7 @@ public class FilterManager implements Service, MessageCreateListener {
                 .setTitle(consequence + author.getDiscriminatedName())
                 .addField("Violated filter: " + filter.getName(), result.getMessage(), false)
                 .setFooter("#" + channel.asServerChannel().map(ServerChannel::getName).orElse("(invalid channel)"))
-                .setTimestamp();
+                .setTimestamp(Instant.now());
         return eb;
     }
 

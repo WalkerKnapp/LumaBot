@@ -65,10 +65,12 @@ public class SingleSrcRenderTask extends SrcRenderTask {
 
             if(settings.isTwoPass() && settings.getFormat() == VideoOutputFormat.H264) {
                 this.renderer = RendererFactory.createTwoPass(settings, finalFile);
+                //this.renderer = RendererFactory.createCppTwoPass(settings, finalFile, demo);
             } else {
                 this.renderer = RendererFactory.createSinglePass(settings, finalFile);
+                //this.renderer = RendererFactory.createCppOnePass(settings, finalFile, demo);
             }
-            ((SinglePassFFRenderer) this.renderer).setSampleOffset(4410);
+            this.renderer.setSampleOffset(4410);
             this.renderer.setIgnoreTime(settings.shouldRemoveBroken() ? demo.getFirstPlaybackTick()/60d : 0d);
             ClientSocket.renderFS.getRenderFS().configure(settings, renderer);
             ClientSocket.renderFS.getRenderFS().getErrorHandler().exceptionally(this::handleError);
@@ -80,7 +82,7 @@ public class SingleSrcRenderTask extends SrcRenderTask {
 
             sendCommand(demo.getGame(), "exec autorecord");
 
-            if(settings.shouldReallyStartOdd(demo)) {
+            if(settings.shouldReallyStartOdd(demo) && !demo.getMapName().contains("mp_")) {
                 System.out.println("Starting odd! Specified start odd: " + settings.specifiedStartOdd() + " and first playback tick: " + demo.getFirstPlaybackTick());
                 if(!demo.getMapName().contains("mp_")) {
                     new SourceLogMonitor(demo.getGame().getLog(), "Redownloading all lightmaps").monitor().join();
@@ -134,7 +136,7 @@ public class SingleSrcRenderTask extends SrcRenderTask {
     }
 
     @Override
-    public void cancel() {
+    public void cancel() throws LumaException {
         cleanup();
     }
 
@@ -150,9 +152,12 @@ public class SingleSrcRenderTask extends SrcRenderTask {
                 BufferedWriter bw = new BufferedWriter(fw);
 
                 if(settings.isHq()) bw.write("exec render\n"); else bw.write("sv_cheats 1\n");
-                if(settings.shouldReallyStartOdd(demo)) bw.write("sv_alternateticks 0\n");
+                if(settings.shouldReallyStartOdd(demo) && !demo.getMapName().contains("mp_")) bw.write("sv_alternateticks 0\n");
                 if(!settings.isInterpolate()) bw.write("demo_interpolateview 0\n");
                 if(settings.isOob()) {
+                    bw.write("r_novis 1\n");
+                    bw.write("r_portal_use_pvs_optimization 0\n");
+                } else {
                     bw.write("r_novis 1\n");
                     bw.write("r_portal_use_pvs_optimization 0\n");
                 }
@@ -172,9 +177,9 @@ public class SingleSrcRenderTask extends SrcRenderTask {
 
                 bw.write("host_framerate " + (settings.getFps() * settings.getFrameblendIndex()) + "\n");
                 bw.write("mat_setvideomode " + settings.getWidth() + " " + settings.getHeight() + " 1\n");
-                if(settings.shouldReallyStartOdd(demo)) bw.write("demo_pauseatservertick 1\n");
+                if(settings.shouldReallyStartOdd(demo) && !demo.getMapName().contains("mp_")) bw.write("demo_pauseatservertick 1\n");
                 bw.write("demo_debug 1\n");
-                if(!settings.shouldReallyStartOdd(demo)) bw.write("startmovie \"export\\tga_\" raw\n");
+                if(!(settings.shouldReallyStartOdd(demo) && !demo.getMapName().contains("mp_"))) bw.write("startmovie \"export\\tga_\" raw\n");
                 bw.write("playdemo \"" + demoFile.getAbsolutePath() + "\"\n");
                 bw.write("hud_reloadscheme\n");
 
@@ -187,7 +192,7 @@ public class SingleSrcRenderTask extends SrcRenderTask {
     }
 
     @Override
-    protected void cleanup() {
+    protected void cleanup() throws LumaException {
         killGame(demo.getGame());
         this.renderer.forcefullyClose();
 

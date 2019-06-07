@@ -11,3 +11,10 @@ rootProject.name = 'LumaBot'
 include "server", "node"
 include 'common'
 
+//include ':javacord'
+//project(':javacord').projectDir = new File("../javacord")
+//include ':javacord-api'
+//project(':javacord-api').projectDir = new File("../javacord/javacord-api")
+//include ':javacord-core'
+//project(':javacord-core').projectDir = new File("../javacord/javacord-core")
+

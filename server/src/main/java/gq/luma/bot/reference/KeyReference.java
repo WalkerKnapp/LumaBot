@@ -7,12 +7,15 @@ import java.io.FileInputStream;
 import java.util.Properties;
 
 public class KeyReference implements Service {
+    public static String discordClientId;
+    public static String discordClientSecret;
     public static String discordToken;
     public static String youtubeKey;
     public static String steamKey;
     public static String keystorePass;
     public static String clarifai;
     public static String virusTotal;
+    public static String twitchId;
 
     public static String sqlUser;
     public static String sqlPass;
@@ -25,12 +28,15 @@ public class KeyReference implements Service {
         try(FileInputStream fis = new FileInputStream("keys.properties")){
             properties.load(fis);
         }
-        discordToken = properties.getProperty("discord");
+        discordClientId = properties.getProperty("discord_client_id");
+        discordClientSecret = properties.getProperty("discord_client_secret");
+        discordToken = properties.getProperty("discord_bot_token");
         youtubeKey = properties.getProperty("youtube");
         steamKey = properties.getProperty("steam");
         keystorePass = properties.getProperty("keystore");
         clarifai = properties.getProperty("clarifai");
         virusTotal = properties.getProperty("virustotal");
+        twitchId = properties.getProperty("twitch");
 
         sqlUser = properties.getProperty("sql_user");
         sqlPass = properties.getProperty("sql_pass");

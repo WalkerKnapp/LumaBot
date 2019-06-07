@@ -19,7 +19,7 @@ public class TwoPassFFRenderer extends SinglePassFFRenderer {
     private RenderSettings finalExportSettings;
 
     public TwoPassFFRenderer(Muxer tempHuffyMuxer, Encoder tempHuffyVideoEncoder, Encoder tempHuffyAudioEncoder, File tempHuffyFile, File exportFile, RenderSettings settings){
-        super(tempHuffyMuxer, tempHuffyVideoEncoder, tempHuffyAudioEncoder);
+        super(tempHuffyMuxer, tempHuffyVideoEncoder, tempHuffyAudioEncoder, settings);
         this.tempHuffyFile = tempHuffyFile;
         this.exportFile = exportFile;
         this.finalExportSettings = settings;

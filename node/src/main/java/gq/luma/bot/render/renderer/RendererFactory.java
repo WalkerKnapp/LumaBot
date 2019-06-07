@@ -1,6 +1,7 @@
 package gq.luma.bot.render.renderer;
 
 import gq.luma.bot.RenderSettings;
+import gq.luma.bot.SrcDemo;
 import gq.luma.bot.VideoOutputFormat;
 import gq.luma.bot.LumaException;
 import io.humble.video.*;
@@ -13,7 +14,7 @@ public class RendererFactory {
     public static SinglePassFFRenderer createSinglePass(RenderSettings settings, File exportFile) throws IOException, InterruptedException, LumaException {
         Muxer m = Muxer.make(exportFile.getAbsolutePath(), null, null);
 
-        Codec codec = Codec.findEncodingCodecByIntID(settings.getFormat().getVideoCodec());
+        Codec codec = Codec.findEncodingCodecByIntID(settings.getFormat().getVideoCodec() + 1);
         System.out.println("Video Codec: " + codec.getName());
         Encoder videoEncoder = Encoder.make(codec);
         videoEncoder.setWidth(settings.getWidth());
@@ -68,14 +69,14 @@ public class RendererFactory {
         m.addNewStream(videoEncoder);
         m.open(null, null);
 
-        return new SinglePassFFRenderer(m, videoEncoder, audioEncoder);
+        return new SinglePassFFRenderer(m, videoEncoder, audioEncoder, settings);
     }
 
     public static TwoPassFFRenderer createTwoPass(RenderSettings settings, File exportFile) throws LumaException, IOException, InterruptedException {
         File huffyFile = new File(exportFile.getParent(), FilenameUtils.removeExtension(exportFile.getName()) + "." + VideoOutputFormat.HUFFYUV.getOutputContainer());
         Muxer m = Muxer.make(huffyFile.getAbsolutePath(), MuxerFormat.guessFormat(VideoOutputFormat.HUFFYUV.getFormat(), null, null), null);
 
-        Codec codec = Codec.findEncodingCodecByIntID(VideoOutputFormat.HUFFYUV.getVideoCodec());
+        Codec codec = Codec.findEncodingCodecByIntID(VideoOutputFormat.HUFFYUV.getVideoCodec() + 1);
         Encoder videoEncoder = Encoder.make(codec);
         videoEncoder.setWidth(settings.getWidth());
         videoEncoder.setHeight(settings.getHeight());
@@ -117,5 +118,14 @@ public class RendererFactory {
         m.open(null, null);
 
         return new TwoPassFFRenderer(m, videoEncoder, audioEncoder, huffyFile, exportFile, settings);
+    }
+
+    public static SinglePassJavaCppRenderer createCppOnePass(RenderSettings settings, File exportFile, SrcDemo demo) throws LumaException, IOException {
+        return new SinglePassJavaCppRenderer(exportFile, settings, demo.getPlaybackTime());
+    }
+
+    public static TwoPassCppRenderer createCppTwoPass(RenderSettings settings, File exportFile, SrcDemo demo) throws LumaException, CloneNotSupportedException, IOException {
+        File huffyFile = new File(exportFile.getParent(), FilenameUtils.removeExtension(exportFile.getName()) + "." + VideoOutputFormat.HUFFYUV.getOutputContainer());
+        return new TwoPassCppRenderer(huffyFile, exportFile, settings, demo.getPlaybackTime());
     }
 }

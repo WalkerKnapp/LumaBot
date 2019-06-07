@@ -1,18 +1,19 @@
 package gq.luma.bot.services;
 
-import de.btobastian.javacord.DiscordApi;
-import de.btobastian.javacord.DiscordApiBuilder;
-import de.btobastian.javacord.entities.message.Reaction;
 import gq.luma.bot.Luma;
 import gq.luma.bot.commands.*;
 import gq.luma.bot.commands.subsystem.CommandExecutor;
 import gq.luma.bot.commands.subsystem.Localization;
+import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.reference.DefaultReference;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.reference.KeyReference;
 import gq.luma.bot.systems.DiscordLogger;
 import gq.luma.bot.systems.watchers.SlowMode;
 import org.apache.commons.io.FilenameUtils;
+import org.javacord.api.DiscordApi;
+import org.javacord.api.DiscordApiBuilder;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +72,14 @@ public class Bot implements Service {
             }
         });
 
+        api.addMessageCreateListener(event -> {
+            if(event.getMessage().getContent().split("\\s+")[0].equalsIgnoreCase("!joindate")){
+                event.getServer().ifPresent(server ->
+                        event.getChannel().sendMessage("Joined at: " +
+                                event.getMessage().getMentionedUsers().get(0).getJoinedAtTimestamp(server)));
+            }
+        });
+
         api.addServerJoinListener(event -> {
             try {
                 Luma.database.addServer(event.getServer(), DefaultReference.CLARIFAI_CAP, Instant.now());
@@ -84,5 +93,8 @@ public class Bot implements Service {
         api.addMessageEditListener(discordLogger);
     }
 
+    public void sendMessage(long serverId, long channelId, String text, EmbedBuilder embedBuilder){
+        api.getServerById(serverId).ifPresent(s -> s.getTextChannelById(channelId).ifPresent(tc -> tc.sendMessage(text, embedBuilder)));
+    }
 
 }

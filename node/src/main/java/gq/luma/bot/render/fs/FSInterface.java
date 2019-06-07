@@ -81,7 +81,8 @@ public class FSInterface {
         new Thread(() -> {
             try {
                 FuseRenderFS fuseRenderFS = new FuseRenderFS();
-                fuseRenderFS.mount(mountPoint, false, false);
+                //"
+                fuseRenderFS.mount(mountPoint, false, false, new String[]{"-o", "splice_read,splice_write,splice_move"});
                 cf.complete(new FSInterface(null, fuseRenderFS, mountPoint));
             }
             catch (Exception e){

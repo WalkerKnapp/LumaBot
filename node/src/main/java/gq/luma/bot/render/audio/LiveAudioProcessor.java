@@ -46,8 +46,7 @@ public class LiveAudioProcessor implements AudioProcessor {
         }
     }
 
-    @Override
-    public void packet(byte[] data, int offset, int writeLength, Consumer<MediaAudio> audioConsumer){
+    public void dab(byte[] data, int offset, int writeLength, Consumer<MediaAudio> audioConsumer){
         if(!headered){
             try {
                 this.randomAccessFile.seek(offset);
@@ -102,7 +101,12 @@ public class LiveAudioProcessor implements AudioProcessor {
     }
 
     @Override
-    public void packet(Pointer buf, long offset, long writeLength, Consumer<MediaAudio> audioConsumer) {
+    public void packet(byte[] data, int offset, int writeLength, Consumer<Long> audioConsumer) {
+
+    }
+
+    @Override
+    public void packet(Pointer buf, long offset, long writeLength, Consumer<Long> audioConsumer) {
 
     }
 

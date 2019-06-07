@@ -12,6 +12,8 @@ import gq.luma.bot.utils.FileReference;
 import okhttp3.OkHttpClient;
 import okhttp3.WebSocket;
 import org.apache.commons.io.IOUtils;
+import org.bytedeco.javacpp.avformat;
+import org.bytedeco.javacpp.avutil;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.handshake.ServerHandshake;
@@ -20,21 +22,26 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.*;
 import java.io.*;
+import java.lang.reflect.Field;
 import java.net.Socket;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+
+import static org.bytedeco.javacpp.avformat.av_register_all;
 
 public class ClientSocket extends WebSocketClient {
     public static final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(64);
@@ -212,6 +219,18 @@ public class ClientSocket extends WebSocketClient {
             return;
         }
 
+        //av_register_all();
+
+        //for(Field field : avutil.class.getFields()){
+        //   if(field.getName().startsWith("AVERROR")){
+        //       try {
+        //           System.out.println(field.getName() + " - " + field.get(null).toString());
+        //       } catch (IllegalAccessException e) {
+        //           e.printStackTrace();
+        //      }
+        //    }
+        //}
+
         okhttpClient = new OkHttpClient();
 
         Path mount = Paths.get(FileReference.tempDir.getAbsolutePath(), "mount");
@@ -226,6 +245,15 @@ public class ClientSocket extends WebSocketClient {
         headers.put("version", VERSION);
         WebSocketClient client = new ClientSocket(new URI(args[0]), headers);
         client.setSocket(createSocket());
+        //client.setSocket(new Socket());
+
+        File mountPoint = new File(SrcGame.getByDirName("portal2").getGameDir(), "export");
+
+        if (mountPoint.exists() && !mountPoint.delete()) {
+            throw new LumaException("Failed to remove the frame export directory.");
+        }
+
+        Files.createSymbolicLink(mountPoint.toPath(), ClientSocket.renderFS.getMountPoint());
 
         client.connectBlocking();
     }

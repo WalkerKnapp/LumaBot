@@ -1,8 +1,8 @@
 package gq.luma.bot.services.node;
 
-import de.btobastian.javacord.entities.channels.TextChannel;
 import gq.luma.bot.ByteBufferBackedInputStream;
 import gq.luma.bot.WebsocketDecoder;
+import org.javacord.api.entity.channel.TextChannel;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

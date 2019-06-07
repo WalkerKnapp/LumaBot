@@ -1,21 +1,20 @@
 package gq.luma.bot.render.fs;
 
-import gq.luma.bot.render.fs.frame.*;
+import gq.luma.bot.LumaException;
 import gq.luma.bot.render.renderer.FFRenderer;
 import gq.luma.bot.RenderSettings;
-import gq.luma.bot.RenderWeighterType;
 import gq.luma.bot.render.audio.AudioProcessor;
 import gq.luma.bot.render.audio.BufferedAudioProcessor;
-import gq.luma.bot.render.fs.weighters.DemoWeighter;
-import gq.luma.bot.render.fs.weighters.LinearDemoWeighter;
-import gq.luma.bot.render.fs.weighters.QueuedGaussianDemoWeighter;
-import io.humble.video.MediaPicture;
+import jnr.constants.platform.OpenFlags;
 import jnr.ffi.Platform;
 import jnr.ffi.Pointer;
 import jnr.ffi.Runtime;
+import jnr.ffi.Struct;
+import jnr.ffi.Struct.UnsignedLong;
 import jnr.ffi.types.mode_t;
 import jnr.ffi.types.off_t;
 import jnr.ffi.types.size_t;
+import org.apache.commons.codec.binary.Hex;
 import ru.serce.jnrfuse.ErrorCodes;
 import ru.serce.jnrfuse.FuseStubFS;
 import ru.serce.jnrfuse.struct.*;
@@ -27,18 +26,20 @@ import static jnr.ffi.Platform.OS.WINDOWS;
 
 public class FuseRenderFS extends FuseStubFS implements RenderFS {
 
+
+    private final long directIOOffset = Runtime.getSystemRuntime().longSize() + 32;
+    private final long uid;
+    private final long pid;
+
     private CompletableFuture<Void> errorHandler;
-    private RenderSettings settings;
-    private AudioProcessor audioProcessor;
-    private Frame currentFrame;
     private FFRenderer renderer;
 
-    private DemoWeighter weighter;
-
-    private long frameSize;
-    private int topFrame;
-
     private String latestCreated = "";
+
+    public FuseRenderFS(){
+        this.uid = getContext().uid.get();
+        this.pid = getContext().pid.get();
+    }
 
     @Override
     public void configure(RenderSettings settings, FFRenderer renderer){
@@ -48,30 +49,7 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
             return null;
         });
 
-        MediaPicture videoPicture = renderer.generateResampledTemplate();
-        MediaPicture resampleFrame = renderer.generateOriginalTemplate();
-
-        this.audioProcessor = new BufferedAudioProcessor();
-        this.topFrame = settings.getFrameblendIndex() - 1;
         this.renderer = renderer;
-        int pixelCount = settings.getHeight() * settings.getWidth() * 3;
-        this.frameSize = pixelCount + 18;
-        this.settings = settings;
-
-        if (settings.getFrameblendIndex() == 1) {
-            this.currentFrame = new UnsafeFrame(resampleFrame, videoPicture);
-        } else {
-            //System.out.println("Pixel count: " + pixelCount);
-            //this.currentFrame = new WeightedFrame(resampleFrame, videoPicture, pixelCount);
-            this.currentFrame = new AparapiAccumulatorFrame(resampleFrame, videoPicture, pixelCount);
-            if (settings.getWeighterType() == RenderWeighterType.LINEAR) {
-                //System.out.println("Setting weighter to linear");
-                this.weighter = new LinearDemoWeighter(settings.getFrameblendIndex());
-            } else if (settings.getWeighterType() == RenderWeighterType.GAUSSIAN) {
-                //System.out.println("Setting weighter to gaussian");
-                this.weighter = new QueuedGaussianDemoWeighter(settings.getFrameblendIndex(), 0, 5d);
-            }
-        }
     }
 
     @Override
@@ -80,7 +58,7 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
     }
 
     @Override
-    public void waitToFinish() throws IOException, InterruptedException {
+    public void waitToFinish() throws IOException, InterruptedException, LumaException {
         this.renderer.finish();
     }
 
@@ -93,6 +71,11 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
     public int open(String path, FuseFileInfo fi) {
         //System.err.println("FILE WAS OPENED::: " + path);
         //this.latestCreated = "";
+
+        //Struct.getMemory(fi).putByte(directIOOffset, (byte) 1);
+        fi.fh.set(Integer.MAX_VALUE);
+        //System.out.println(path + "=" + OpenFlags.valueOf(fi.flags.get()).toString());
+
         return 0;
     }
 
@@ -100,29 +83,51 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
     public int create(String path, @mode_t long mode, FuseFileInfo fi) {
         //System.err.println("FILE WAS CREATED::: " + path);
         this.latestCreated = path;
+
+        fi.flags.set(fi.flags.get() | OpenFlags.O_ASYNC.intValue());
+
+        char[] pathChars = path.toCharArray();
+        int length = pathChars.length;
+        if ((pathChars[length - 1] == 'A' || pathChars[length - 1] == 'a') &&
+                (pathChars[length - 2] == 'G' || pathChars[length - 2] == 'g') &&
+                (pathChars[length - 3] == 'T' || pathChars[length - 3] == 't')) {
+            fi.fh.set(extractIndex(pathChars));
+        } else if ((pathChars[length - 1] == 'V' || pathChars[length - 1] == 'v') &&
+                (pathChars[length - 2] == 'A' || pathChars[length - 2] == 'a') &&
+                (pathChars[length - 3] == 'W' || pathChars[length - 3] == 'w')) {
+            fi.fh.set(Integer.MAX_VALUE);
+        }
+        //Struct.getMemory(fi).putByte(directIOOffset, (byte) 1);
+        //System.out.println(path + "=" + OpenFlags.valueOf(fi.flags.get()).toString());
         return 0;
     }
 
 
     @Override
     public int getattr(String path, FileStat stat) {
-        if(path.equalsIgnoreCase("/")){
+        char[] pathChars = path.toCharArray();
+        int length = pathChars.length;
+        if(path.equals("/")){
             stat.st_mode.set(FileStat.S_IFDIR | 0777);
-            stat.st_uid.set(getContext().uid.get());
-            stat.st_gid.set(getContext().pid.get());
+            //stat.st_uid.set(uid);
+            //stat.st_gid.set(pid);
             return 0;
-        } else if(path.equalsIgnoreCase(latestCreated)){
-            stat.st_mode.set(FileStat.S_IFREG | 0777);
-            stat.st_size.set(0);
-            stat.st_uid.set(getContext().uid.get());
-            stat.st_gid.set(getContext().pid.get());
+        } else if(path.equals(latestCreated)){
+            //FileStat.S_IFREG | 0777
+            stat.st_mode.set(FileStat.S_IXUGO);
+            //stat.st_size.set(0);
+            //stat.st_uid.set(uid);
+            //stat.st_gid.set(pid);
             //System.out.println("Getattr: " + path + " exists! Returning 0 due to equalling last created");
             return 0;
-        } else if(!latestCreated.isEmpty() && path.substring(path.length() - 3).equalsIgnoreCase("wav")){
-            stat.st_mode.set(FileStat.S_IFREG | 0777);
-            stat.st_size.set(0);
-            stat.st_uid.set(getContext().uid.get());
-            stat.st_gid.set(getContext().pid.get());
+        } else if(!latestCreated.isEmpty() && (length > 2 && (pathChars[length - 1] == 'V' || pathChars[length - 1] == 'v') &&
+                (pathChars[length - 2] == 'A' || pathChars[length - 2] == 'a') &&
+                (pathChars[length - 3] == 'W' || pathChars[length - 3] == 'w'))){
+            stat.st_mode.set(FileStat.S_IXUGO);
+            //`stat.st_size.set(0);
+            //stat.st_uid.set(uid);
+            //stat.st_gid.set(pid);
+            //stat.st_blksize.set(4096);
             //System.out.println("Getattr: " + path + " exists! Returning 0 due to lastcreated being present and audio");
             return 0;
         } else  {
@@ -132,7 +137,7 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
     }
 
 
-    @Override
+    /*@Override
     public int statfs(String path, Statvfs stbuf) {
         if (Platform.getNativePlatform().getOS() == WINDOWS) {
             if ("/".equals(path)) {
@@ -142,22 +147,26 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
             }
         }
         return super.statfs(path, stbuf);
-    }
+    }*/
 
     @Override
     public int write(String path, Pointer buf, @size_t long size, @off_t long offset, FuseFileInfo fi){
+        /*if(offset == 0){
+            byte[] header = new byte[44];
+            buf.get(0, header, 0, 44);
+            System.out.println("Header=" + new String(Hex.encodeHex(header)));
+        }
+        System.out.println("Write=" + path + ",Size=" + size + ",fh=" + fi.fh.get() + ",flags=" + fi.flags.get());*/
         try {
-            String extension = path.substring(path.length() - 3);
-            if (extension.equalsIgnoreCase("tga")) {
-                int index = extractIndex(path);
+            long fh = fi.fh.get();
+            if (fh == Integer.MAX_VALUE) {
+                System.out.println("Handling audio data...");
+                renderer.handleAudioData(buf, offset, size);
+            } else {
+                int index = (int)fh;
                 if(renderer.checkFrame(index)) {
-                    addFrame(index, buf, offset, size);
+                    renderer.handleVideoData(index, buf, offset, size);
                 }
-            } else if (extension.equalsIgnoreCase("wav")) {
-                byte[] debugArray = new byte[(int) size];
-                buf.get(0, debugArray, 0, (int) size);
-                //System.out.println("Got original audio write: " + new String(Hex.encodeHex(debugArray)));
-                audioProcessor.packet(buf, offset, size, this.renderer::encodeSamples);
             }
         } catch (Throwable e){
             e.printStackTrace();
@@ -169,33 +178,7 @@ public class FuseRenderFS extends FuseStubFS implements RenderFS {
     @Override
     public int write_buf(String path, FuseBufvec buf, @off_t long off, FuseFileInfo fi){
         System.err.println("Got write buf to path: " + path + " with offset: " + off);
-        /*try {
-            String extension = path.substring(path.length() - 3);
-            long writeLength = libFuse.fuse_buf_size(buf);
-            if (extension.equalsIgnoreCase("tga")) {
-                int index = extractIndex(path);
-                addFrame(index, buf, off, writeLength);
-            } else if (extension.equalsIgnoreCase("wav")) {
-                audioProcessor.packet(buf, off, writeLength, this.renderer::encodeSamples);
-            }
-            return (int)writeLength;
-        }
-        catch (Exception e){
-            errorHandler.completeExceptionally(e);
-        }*/
         return 0;
-    }
-
-    private void addFrame(int index, Pointer buf, long offset, long writeLength) {
-        int position = index % settings.getFrameblendIndex();
-
-        currentFrame.packet(buf, libFuse, offset, writeLength, weighter, position, index);
-
-        if(offset == this.frameSize - writeLength && position == topFrame){
-            System.out.println("Writing media on frame: " + index + " and position " + position);
-            this.renderer.encodeFrame(currentFrame, index / settings.getFrameblendIndex());
-            currentFrame.reset();
-        }
     }
 
     public Runtime getRuntime(){

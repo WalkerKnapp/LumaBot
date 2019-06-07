@@ -1,5 +1,6 @@
 package gq.luma.bot.render.fs;
 
+import gq.luma.bot.LumaException;
 import gq.luma.bot.RenderSettings;
 import gq.luma.bot.render.renderer.FFRenderer;
 
@@ -11,18 +12,17 @@ public interface RenderFS {
 
     CompletableFuture<Void> getErrorHandler();
 
-    void waitToFinish() throws IOException, InterruptedException;
+    void waitToFinish() throws IOException, InterruptedException, LumaException;
 
     void shutdown();
 
-    default int extractIndex(String name){
-        char[] nameCharArray = name.toCharArray();
+    default int extractIndex(char[] name){
         int total = 0;
         int j = 1;
-        for(int i = nameCharArray.length - 5; i >= 0; i--){
-            if(nameCharArray[i] == '_')
+        for(int i = name.length - 5; i >= 0; i--){
+            if(name[i] == '_')
                 break;
-            total += Character.getNumericValue(nameCharArray[i]) * j;
+            total += (name[i] - '0') * j;
             j *= 10;
         }
         return total;

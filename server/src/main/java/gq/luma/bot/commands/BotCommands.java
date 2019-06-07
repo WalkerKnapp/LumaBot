@@ -1,6 +1,5 @@
 package gq.luma.bot.commands;
 
-import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
 import gq.luma.bot.Luma;
 import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
@@ -8,6 +7,7 @@ import gq.luma.bot.commands.subsystem.Localization;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
 import org.apache.commons.io.FilenameUtils;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
 
 import java.io.File;
 import java.io.FileInputStream;

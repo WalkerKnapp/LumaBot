@@ -1,12 +1,14 @@
 package gq.luma.bot.utils.embeds;
 
-import de.btobastian.javacord.entities.message.Message;
-import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
 import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.commands.subsystem.Localization;
+import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,13 +31,12 @@ public class EmbedUtilities {
     }
 
     public static EmbedBuilder getImageMessage(BufferedImage image, Localization localization){
-        try {
-            String imageLink = uploadImgur(image);
+        try(ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            ImageIO.write(image, "png", baos);
             return new EmbedBuilder()
-                    .setImage(imageLink)
+                    .setImage(baos.toByteArray())
                     .setColor(BotReference.LUMA_COLOR);
         } catch (IOException e) {
-            e.printStackTrace();
             return getErrorMessage(e.getMessage(), localization);
         }
     }

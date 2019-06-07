@@ -1,12 +1,12 @@
 package gq.luma.bot.services;
 
 import com.eclipsesource.json.JsonObject;
-import de.btobastian.javacord.DiscordApi;
-import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
 import gq.luma.bot.Luma;
 import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.commands.subsystem.Localization;
 import gq.luma.bot.services.node.Task;
+import org.javacord.api.DiscordApi;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,7 +24,7 @@ public class TaskScheduler implements Service {
 
     @Override
     public void startService() {
-        Luma.lumaExecutorService.scheduleWithFixedDelay(() -> {
+        Luma.schedulerService.scheduleWithFixedDelay(() -> {
             if(!localQueue.isEmpty() && (!BotReference.USE_NODES || Luma.nodeServer.hasOpenNode()) && (BotReference.USE_NODES || !isExecuting)) {
                 getFirstMatching(localQueue, t -> !t.isRendering()).ifPresent(task -> Luma.nodeServer.openNode().scheduleTask(task)
                         .thenAccept(val -> callbacks.get(task).complete(val))

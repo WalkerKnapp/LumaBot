@@ -1,8 +1,5 @@
 package gq.luma.bot.services;
 
-import de.btobastian.javacord.entities.Server;
-import de.btobastian.javacord.entities.channels.ServerTextChannel;
-import de.btobastian.javacord.entities.channels.TextChannel;
 import gq.luma.bot.commands.subsystem.permissions.PermissionSet;
 import gq.luma.bot.reference.DefaultReference;
 import gq.luma.bot.reference.FileReference;
@@ -12,6 +9,9 @@ import gq.luma.bot.systems.filtering.filters.LinkFilter;
 import gq.luma.bot.systems.filtering.filters.SimpleFilter;
 import gq.luma.bot.systems.filtering.filters.VirusFilter;
 import gq.luma.bot.systems.filtering.filters.types.Filter;
+import org.javacord.api.entity.channel.ServerTextChannel;
+import org.javacord.api.entity.channel.TextChannel;
+import org.javacord.api.entity.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +61,19 @@ public class Database implements Service {
 
     private PreparedStatement getAllFilters;
 
+    private PreparedStatement getCommunityTrackedStreams;
+    private PreparedStatement getUserTrackedStreams;
+
+    private PreparedStatement getVerifiedUserById;
+    private PreparedStatement insertVerifiedUser;
+
+    private PreparedStatement getVerifiedIpsByUser;
+    private PreparedStatement getVerifiedIp;
+    private PreparedStatement insertVerifiedIp;
+
+    private PreparedStatement getVerifiedConnectionsByUser;
+    private PreparedStatement insertVerifiedConnection;
+
 
     @Override
     public void startService() throws SQLException, ClassNotFoundException {
@@ -85,7 +98,7 @@ public class Database implements Service {
         updateServerLocale = conn.prepareStatement("UPDATE servers SET locale = ? WHERE id = ?");
         updateServerNotify = conn.prepareStatement("UPDATE servers SET notify = ? WHERE id = ?");
         updateClarifaiCount = conn.prepareStatement("UPDATE servers SET clarifai_count = ? WHERE id = ?");
-        insertServer = conn.prepareStatement("INSERT INTO servers (prefix, locale, logging_channel, notify, monthly_clarifai_cap, clarifai_count, clarifai_reset_date, id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        insertServer = conn.prepareStatement("INSERT INTO servers (prefix, locale, logging_channel, streams_channel, notify, monthly_clarifai_cap, clarifai_count, clarifai_reset_date, id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         getUser = conn.prepareStatement("SELECT * FROM users WHERE id = ?");
         updateUserNotify = conn.prepareStatement("UPDATE users SET notify = ? WHERE id = ?");
@@ -94,8 +107,8 @@ public class Database implements Service {
         getResult = conn.prepareStatement("SELECT * FROM render_results WHERE id = ?");
         insertResult = conn.prepareStatement("INSERT INTO render_results (id, name, type, code, thumbnail, requester, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
 
-        getRoleByName = conn.prepareStatement("SELECT * FROM donor_roles WHERE name = ?");
-        getAllRoles = conn.prepareStatement("SELECT * FROM donor_roles");
+        getRoleByName = conn.prepareStatement("SELECT * FROM donor_roles WHERE name = ? AND server_id = ?");
+        getAllRoles = conn.prepareStatement("SELECT * FROM donor_roles WHERE server_id = ?");
 
         getNodeByToken = conn.prepareStatement("SELECT * FROM nodes WHERE token = ?");
         getNodeBySession = conn.prepareStatement("SELECT * FROM nodes WHERE session = ?");
@@ -108,6 +121,18 @@ public class Database implements Service {
         getEnabledPermissionByTargetId = conn.prepareStatement("SELECT * FROM permissions WHERE enabled = 1 AND target_id = ?");
 
         getAllFilters = conn.prepareStatement("SELECT * FROM filters");
+
+        getCommunityTrackedStreams = conn.prepareStatement("SELECT * FROM tracked_streams WHERE tracking_type = ?");
+
+        getVerifiedUserById = conn.prepareStatement("SELECT * FROM verified_users WHERE id = ?");
+        insertVerifiedUser = conn.prepareStatement("INSERT INTO verified_users (id, server_id, discord_token) VALUES (?,?,?)");
+
+        getVerifiedIpsByUser = conn.prepareStatement("SELECT * FROM verified_ips WHERE user_id = ?");
+        getVerifiedIp = conn.prepareStatement("SELECT * FROM verified_ips WHERE ip = ?");
+        insertVerifiedIp = conn.prepareStatement("INSERT INTO verified_ips (user_id, server_id, ip) VALUES (?,?,?)");
+
+        getVerifiedConnectionsByUser = conn.prepareStatement("SELECT * FROM verified_connections WHERE user_id = ?");
+        insertVerifiedConnection = conn.prepareStatement("INSERT INTO verified_connections (user_id, server_id, id, connection_type, connection_name, token) VALUES (?,?,?,?,?,?)");
     }
 
     //Results
@@ -176,12 +201,13 @@ public class Database implements Service {
     public synchronized void addServer(Server server, int clarifaiCap, Instant clarifaiResetDate) throws SQLException {
         insertServer.setString(1, null);
         insertServer.setString(2, null);
-        insertServer.setString(3, null);
-        insertServer.setInt(4, 0);
-        insertServer.setInt(5, clarifaiCap);
-        insertServer.setInt(6, 0);
-        insertServer.setTimestamp(7, Timestamp.from(clarifaiResetDate));
-        insertServer.setLong(8, server.getId());
+        insertServer.setNull(3, Types.BIGINT);
+        insertServer.setString(4, null);
+        insertServer.setInt(5, 0);
+        insertServer.setInt(6, clarifaiCap);
+        insertServer.setInt(7, 0);
+        insertServer.setTimestamp(8, Timestamp.from(clarifaiResetDate));
+        insertServer.setLong(9, server.getId());
         insertServer.execute();
     }
 
@@ -273,6 +299,23 @@ public class Database implements Service {
         }
     }
 
+    public synchronized Optional<Long> getServerStreamsChannel(long serverId){
+        try {
+            getServer.setLong(1, serverId);
+            ResultSet rs = getServer.executeQuery();
+            if(rs.next()){
+                long streamsChannel = rs.getLong("streams_channel");
+                if(!rs.wasNull()){
+                    return Optional.of(streamsChannel);
+                }
+            }
+            return Optional.empty();
+        } catch (SQLException e){
+            logger.error("Encountered error: ", e);
+            return Optional.empty();
+        }
+    }
+
     public synchronized void setServerPrefix(Server server, String prefix) throws SQLException {
         getServer.setLong(1, server.getId());
         ResultSet rs = getServer.executeQuery();
@@ -328,14 +371,14 @@ public class Database implements Service {
             insertChannel.setString(1, null);
             insertChannel.setString(2, locale);
             insertChannel.setInt(3, 0);
-            insertChannel.setInt(4, 0);
-            insertChannel.setLong(5, channel.getId());
+            insertChannel.setLong(4, channel.getId());
             insertChannel.execute();
         }
     }
 
-    public synchronized Optional<Long> getRoleByName(String name) throws SQLException {
+    public synchronized Optional<Long> getRoleByName(long serverId, String name) throws SQLException {
         getRoleByName.setString(1, name.substring(0, 1).toUpperCase() + name.substring(1));
+        getRoleByName.setLong(2, serverId);
         ResultSet rs = getRoleByName.executeQuery();
 
         if(rs.next()){
@@ -345,7 +388,8 @@ public class Database implements Service {
         }
     }
 
-    public synchronized List<String> getAvailibeRoles() throws SQLException {
+    public synchronized List<String> getAvailibeRoles(long serverId) throws SQLException {
+        getAllRoles.setLong(1, serverId);
         ResultSet rs = getAllRoles.executeQuery();
         List<String> ret = new ArrayList<>();
         while(rs.next()){
@@ -425,6 +469,107 @@ public class Database implements Service {
             }
         }
         return ret;
+    }
+
+    public synchronized Map<String, List<Long>> getCommunityStreams() throws SQLException {
+        getCommunityTrackedStreams.setString(1, "community");
+        ResultSet rs = getCommunityTrackedStreams.executeQuery();
+        Map<String, List<Long>> map = new HashMap<>();
+        while (rs.next()){
+            map.computeIfAbsent(rs.getString("tracked_id"), (s) -> new ArrayList<>()).add(rs.getLong("server_id"));
+        }
+        return map;
+    }
+
+    public synchronized boolean isUserVerified(long id) {
+        try {
+            getVerifiedUserById.setLong(1, id);
+            ResultSet rs = getVerifiedUserById.executeQuery();
+            return rs.next();
+        } catch (SQLException e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public synchronized void writeConnectionBoxes(long id, StringBuilder sb) {
+        try {
+            getVerifiedConnectionsByUser.setLong(1, id);
+            ResultSet rs = getVerifiedConnectionsByUser.executeQuery();
+            while (rs.next()) {
+                sb.append("<div class=\"connectionbox\">");
+                sb.append("<img class=\"connection\" src=\"https://cdn.luma.gq/").append(rs.getString("connection_type"));
+                sb.append(".png\" alt=\"").append(rs.getString("connection_type")).append("\"></img>");
+                sb.append(rs.getString("connection_name"));
+                sb.append("</div>");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void writeIps(long id, StringBuilder sb) {
+        try {
+            getVerifiedIpsByUser.setLong(1, id);
+            ResultSet rs = getVerifiedIpsByUser.executeQuery();
+            while (rs.next()) {
+                sb.append(rs.getString("ip"));
+                sb.append("</br>");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void verifyUser(long userId, long serverId, String accessToken) {
+        try {
+            getVerifiedUserById.setLong(1, userId);
+            ResultSet rs = getVerifiedUserById.executeQuery();
+            if(!rs.next()) {
+                insertVerifiedUser.setLong(1, userId);
+                insertVerifiedUser.setLong(2, serverId);
+                insertVerifiedUser.setString(3, accessToken);
+                insertVerifiedUser.execute();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void addVerifiedIP(long userId, long serverId, String ip) {
+        try {
+            getVerifiedIp.setString(1, ip);
+            ResultSet rs = getVerifiedIp.executeQuery();
+            if(!rs.next()) {
+                insertVerifiedIp.setLong(1, userId);
+                insertVerifiedIp.setLong(2, serverId);
+                insertVerifiedIp.setString(3, ip);
+                insertVerifiedIp.execute();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void addVerifiedConnection(long userId, long serverId, String connectionId, String connectionType, String connectionName, String connectionToken) {
+        try {
+            getVerifiedConnectionsByUser.setLong(1, userId);
+            ResultSet rs = getVerifiedConnectionsByUser.executeQuery();
+            while (rs.next()) {
+                if(rs.getString("id").equalsIgnoreCase(connectionId) && rs.getString("connection_name").equalsIgnoreCase(connectionName)) {
+                    return;
+                }
+            }
+            insertVerifiedConnection.setLong(1, userId);
+            insertVerifiedConnection.setLong(2, serverId);
+            insertVerifiedConnection.setString(3, connectionId);
+            insertVerifiedConnection.setString(4, connectionType);
+            insertVerifiedConnection.setString(5, connectionName);
+            insertVerifiedConnection.setString(6, connectionType);
+            insertVerifiedConnection.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     private void close(){
