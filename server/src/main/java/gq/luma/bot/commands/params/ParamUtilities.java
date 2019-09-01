@@ -1,11 +1,11 @@
 package gq.luma.bot.commands.params;
 
-import de.btobastian.javacord.entities.message.Message;
-import de.btobastian.javacord.entities.message.MessageAttachment;
 import gq.luma.bot.commands.params.io.input.*;
 import gq.luma.bot.LumaException;
 import gq.luma.bot.utils.StringUtilities;
 import org.apache.commons.validator.routines.UrlValidator;
+import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.message.MessageAttachment;
 
 import java.io.IOException;
 import java.net.MalformedURLException;

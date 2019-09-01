@@ -1,9 +1,9 @@
 package gq.luma.bot.utils.embeds;
 
-import de.btobastian.javacord.entities.message.Message;
-import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
-import de.btobastian.javacord.events.message.reaction.ReactionAddEvent;
-import de.btobastian.javacord.listeners.message.reaction.ReactionAddListener;
+import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
+import org.javacord.api.event.message.reaction.ReactionAddEvent;
+import org.javacord.api.listener.message.reaction.ReactionAddListener;
 import gq.luma.bot.reference.BotReference;
 
 import java.util.List;

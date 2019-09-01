@@ -38,3 +38,5 @@ build/
 .idea/
 .gradle/
 *.json
+
+server/web/node_modules/

@@ -1,7 +1,7 @@
 package gq.luma.bot.commands.params.io.input;
 
-import de.btobastian.javacord.Javacord;
-import de.btobastian.javacord.entities.message.MessageAttachment;
+import org.javacord.api.Javacord;
+import org.javacord.api.entity.message.MessageAttachment;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.IOException;

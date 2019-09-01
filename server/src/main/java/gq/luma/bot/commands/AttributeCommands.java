@@ -1,13 +1,13 @@
 package gq.luma.bot.commands;
 
-import de.btobastian.javacord.entities.channels.ServerChannel;
-import de.btobastian.javacord.entities.channels.TextChannel;
-import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
 import gq.luma.bot.Luma;
 import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
+import org.javacord.api.entity.channel.ServerChannel;
+import org.javacord.api.entity.channel.TextChannel;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
 
 import java.sql.SQLException;
 import java.util.Optional;

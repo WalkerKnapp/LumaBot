@@ -3,8 +3,6 @@ package gq.luma.bot.commands;
 import clarifai2.dto.model.output.ClarifaiOutput;
 import clarifai2.dto.prediction.Concept;
 import clarifai2.dto.prediction.Prediction;
-import de.btobastian.javacord.entities.message.Message;
-import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
 import gq.luma.bot.Luma;
 import gq.luma.bot.commands.params.ParamUtilities;
 import gq.luma.bot.commands.params.io.input.FileInput;
@@ -17,6 +15,8 @@ import gq.luma.bot.services.TesseractApi;
 import gq.luma.bot.LumaException;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
 import net.sourceforge.tess4j.TesseractException;
+import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
 
 import javax.imageio.ImageIO;
 import java.io.IOException;

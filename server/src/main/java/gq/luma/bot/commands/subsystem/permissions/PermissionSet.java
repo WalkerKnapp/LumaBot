@@ -16,11 +16,13 @@ public class PermissionSet {
         MANAGE_PERMISSIONS(1),
         MANAGE_ALL_COMMAND_SETTINGS(2),
         MANAGE_FILTERS(3),
+        MANAGE_VERIFY(38),
         ACCESS_ALL_MOD_COMMANDS(32),
         CHANGE_PREFIX_OR_LANGUAGE(33),
         SET_SLOW_MODE(34),
         SET_PANIC_MODE(35),
         CLEANUP(36),
+        VOTES(37),
         DEVELOPER(64);
 
         int index;

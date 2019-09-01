@@ -1,10 +1,10 @@
 package gq.luma.bot.commands.subsystem;
 
-import de.btobastian.javacord.DiscordApi;
-import de.btobastian.javacord.entities.Server;
-import de.btobastian.javacord.entities.User;
-import de.btobastian.javacord.entities.channels.TextChannel;
-import de.btobastian.javacord.entities.message.Message;
+import org.javacord.api.DiscordApi;
+import org.javacord.api.entity.channel.TextChannel;
+import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.server.Server;
+import org.javacord.api.entity.user.User;
 
 import java.util.Optional;
 
@@ -13,6 +13,7 @@ public class CommandEvent {
     private CommandExecutor executor;
     private Localization localization;
 
+    private String prefix;
     private String commandRemainder;
     private String[] commandArgs;
 
@@ -21,10 +22,11 @@ public class CommandEvent {
     private Optional<Server> server;
     private User user;
 
-    public CommandEvent(DiscordApi api, CommandExecutor executor, Localization localization, String commandRemainder, String[] commandArgs, Message message, TextChannel textChannel, Optional<Server> server, User author) {
+    public CommandEvent(DiscordApi api, CommandExecutor executor, Localization localization, String prefix, String commandRemainder, String[] commandArgs, Message message, TextChannel textChannel, Optional<Server> server, User author) {
         this.api = api;
         this.executor = executor;
         this.localization = localization;
+        this.prefix = prefix;
         this.commandRemainder = commandRemainder;
         this.commandArgs = commandArgs;
         this.message = message;
@@ -67,5 +69,9 @@ public class CommandEvent {
 
     public User getAuthor() {
         return user;
+    }
+
+    public String getPrefix() {
+        return prefix;
     }
 }

@@ -1,23 +1,20 @@
 package gq.luma.bot.commands.subsystem;
 
-import de.btobastian.javacord.DiscordApi;
-import de.btobastian.javacord.entities.Server;
-import de.btobastian.javacord.entities.User;
-import de.btobastian.javacord.entities.channels.TextChannel;
-import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
-import de.btobastian.javacord.entities.permissions.PermissionType;
-import de.btobastian.javacord.entities.permissions.Permissions;
-import de.btobastian.javacord.entities.permissions.PermissionsBuilder;
-import de.btobastian.javacord.entities.permissions.Role;
-import de.btobastian.javacord.events.message.MessageCreateEvent;
 import gq.luma.bot.Luma;
 import gq.luma.bot.commands.subsystem.permissions.PermissionSet;
-import gq.luma.bot.services.Database;
 import gq.luma.bot.utils.StringUtilities;
+import org.javacord.api.DiscordApi;
+import org.javacord.api.entity.channel.TextChannel;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
+import org.javacord.api.entity.permission.PermissionType;
+import org.javacord.api.entity.permission.Role;
+import org.javacord.api.entity.server.Server;
+import org.javacord.api.entity.user.User;
+import org.javacord.api.event.message.MessageCreateEvent;
+import org.javacord.api.util.logging.ExceptionLogger;
 
 import java.sql.SQLException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class CommandExecutor {
@@ -28,8 +25,8 @@ public class CommandExecutor {
         this.commands = new ArrayList<>();
         this.localizations = new HashMap<>();
 
-        api.addMessageCreateListener(messageCreateEvent -> {
-            System.out.println("Got Event! Content: " + messageCreateEvent.getMessage().getContent());
+        api.addMessageCreateListener(messageCreateEvent ->  {
+            //System.out.println("Got Event! Content: " + messageCreateEvent.getMessage().getContent());
             if(messageCreateEvent.getMessage().getAuthor().asUser().isPresent() && !messageCreateEvent.getMessage().getAuthor().asUser().get().isBot() && !messageCreateEvent.getMessage().getAuthor().asUser().get().isYourself()) {
                 String[] split = StringUtilities.splitString(messageCreateEvent.getMessage().getContent());
                 if (split.length > 0) {
@@ -49,22 +46,20 @@ public class CommandExecutor {
     private void attemptExecute(MCommand command, String[] split, MessageCreateEvent event){
         event.getMessage().getAuthor().asUser().ifPresent(user -> {
             if(canRun(command, user, event.getServer()) && isUnderWhitelist(command, event)) {
-                Luma.lumaExecutorService.submit(() -> {
-                    try {
-                        String loc = Luma.database.getEffectiveLocale(event.getChannel());
-                        Localization localization = getLocalization(loc);
-                        for (String name : command.getCommand().aliases()) {
-                            String expectedCommand = generateCommandString(command, event.getChannel(), localization, name);
-                            String[] expectedTree = StringUtilities.splitString(expectedCommand);
-                            if (equalsUpToFirst(expectedTree, split)) {
-                                execute(command, expectedCommand, expectedTree, split, event, localization, user);
-                            }
+                try {
+                    String loc = Luma.database.getEffectiveLocale(event.getChannel());
+                    Localization localization = getLocalization(loc);
+                    for (String name : command.getCommand().aliases()) {
+                        String expectedCommand = generateCommandString(command, event.getChannel(), localization, name);
+                        String[] expectedTree = StringUtilities.splitString(expectedCommand);
+                        if (equalsUpToFirst(expectedTree, split)) {
+                            execute(command, expectedCommand, expectedTree, split, event, localization, user);
                         }
-                    } catch (Exception e) {
-                        System.err.println("Error thrown while executing command: ");
-                        e.printStackTrace();
                     }
-                });
+                } catch (Exception e) {
+                    System.err.println("Error thrown while executing command: ");
+                    e.printStackTrace();
+                }
             }
         });
     }
@@ -109,7 +104,7 @@ public class CommandExecutor {
                             return true;
                         }
                     }
-                    for (Role checkRole : server.getRolesOf(user)) {
+                    for (Role checkRole : server.getRoles(user)) {
                         //Check role perms
                         for (PermissionSet checkPerm : Luma.database.getPermission(server, PermissionSet.PermissionTarget.ROLE, checkRole.getId())) {
                             if (checkPerm.effectivelyHasPermission(neededPermission)) {
@@ -136,7 +131,7 @@ public class CommandExecutor {
         }
     }
 
-    private void execute(MCommand command, String commandUsed, String[] commandTree, String[] messageSplit, MessageCreateEvent event, Localization localization , User user) throws Exception {
+    private void execute(MCommand command, String commandUsed, String[] commandTree, String[] messageSplit, MessageCreateEvent event, Localization localization , User user) {
         int substringIndex = commandUsed.length() + 1;
         String content = "";
         if(substringIndex < event.getMessage().getContent().length()){
@@ -145,6 +140,7 @@ public class CommandExecutor {
         CommandEvent commandEvent = new CommandEvent(event.getApi(),
                 this,
                 localization,
+                commandTree[0],
                 content,
                 Arrays.copyOfRange(messageSplit, commandTree.length, messageSplit.length),
                 event.getMessage(),
@@ -152,13 +148,24 @@ public class CommandExecutor {
                 Optional.ofNullable(event.getChannel().asServerTextChannel().isPresent() ? event.getChannel().asServerTextChannel().get().getServer() : null),
                 user);
 
-        //System.out.println("Invoking!");
-        Object ret = command.getMethod().invoke(command.getCaller(), commandEvent);
-        if (ret instanceof EmbedBuilder) {
-            event.getChannel().sendMessage((EmbedBuilder) ret);
-        } else if (ret instanceof String) {
-            event.getChannel().sendMessage((String) ret);
-        }
+        System.out.println("Invoking!");
+        Luma.executorService.submit(() -> {
+            System.out.println("Started execution of command: " + event.getMessage().getContent());
+            try {
+                Object ret = command.getMethod().invoke(command.getCaller(), commandEvent);
+                if (ret instanceof EmbedBuilder) {
+                    System.out.println("Sending embed builder...");
+                    event.getChannel().sendMessage((EmbedBuilder) ret).exceptionally(ExceptionLogger.get());
+                } else if (ret instanceof String) {
+                    System.out.println("Sending string...");
+                    event.getChannel().sendMessage((String) ret).exceptionally(ExceptionLogger.get());
+                }
+            } catch (Exception e){
+                System.err.println("Encountered error while executing command:");
+                e.printStackTrace();
+            }
+            System.out.println("Finished execution of command: " + event.getMessage().getContent());
+        });
     }
 
     private boolean equalsUpToFirst(String[] array1, String[] array2){

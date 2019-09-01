@@ -47,7 +47,7 @@ public class NodeServer extends WebSocketServer implements Service {
     private Collection<WebsocketDecoder> activeDecoders;
 
     public NodeServer() {
-        super(new InetSocketAddress("10.0.0.24", 8887));
+        super(new InetSocketAddress(8887));
     }
 
     public boolean hasOpenNode(){

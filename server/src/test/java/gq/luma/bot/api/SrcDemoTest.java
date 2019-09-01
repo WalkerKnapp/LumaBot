@@ -20,7 +20,7 @@ public class SrcDemoTest {
     @Test
     public void srcDemo() throws IOException, LumaException {
         try(FileWriter fw = new FileWriter(new File(FileReference.tempDir, "BombFlings_2298_Msushi.json"))) {
-            SrcDemo.of(new File(FileReference.tempDir, "BombFlings_2298_Msushi.dem")).serialize().writeTo(fw, WriterConfig.PRETTY_PRINT);
+            //SrcDemo.of(new File(FileReference.tempDir, "BombFlings_2298_Msushi.dem")).serialize().writeTo(fw, WriterConfig.PRETTY_PRINT);
         }
     }
 }

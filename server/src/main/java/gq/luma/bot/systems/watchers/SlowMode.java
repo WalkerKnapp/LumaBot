@@ -1,8 +1,9 @@
 package gq.luma.bot.systems.watchers;
 
-import de.btobastian.javacord.Javacord;
-import de.btobastian.javacord.events.message.MessageCreateEvent;
-import de.btobastian.javacord.listeners.message.MessageCreateListener;
+
+import org.javacord.api.event.message.MessageCreateEvent;
+import org.javacord.api.listener.message.MessageCreateListener;
+import org.javacord.api.util.logging.ExceptionLogger;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,7 +22,7 @@ public class SlowMode implements MessageCreateListener {
                     latestUserMessage.get(event.getChannel().getId()).put(event.getMessage().getAuthor().getId(), 0L);
                 if (slowModes.containsKey(event.getChannel().getId()) && (System.currentTimeMillis() - latestUserMessage.get(event.getChannel().getId()).get(event.getMessage().getAuthor().getId())) < slowModes.get(event.getChannel().getId())) {
                     System.out.println("Deleting due to " + (System.currentTimeMillis() - latestUserMessage.get(event.getChannel().getId()).get(event.getMessage().getAuthor().getId())));
-                    event.getMessage().delete().exceptionally(Javacord::exceptionLogger);
+                    event.getMessage().delete().exceptionally(ExceptionLogger.get());
                 } else {
                     Map<Long, Long> userHm = latestUserMessage.get(event.getChannel().getId());
                     if (userHm == null) {

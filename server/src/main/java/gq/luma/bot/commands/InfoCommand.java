@@ -1,11 +1,11 @@
 package gq.luma.bot.commands;
 
-import de.btobastian.javacord.entities.message.embed.EmbedBuilder;
 import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
 import gq.luma.bot.commands.subsystem.MCommand;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
 
 import java.sql.SQLException;
 import java.time.temporal.ChronoField;
