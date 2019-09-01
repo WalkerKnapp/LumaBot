@@ -1,0 +1,90 @@
+//noinspection CssUnknownTarget
+@import "@material/checkbox/mdc-checkbox";
+//noinspection CssUnknownTarget
+@import "@material/card/mdc-card";
+
+header {
+  width: 100%;
+  top: 0;
+  position: fixed;
+  left: auto;
+  right: 0;
+  box-shadow: 0px 2px 4px -1px rgba(0,0,0,0.2), 0px 4px 5px 0px rgba(0,0,0,0.14), 0px 1px 10px 0px rgba(0,0,0,0.12);
+  background-color: orange;
+  z-index: 10;
+}
+
+h6 {
+  padding: 12px 12px 12px 12px;
+  font-size: 1.25rem;
+  font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+  font-weight: bold;
+  color: white;
+
+  margin: 0 0
+}
+
+img {
+  width: 2em;
+  height: 2em;
+}
+
+.c-image-cropper {
+  width: 2em;
+  height: 2em;
+  position: relative;
+  overflow: hidden;
+  border-radius:50%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.c-middleInline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.c-ledSocket {
+  margin: 5px;
+  width: 2em;
+  height: 2em;
+  border-radius: 20px;
+  transition: background-color linear .08s;
+  box-shadow: 0 1px 5px 0 rgba(0, 0, 0, 0.6);
+}
+
+.c-centerCard {
+  justify-content: center;
+  align-items: center;
+  margin-top: 70px;
+  display: flex;
+}
+.c-parentCard {
+  font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+  font-weight: bold;
+  //width: 85%;
+  padding: 10px;
+
+  width: fit-content;
+  display: table;
+}
+
+.c-tableRow {
+  display: table-row
+}
+.c-tableCell {
+  display: table-cell;
+  padding-right: 8px;
+  padding-left: 8px;
+  vertical-align: center;
+}
+.c-tableHeader {
+  font-size: 0.9rem;
+  font-weight: 100;
+  padding-bottom: 0.5em;
+}
+
+.c-purplecheck {
+  @include mdc-checkbox-container-colors($marked-stroke-color: #4e3380, $marked-fill-color: #6441A4);
+  vertical-align: middle;
+}

@@ -1,0 +1,63 @@
+//noinspection CssUnknownTarget
+@import "@material/card/mdc-card";
+//noinspection CssUnknownTarget
+@import "@material/button/mdc-button";
+
+button {
+  border-width: 0px;
+}
+
+.mdc-button--raised {
+  padding: 0px 8px;
+}
+
+header {
+  width: 100%;
+  top: 0;
+  position: fixed;
+  left: auto;
+  right: 0;
+  box-shadow: 0px 2px 4px -1px rgba(0,0,0,0.2), 0px 4px 5px 0px rgba(0,0,0,0.14), 0px 1px 10px 0px rgba(0,0,0,0.12);
+  background-color: cornflowerblue;
+}
+
+h6 {
+  padding: 12px 12px 12px 12px;
+  font-size: 1.25rem;
+  font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+  font-weight: bold;
+  color: white;
+
+  margin: 0 0
+}
+
+.c-gold {
+  @include mdc-button-filled-accessible(#f6ce55);
+}
+.c-red {
+  @include mdc-button-filled-accessible(#ff3333);
+}
+
+.c-gray {
+  @include mdc-button-filled-accessible(#609dd2);
+}
+
+.c-purple {
+  @include mdc-button-filled-accessible(#6441A4);
+}
+
+.c-centerCard {
+  justify-content: center;
+  align-items: center;
+  margin-top: 70px;
+  display: flex;
+}
+.c-parentCard {
+  font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+  font-weight: bold;
+  //width: 85%;
+  padding: 10px;
+}
+.c-addButton {
+  margin-right: 4em; margin-top: 1em; width: fit-content; height: 2em;
+}

@@ -34,8 +34,10 @@ dependencies {
     implementation 'org.pac4j:undertow-pac4j:3.0.0'
     implementation 'org.pac4j:pac4j-oauth:3.4.0'
     implementation 'org.pac4j:pac4j-openid:3.4.0'
+    implementation 'org.pac4j:pac4j-oidc:3.4.0'
     
     implementation 'com.lukaspradel:steam-web-api:1.2'
+    compile group: 'com.github.twitch4j', name: 'twitch4j', version: 'v0.12.0'
 
     compile group: 'org.jsoup', name: 'jsoup', version: '1.11.2'
 

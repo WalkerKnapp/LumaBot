@@ -1,119 +1,191 @@
-import {html, LitElement, property, css} from 'lit-element';
-import '@polymer/paper-card/paper-card.js';
-import '@polymer/paper-button/paper-button.js';
+import {customElement, html, LitElement, property} from 'lit-element';
 
-class Profile extends LitElement {
+import {feather} from '../iconset';
 
-    @property({type: String})
-    private discrimName: String | undefined;
+// @ts-ignore
+import VerifyStyle from '../style/verify.scss';
+// @ts-ignore
+import ProfileStyle from '../style/profile.scss';
 
-    @property({type: String})
-    private avatarUrl: String | undefined;
-
-    @property({type: String})
-    private verified: boolean | undefined;
+@customElement('user-profile')
+export class Profile extends LitElement {
 
     @property({type: String})
-    private steamAccounts: String[] | undefined;
+    private discordId: String | undefined;
 
-    @property({type: String})
-    private srcomAccounts: String[] | undefined;
+    private static discordIdS: String | undefined;
+
+    @property()
+    private userInfo: any;
 
     protected render() {
-        console.log("rendering profile");
+        this.fetchUserInformation();
         return html`
-<div style="display: flex;justify-content: center;align-items: center; margin-top: 70px;">
-    <paper-card>
-        <div class="image-cropper"><img src="${this.avatarUrl}"></div>
-        <h1>${this.discrimName}
-        ${this.verified ?
-            html`
-<svg style="display: inline;" width="30" height="30" viewBox="0 0 48 48" fill="none" stroke="green" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <polyline points="40 12 18 34 8 24"></polyline>
-</svg>` : ''}</h1>
+<header><h6>Profile</h6></header>
+<div class="c-centerCard">
+    <div class="c-parentCard mdc-card">
+        <div class="c-image-cropper"><img src="${this.userInfo.avatarUrl}"></div>
+        <h1 class="c-flexcenter">${this.userInfo.discrimName} ${this.userInfo.verified == 2 ? feather.check : ''}</h1>
         <hr>
-        <h2>Steam:</h2>
-        ${this.generateSteamTable()}
-        <paper-button style="margin-right: 1em;" class="gray">Add Steam Account</paper-button>
-        <h2>Speedrun.com:</h2>
-        ${this.generateSrcomTable()}
-        <paper-button style="margin-right: 1em;" class="gold">Add Speedrun.com Account</paper-button>
-        
-    </paper-card>
-</div>
-        `
+        <div style="width:fit-content;display: table">
+            <div style="display: table-row-group;">
+                <h2 class="c-flexcenter">Steam</h2>
+                <div class="c-tableRow">
+                    <div class="c-tableCell c-tableHeader">Name</div>
+                    <div class="c-tableCell c-tableHeader">Steam Link</div>
+                    <div class="c-tableCell c-tableHeader">board.iverb.me Link</div>
+                    <div class="c-tableCell c-tableHeader c-center">Rank</div>
+                    <div class="c-tableCell c-tableHeader c-center">Remove</div>
+                </div>
+                ${this.userInfo.steamAccounts.map(this.generateSteamTableRow)}
+                <a href="https://verify.luma.gq/login/steam" class="c-addButton c-flexcenter c-gray mdc-button--raised"><span class="mdc-button__label">Add Steam Account</span></a>
+                <h2 class="c-flexcenter">Speedrun.com</h2>
+                <div class="c-tableRow">
+                    <div class="c-tableCell c-tableHeader">Name</div>
+                    <div class="c-tableCell c-tableHeader">Speedrun.com Link</div>
+                    <div class="c-tableCell c-tableHeader"></div>
+                    <div class="c-tableCell c-tableHeader c-center">Rank</div>
+                    <div class="c-tableCell c-tableHeader c-center">Remove</div>
+                </div>
+                ${this.userInfo.srcomAccounts.map(this.generateSrcomTableRow)}
+                <a href="https://verify.luma.gq/login/srcom" class="c-addButton c-flexcenter c-gold mdc-button--raised"><span class="mdc-button__label">Add Speedrun.com Account</span></a>
+                <h2 class="c-flexcenter">Twitch</h2>
+                <div class="c-tableRow">
+                    <div class="c-tableCell c-tableHeader">Name</div>
+                    <div class="c-tableCell c-tableHeader">Twitch Link</div>
+                    <div class="c-tableCell c-tableHeader">Announce Stream?</div>
+                    <div class="c-tableCell c-tableHeader c-center"></div>
+                    <div class="c-tableCell c-tableHeader c-center">Remove</div>
+                </div>
+                ${this.userInfo.twitchAccounts.map(this.generateTwitchTableRow)}
+                <a href="https://verify.luma.gq/login/twitch" class="c-addButton c-flexcenter c-purple mdc-button--raised"><span class="mdc-button__label">Add Twitch Account</span></a>
+            </div>
+        </div>
+    </div>
+</div>`
+    }
+    /*
+
+     */
+
+    protected fetchUserInformation() {
+        let request = new XMLHttpRequest();
+        console.log(this.discordId);
+        request.open('GET', '/user/' + this.discordId, false);
+        request.send();
+        this.userInfo = JSON.parse(request.response);
     }
 
-    protected generateSteamTable(){
-        if(this.steamAccounts != undefined){
-            return this.steamAccounts[0];
-        } else {
-            return "";
+    generateSteamTableRow=(account: any)=>{
+        return html`<div class="c-tableRow">
+                    <div class="c-tableCell">${account.name}</div>
+                    <div class="c-tableCell">${account.steamLink != undefined ? html`<a href="${account.steamLink}" target="_blank">Steam  ${feather.externalLink}</a>` : ''}</div>
+                    <div class="c-tableCell">${account.iverbLink != undefined ? html`<a href="${account.iverbLink}" target="_blank">board.iverb.me  ${feather.externalLink}</a>` : ''}</div>
+                    <div class="c-tableCell c-center">${account.iverbRank != undefined ? account.iverbRank : ''}</div>
+                    <div class="c-tableCell c-center"><button class="mdc-button--raised c-red" @click=${() => { this.removeAccount(account.id)}}><span class="mdc-button__label">X</span></button></div>
+                </div>`
+    };
+
+    generateSrcomTableRow=(account: any)=>{
+        return html`<div class="c-tableRow">
+                    <div class="c-tableCell">${account.name}</div>
+                    <div class="c-tableCell">${account.link != undefined ? html`<a href="${account.link}" target="_blank">Speedrun.com  ${feather.externalLink}</a>` : ''}</div>
+                    <div class="c-tableCell"></div>
+                    <div class="c-tableCell c-center">${account.p2Rank != undefined ? account.p2Rank : ''}</div>
+                    <div class="c-tableCell c-center"><button class="mdc-button--raised c-red" @click=${() => { this.removeAccount(account.id)}}><span class="mdc-button__label">X</span></button></div>
+                </div>`
+    };
+
+    generateTwitchTableRow=(account: any)=>{
+
+        console.log(account);
+
+        switch (account.notify) {
+            case 0:
+                account.notifyString = "Not Announced";
+                break;
+            case 1:
+                account.notifyString = "Under Mod Review";
+                break;
+            case 2:
+                account.notifyString = "Announced";
+                break;
+
         }
-    }
 
-    protected generateSrcomTable(){
-        if(this.srcomAccounts != undefined){
-            return this.srcomAccounts[0];
-        } else {
-            return "";
+        let checked: boolean = account.notify > 0;
+
+        return html`<div class="c-tableRow">
+                    <div class="c-tableCell">${account.name}</div>
+                    <div class="c-tableCell">${account.link != undefined ? html`<a href="${account.link}" target="_blank">Twitch  ${feather.externalLink}</a>` : ''}</div>
+                    <div class="c-tableCell"><p class="c-notifytext" account="${account.id}">${account.notifyString}</p>
+                        <div class="mdc-checkbox c-purplecheck" id="check">
+                            <input type="checkbox" class="mdc-checkbox__native-control" id="checkbox-1" @change=${(e: Event) => {this.handleCheck(e, account)}} ?checked=${checked}>
+                            <div class="mdc-checkbox__background">
+                                <svg class="mdc-checkbox__checkmark"
+                                    viewBox="0 0 24 24">
+                                    <path class="mdc-checkbox__checkmark-path"
+                                        fill="none"
+                                         d="M1.73,12.91 8.1,19.28 22.79,4.59"/>
+                                </svg>
+                                <div class="mdc-checkbox__mixedmark"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="c-tableCell c-center"></div>
+                    <div class="c-tableCell c-center"><button class="mdc-button--raised c-red" @click=${() => { this.removeAccount(account.id)}}><span class="mdc-button__label">X</span></button></div>
+                </div>`
+    };
+
+    handleCheck=(e: Event, account: any)=>{
+        let element: Element | null = e.srcElement;
+        if(element != null && element instanceof HTMLInputElement) {
+            let inputElement: HTMLInputElement = element;
+            fetch('/user/' + Profile.discordIdS + '/connections/twitch/' + account.id, {
+                method: 'PATCH',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'text/plain'
+                },
+                body: JSON.stringify({notify: inputElement.checked ? 1 : 0})
+            });
+
+            if (inputElement.checked) {
+                account.notify = 1;
+                account.notifyString = "Under Mod Review";
+            } else {
+                account.notify = 0;
+                account.notifyString = "Not Announced";
+            }
+
+            // @ts-ignore
+            this.shadowRoot.querySelectorAll(".c-notifytext").forEach(value => {
+                console.log(value.getAttribute("account") + " vs " + account.id);
+                if (value.getAttribute("account") == account.id) {
+                    value.textContent = account.notifyString;
+                    console.log(account.notifyString);
+                }
+            })
         }
-    }
+    };
 
+    removeAccount=(accountId: string)=>{
+        //TODO: This is a mess
+        fetch('/user/' + Profile.discordIdS + '/connection/' + accountId, {
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'text/plain'
+            }
+        }).then(() => window.location.assign('/'));
+    };
+
+    // @ts-ignore
+    firstUpdated(_changedProperties) {
+        Profile.discordIdS = this.discordId;
+    }
 
     static get styles() {
-        return css`
-        .gray {
-            background-color: #609dd2;
-            --paper-button-ink-color: gray; !important;
-            --paper-button-flat-keyboard-focus: {
-                background-color: gray; !important;
-                color: white !important;
-            }
-        }
-        .gold {
-            background-color: #f6ce55;
-            --paper-button-ink-color: gray; !important;
-            --paper-button-flat-keyboard-focus: {
-                background-color: gray; !important;
-                color: white !important;
-            }
-        }
-        paper-card {
-            font-family: "Roboto", "Helvetica", "Arial", sans-serif;
-            font-weight: bold;
-        }
-        h1 {
-            font-size: 2rem;
-            display: flex;
-            align-items: center;
-        }
-        h2 {
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-        }
-        paper-card {
-            width: 85%;
-            padding: 10px;
-        }
-        .image-cropper {
-            width: 200px;
-            height: 200px;
-            position: relative;
-            overflow: hidden;
-            border-radius:50%;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        img {
-            display: inline;
-            margin: 0 auto;
-            height: 100%;
-            width: auto;
-        }
-        `
+        return [ProfileStyle, VerifyStyle];
     }
 }
-
-window.customElements.define("user-profile", Profile);
