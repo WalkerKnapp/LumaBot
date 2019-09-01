@@ -15,7 +15,8 @@ public class KeyReference implements Service {
     public static String keystorePass;
     public static String clarifai;
     public static String virusTotal;
-    public static String twitchId;
+    public static String twitchClientId;
+    public static String twitchClientSecret;
 
     public static String sqlUser;
     public static String sqlPass;
@@ -36,7 +37,8 @@ public class KeyReference implements Service {
         keystorePass = properties.getProperty("keystore");
         clarifai = properties.getProperty("clarifai");
         virusTotal = properties.getProperty("virustotal");
-        twitchId = properties.getProperty("twitch");
+        twitchClientId = properties.getProperty("twitch_client_id");
+        twitchClientSecret = properties.getProperty("twitch_client_secret");
 
         sqlUser = properties.getProperty("sql_user");
         sqlPass = properties.getProperty("sql_pass");

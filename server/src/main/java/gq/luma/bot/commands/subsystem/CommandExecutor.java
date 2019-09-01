@@ -140,6 +140,7 @@ public class CommandExecutor {
         CommandEvent commandEvent = new CommandEvent(event.getApi(),
                 this,
                 localization,
+                commandTree[0],
                 content,
                 Arrays.copyOfRange(messageSplit, commandTree.length, messageSplit.length),
                 event.getMessage(),

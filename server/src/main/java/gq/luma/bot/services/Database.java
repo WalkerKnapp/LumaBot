@@ -1,23 +1,31 @@
 package gq.luma.bot.services;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import gq.luma.bot.Luma;
 import gq.luma.bot.commands.subsystem.permissions.PermissionSet;
 import gq.luma.bot.reference.DefaultReference;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.reference.KeyReference;
+import gq.luma.bot.services.apis.IVerbApi;
+import gq.luma.bot.services.apis.SRcomApi;
 import gq.luma.bot.systems.filtering.filters.ImageFilter;
 import gq.luma.bot.systems.filtering.filters.LinkFilter;
 import gq.luma.bot.systems.filtering.filters.SimpleFilter;
 import gq.luma.bot.systems.filtering.filters.VirusFilter;
 import gq.luma.bot.systems.filtering.filters.types.Filter;
+import me.philippheuer.twitch4j.model.Channel;
 import org.javacord.api.entity.channel.ServerTextChannel;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.server.Server;
+import org.javacord.api.entity.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.sql.*;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.*;
 
 public class Database implements Service {
     private static final Logger logger = LoggerFactory.getLogger(Database.class);
@@ -64,15 +72,26 @@ public class Database implements Service {
     private PreparedStatement getCommunityTrackedStreams;
     private PreparedStatement getUserTrackedStreams;
 
-    private PreparedStatement getVerifiedUserById;
-    private PreparedStatement insertVerifiedUser;
+    private PreparedStatement getUserRecordById;
+    private PreparedStatement insertUserRecord;
+    private PreparedStatement updateUserRecordVerified;
 
-    private PreparedStatement getVerifiedIpsByUser;
-    private PreparedStatement getVerifiedIp;
-    private PreparedStatement insertVerifiedIp;
+    private PreparedStatement getUserConnectionAttemptsByID;
+    private PreparedStatement getUserConnectionAttemptsByIP;
+    private PreparedStatement insertUserConnectionAttempt;
 
     private PreparedStatement getVerifiedConnectionsByUser;
+    private PreparedStatement getVerifiedConnectionsByUserAndType;
+    private PreparedStatement getVerifiedConnectionsByType;
+    private PreparedStatement updateVerifiedConnectionRemovedByUserServerAndId;
+    private PreparedStatement updateVerifiedConnectionNotifyByUserServerAndId;
     private PreparedStatement insertVerifiedConnection;
+
+    private PreparedStatement countVotingKeysByServerId;
+    private PreparedStatement getVotingKeysByServerId;
+    private PreparedStatement insertVotingKey;
+    private PreparedStatement removeVotingKey;
+    private PreparedStatement clearVotingKeys;
 
 
     @Override
@@ -124,15 +143,26 @@ public class Database implements Service {
 
         getCommunityTrackedStreams = conn.prepareStatement("SELECT * FROM tracked_streams WHERE tracking_type = ?");
 
-        getVerifiedUserById = conn.prepareStatement("SELECT * FROM verified_users WHERE id = ?");
-        insertVerifiedUser = conn.prepareStatement("INSERT INTO verified_users (id, server_id, discord_token) VALUES (?,?,?)");
+        getUserRecordById = conn.prepareStatement("SELECT * FROM user_records WHERE id = ?");
+        insertUserRecord = conn.prepareStatement("INSERT INTO user_records (id, server_id, discord_token) VALUES (?,?,?)");
+        updateUserRecordVerified = conn.prepareStatement("UPDATE user_records SET verified = ? WHERE id = ? AND server_id = ?");
 
-        getVerifiedIpsByUser = conn.prepareStatement("SELECT * FROM verified_ips WHERE user_id = ?");
-        getVerifiedIp = conn.prepareStatement("SELECT * FROM verified_ips WHERE ip = ?");
-        insertVerifiedIp = conn.prepareStatement("INSERT INTO verified_ips (user_id, server_id, ip) VALUES (?,?,?)");
+        getUserConnectionAttemptsByID = conn.prepareStatement("SELECT * FROM user_connection_attempts WHERE user_id = ?");
+        getUserConnectionAttemptsByIP = conn.prepareStatement("SELECT * FROM user_connection_attempts WHERE ip = ?");
+        insertUserConnectionAttempt = conn.prepareStatement("INSERT INTO user_connection_attempts (user_id, server_id, ip) VALUES (?,?,?)");
 
-        getVerifiedConnectionsByUser = conn.prepareStatement("SELECT * FROM verified_connections WHERE user_id = ?");
+        getVerifiedConnectionsByUser = conn.prepareStatement("SELECT * FROM verified_connections WHERE user_id = ? AND server_id = ?");
+        getVerifiedConnectionsByUserAndType = conn.prepareStatement("SELECT * FROM verified_connections WHERE user_id = ? AND server_id = ? AND connection_type = ?");
+        getVerifiedConnectionsByType = conn.prepareStatement("SELECT * FROM verified_connections WHERE connection_type = ?");
+        updateVerifiedConnectionRemovedByUserServerAndId = conn.prepareStatement("UPDATE verified_connections SET removed = ? WHERE user_id = ? AND server_id = ? AND id = ?");
+        updateVerifiedConnectionNotifyByUserServerAndId = conn.prepareStatement("UPDATE verified_connections SET notify = ? WHERE user_id = ? AND server_id = ? AND id = ?");
         insertVerifiedConnection = conn.prepareStatement("INSERT INTO verified_connections (user_id, server_id, id, connection_type, connection_name, token) VALUES (?,?,?,?,?,?)");
+
+        countVotingKeysByServerId = conn.prepareStatement("SELECT COUNT(*) FROM vote_keys WHERE `server_id` = ?");
+        getVotingKeysByServerId = conn.prepareStatement("SELECT * FROM vote_keys WHERE `server_id` = ?");
+        insertVotingKey = conn.prepareStatement("INSERT INTO vote_keys (`key`, server_id) VALUES (?,?)");
+        removeVotingKey = conn.prepareStatement("DELETE FROM vote_keys WHERE `key` = ? AND `server_id` = ?");
+        clearVotingKeys = conn.prepareStatement("DELETE FROM vote_keys WHERE `server_id` = ?");
     }
 
     //Results
@@ -436,6 +466,18 @@ public class Database implements Service {
         return ret;
     }
 
+    public synchronized ArrayList<PermissionSet> getPermission(long serverId, PermissionSet.PermissionTarget target, long targetId) throws SQLException {
+        getEnabledPermission.setLong(1, serverId);
+        getEnabledPermission.setString(2, target.name());
+        getEnabledPermission.setLong(3, targetId);
+        ArrayList<PermissionSet> ret = new ArrayList<>();
+        ResultSet rs = getEnabledPermission.executeQuery();
+        while(rs.next()){
+            ret.add(new PermissionSet(rs));
+        }
+        return ret;
+    }
+
     public synchronized ArrayList<PermissionSet> getPermissionByTargetId(long targetId) throws SQLException {
         getEnabledPermissionByTargetId.setLong(1, targetId);
         ArrayList<PermissionSet> ret = new ArrayList<>();
@@ -481,20 +523,25 @@ public class Database implements Service {
         return map;
     }
 
-    public synchronized boolean isUserVerified(long id) {
+    public synchronized int getUserVerified(long id) {
         try {
-            getVerifiedUserById.setLong(1, id);
-            ResultSet rs = getVerifiedUserById.executeQuery();
-            return rs.next();
+            getUserRecordById.setLong(1, id);
+            ResultSet rs = getUserRecordById.executeQuery();
+            if(rs.next()) {
+                return rs.getInt("verified");
+            } else {
+                return -1;
+            }
         } catch (SQLException e){
             e.printStackTrace();
-            return false;
+            return -1;
         }
     }
 
-    public synchronized void writeConnectionBoxes(long id, StringBuilder sb) {
+    public synchronized void writeConnectionBoxes(long id, long serverId, StringBuilder sb) {
         try {
             getVerifiedConnectionsByUser.setLong(1, id);
+            getVerifiedConnectionsByUser.setLong(2, serverId);
             ResultSet rs = getVerifiedConnectionsByUser.executeQuery();
             while (rs.next()) {
                 sb.append("<div class=\"connectionbox\">");
@@ -508,10 +555,163 @@ public class Database implements Service {
         }
     }
 
+    public synchronized void writeConnectionsJson(long discordId, long serverId, JsonGenerator jsonGenerator) {
+        try {
+            getVerifiedConnectionsByUserAndType.setLong(1, discordId);
+            getVerifiedConnectionsByUserAndType.setLong(2, serverId);
+            getVerifiedConnectionsByUserAndType.setString(3, "steam");
+            ResultSet rs = getVerifiedConnectionsByUserAndType.executeQuery();
+            jsonGenerator.writeArrayFieldStart("steamAccounts");
+            while (rs.next()) {
+                if(rs.getInt("removed") == 0) {
+                    jsonGenerator.writeStartObject();
+                    jsonGenerator.writeStringField("name", rs.getString("connection_name"));
+                    String steamId = rs.getString("id");
+                    jsonGenerator.writeStringField("id", steamId);
+                    jsonGenerator.writeStringField("steamLink", "https://steamcommunity.com/profiles/" + steamId);
+                    String iverbLink = "https://board.iverb.me/profile/" + steamId;
+                    jsonGenerator.writeStringField("iverbLink", iverbLink);
+                    int rank = IVerbApi.getOverallRankFromUserJsonLink(iverbLink + "/json");
+                    if (rank != -1) {
+                        jsonGenerator.writeNumberField("iverbRank", rank);
+                    }
+                    jsonGenerator.writeEndObject();
+                }
+            }
+            jsonGenerator.writeEndArray();
+            getVerifiedConnectionsByUserAndType.setString(3, "srcom");
+            rs = getVerifiedConnectionsByUserAndType.executeQuery();
+            jsonGenerator.writeArrayFieldStart("srcomAccounts");
+            while (rs.next()) {
+                if(rs.getInt("removed") == 0) {
+                    jsonGenerator.writeStartObject();
+                    jsonGenerator.writeStringField("name", rs.getString("connection_name"));
+                    String srcomId = rs.getString("id");
+                    jsonGenerator.writeStringField("id", srcomId);
+                    SRcomApi.writeConnectionFieldsJson(srcomId, jsonGenerator);
+                    jsonGenerator.writeEndObject();
+                }
+            }
+            jsonGenerator.writeEndArray();
+            getVerifiedConnectionsByUserAndType.setString(3, "twitch");
+            rs = getVerifiedConnectionsByUserAndType.executeQuery();
+            jsonGenerator.writeArrayFieldStart("twitchAccounts");
+            while (rs.next()) {
+                if(rs.getInt("removed") == 0) {
+                    jsonGenerator.writeStartObject();
+                    String twitchName = rs.getString("connection_name");
+                    jsonGenerator.writeStringField("name", twitchName);
+                    String twitchId = rs.getString("id");
+                    jsonGenerator.writeStringField("id", twitchId);
+                    jsonGenerator.writeNumberField("notify", rs.getInt("notify"));
+                    jsonGenerator.writeStringField("link", "https://twitch.tv/" + twitchName);
+                    jsonGenerator.writeEndObject();
+                }
+            }
+            jsonGenerator.writeEndArray();
+        } catch (SQLException | IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public class StreamRead {
+        int notify;
+        long discordId;
+        User user;
+        long twitchId;
+        me.philippheuer.twitch4j.model.User twitchUser;
+        boolean isLive;
+
+        public StreamRead(int notify, long discordId, User user, long twitchId, me.philippheuer.twitch4j.model.User twitchUser, boolean isLive) {
+            this.notify = notify;
+            this.discordId = discordId;
+            this.user = user;
+            this.twitchId = twitchId;
+            this.twitchUser = twitchUser;
+            this.isLive = isLive;
+        }
+    }
+
+    public synchronized void writeStreamsJson(long serverId, JsonGenerator generator) {
+        try {
+            getVerifiedConnectionsByType.setString(1, "twitch");
+            ResultSet rs = getVerifiedConnectionsByType.executeQuery();
+            generator.writeStartArray();
+            ArrayList<Future<StreamRead>> futures = new ArrayList<>();
+            while (rs.next()) {
+                long discordId = rs.getLong("user_id");
+                long twitchId = rs.getLong("id");
+                int notify = rs.getInt("notify");
+
+                futures.add(Luma.executorService.submit(() -> {
+                    try {
+                        User user = Bot.api.getUserById(discordId).join();
+                        me.philippheuer.twitch4j.model.User twitchUser = Luma.twitchApi.client.getUserEndpoint().getUser(twitchId);
+                        if(twitchUser != null) {
+                            Channel twitchChannel = Luma.twitchApi.client.getChannelEndpoint().getChannel(twitchId);
+                            boolean isLive = Luma.twitchApi.client.getStreamEndpoint().isLive(twitchChannel);
+                            return new StreamRead(notify, discordId, user, twitchId, twitchUser, isLive);
+                        } else {
+                            System.err.println("Twitch user deleted, id=" + twitchId + " for user " + user.getDiscriminatedName());
+                        }
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
+                    return null;
+                }));
+            }
+            for (Future<StreamRead> future : futures) {
+                writeStreamField(generator, future.get());
+            }
+            generator.writeEndArray();
+        } catch (SQLException | IOException | InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void writeStreamField(JsonGenerator generator, StreamRead read) throws IOException {
+        if(read == null) return;
+        generator.writeStartObject();
+        generator.writeNumberField("notify", read.notify);
+        generator.writeNumberField("discordId", read.discordId);
+        generator.writeStringField("discordName", read.user.getDiscriminatedName());
+        generator.writeStringField("discordAvatarUrl", read.user.getAvatar().getUrl().toString());
+        generator.writeNumberField("twitchId", read.twitchId);
+        generator.writeStringField("twitchName", read.twitchUser.getName());
+        generator.writeStringField("twitchAvatarUrl", read.twitchUser.getLogo());
+        generator.writeBooleanField("live", read.isLive);
+        generator.writeEndObject();
+    }
+
+    public synchronized void setRemovedConnection(long discordId, long serverId, String id, int removed) {
+        try {
+            updateVerifiedConnectionRemovedByUserServerAndId.setInt(1, removed);
+            updateVerifiedConnectionRemovedByUserServerAndId.setLong(2, discordId);
+            updateVerifiedConnectionRemovedByUserServerAndId.setLong(3, serverId);
+            updateVerifiedConnectionRemovedByUserServerAndId.setString(4, id);
+            updateVerifiedConnectionRemovedByUserServerAndId.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void setNotifyConnection(long discordId, long serverId, String id, int notify) {
+        try {
+            System.out.println("Setting notifyconnection for user " + discordId + " conid" + id + " to " + notify);
+            updateVerifiedConnectionNotifyByUserServerAndId.setInt(1, notify);
+            updateVerifiedConnectionNotifyByUserServerAndId.setLong(2, discordId);
+            updateVerifiedConnectionNotifyByUserServerAndId.setLong(3, serverId);
+            updateVerifiedConnectionNotifyByUserServerAndId.setString(4, id);
+            System.out.println("Updated " + updateVerifiedConnectionNotifyByUserServerAndId.executeUpdate() + " rows.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     public synchronized void writeIps(long id, StringBuilder sb) {
         try {
-            getVerifiedIpsByUser.setLong(1, id);
-            ResultSet rs = getVerifiedIpsByUser.executeQuery();
+            getUserConnectionAttemptsByID.setLong(1, id);
+            ResultSet rs = getUserConnectionAttemptsByID.executeQuery();
             while (rs.next()) {
                 sb.append(rs.getString("ip"));
                 sb.append("</br>");
@@ -521,39 +721,66 @@ public class Database implements Service {
         }
     }
 
-    public synchronized void verifyUser(long userId, long serverId, String accessToken) {
+    public synchronized void addUserRecord(long userId, long serverId, String accessToken) {
         try {
-            getVerifiedUserById.setLong(1, userId);
-            ResultSet rs = getVerifiedUserById.executeQuery();
+            getUserRecordById.setLong(1, userId);
+            ResultSet rs = getUserRecordById.executeQuery();
             if(!rs.next()) {
-                insertVerifiedUser.setLong(1, userId);
-                insertVerifiedUser.setLong(2, serverId);
-                insertVerifiedUser.setString(3, accessToken);
-                insertVerifiedUser.execute();
+                insertUserRecord.setLong(1, userId);
+                insertUserRecord.setLong(2, serverId);
+                insertUserRecord.setString(3, accessToken);
+                insertUserRecord.execute();
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public synchronized void addVerifiedIP(long userId, long serverId, String ip) {
+    public synchronized void updateUserRecordVerified(long userId, long serverId, int verified) {
         try {
-            getVerifiedIp.setString(1, ip);
-            ResultSet rs = getVerifiedIp.executeQuery();
+            updateUserRecordVerified.setInt(1, verified);
+            updateUserRecordVerified.setLong(2, userId);
+            updateUserRecordVerified.setLong(3, serverId);
+            updateUserRecordVerified.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void addUserConnectionAttempt(long userId, long serverId, String ip) {
+        try {
+            getUserConnectionAttemptsByIP.setString(1, ip);
+            ResultSet rs = getUserConnectionAttemptsByIP.executeQuery();
             if(!rs.next()) {
-                insertVerifiedIp.setLong(1, userId);
-                insertVerifiedIp.setLong(2, serverId);
-                insertVerifiedIp.setString(3, ip);
-                insertVerifiedIp.execute();
+                insertUserConnectionAttempt.setLong(1, userId);
+                insertUserConnectionAttempt.setLong(2, serverId);
+                insertUserConnectionAttempt.setString(3, ip);
+                insertUserConnectionAttempt.execute();
             }
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    public synchronized List<Long> getUserConnectionAttemptsByIP(String ip) {
+        ArrayList<Long> ret = new ArrayList<>();
+        try {
+            getUserConnectionAttemptsByIP.setString(1, ip);
+            ResultSet rs = getUserConnectionAttemptsByIP.executeQuery();
+            while (rs.next()) {
+                ret.add(rs.getLong("user_id"));
+            }
+            return ret;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return ret;
         }
     }
 
     public synchronized void addVerifiedConnection(long userId, long serverId, String connectionId, String connectionType, String connectionName, String connectionToken) {
         try {
             getVerifiedConnectionsByUser.setLong(1, userId);
+            getVerifiedConnectionsByUser.setLong(2, serverId);
             ResultSet rs = getVerifiedConnectionsByUser.executeQuery();
             while (rs.next()) {
                 if(rs.getString("id").equalsIgnoreCase(connectionId) && rs.getString("connection_name").equalsIgnoreCase(connectionName)) {
@@ -565,8 +792,64 @@ public class Database implements Service {
             insertVerifiedConnection.setString(3, connectionId);
             insertVerifiedConnection.setString(4, connectionType);
             insertVerifiedConnection.setString(5, connectionName);
-            insertVerifiedConnection.setString(6, connectionType);
+            insertVerifiedConnection.setString(6, connectionToken);
             insertVerifiedConnection.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized int countVotingKeysByServer(long serverId) {
+        try {
+            countVotingKeysByServerId.setLong(1, serverId);
+            ResultSet rs = countVotingKeysByServerId.executeQuery();
+            rs.next();
+            return rs.getInt("Count(*)");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public synchronized List<String> getVotingKeysByServer(long serverId) {
+        try {
+            getVotingKeysByServerId.setLong(1, serverId);
+            ResultSet rs = getVotingKeysByServerId.executeQuery();
+            List<String> list = new ArrayList<>();
+            while(rs.next()) {
+                list.add(rs.getString("key"));
+            }
+            return list;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return List.of();
+    }
+
+    public synchronized void insertVotingKey(String key, long serverId) {
+        try {
+            insertVotingKey.setString(1, key);
+            insertVotingKey.setLong(2, serverId);
+            insertVotingKey.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void removeVotingKey(String key, long serverId) {
+        try {
+            removeVotingKey.setString(1, key);
+            removeVotingKey.setLong(2, serverId);
+            removeVotingKey.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void clearVotingKeys(long serverId) {
+        try {
+            clearVotingKeys.setLong(1, serverId);
+            clearVotingKeys.execute();
         } catch (SQLException e) {
             e.printStackTrace();
         }

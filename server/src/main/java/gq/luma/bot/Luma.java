@@ -1,5 +1,6 @@
 package gq.luma.bot;
 
+import com.fasterxml.jackson.core.JsonFactory;
 import gq.luma.bot.services.GDrive;
 import gq.luma.bot.services.YoutubeApi;
 import gq.luma.bot.services.*;
@@ -9,6 +10,9 @@ import gq.luma.bot.reference.KeyReference;
 import gq.luma.bot.services.web.WebServer;
 import gq.luma.bot.systems.filtering.FilterManager;
 import gq.luma.bot.utils.WordEncoder;
+import me.philippheuer.twitch4j.TwitchClient;
+import me.philippheuer.twitch4j.TwitchClientBuilder;
+import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,8 +33,13 @@ public class Luma {
 
     public static ScheduledExecutorService schedulerService = Executors.newScheduledThreadPool(4);
     public static ExecutorService executorService = new ThreadPoolExecutor(4, Integer.MAX_VALUE, 5, TimeUnit.MINUTES, new SynchronousQueue<>());
+    public static OkHttpClient okHttpClient;
+    public static JsonFactory jsonFactory;
+
+
     public static Database database;
     public static NodeServer nodeServer;
+    public static TwitchApi twitchApi;
     public static Clarifai clarifai;
     public static ClamAV clamAV;
     public static FilterManager filterManager;
@@ -49,6 +58,7 @@ public class Luma {
         services.add(new WordEncoder());
         services.add(youtubeApi = new YoutubeApi());
         services.add(nodeServer = new NodeServer());
+        services.add(twitchApi = new TwitchApi());
         services.add(new TaskScheduler());
         services.add(new WebServer());
         services.add(clarifai = new Clarifai());
@@ -57,6 +67,7 @@ public class Luma {
         services.add(filterManager = new FilterManager());
         services.add(gDrive = new GDrive());
         services.add(steamApi = new SteamApi());
+        services.add(twitchApi = new TwitchApi());
         services.add(bot = new Bot());
         //services.add(new TwitchNotifier());
     }
@@ -76,6 +87,9 @@ public class Luma {
                 }
             }
         }
+
+        okHttpClient = new OkHttpClient.Builder().build();
+        jsonFactory = new JsonFactory();
 
         try {
             for (Service s : services) {
