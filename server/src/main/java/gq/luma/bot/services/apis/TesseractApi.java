@@ -1,5 +1,6 @@
-package gq.luma.bot.services;
+package gq.luma.bot.services.apis;
 
+import gq.luma.bot.services.Service;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 

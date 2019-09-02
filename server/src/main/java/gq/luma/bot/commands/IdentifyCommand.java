@@ -11,7 +11,7 @@ import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
 import gq.luma.bot.commands.subsystem.Localization;
 import gq.luma.bot.reference.BotReference;
-import gq.luma.bot.services.TesseractApi;
+import gq.luma.bot.services.apis.TesseractApi;
 import gq.luma.bot.LumaException;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
 import net.sourceforge.tess4j.TesseractException;

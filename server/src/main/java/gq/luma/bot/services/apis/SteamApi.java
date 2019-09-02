@@ -1,7 +1,8 @@
-package gq.luma.bot.services;
+package gq.luma.bot.services.apis;
 
 import com.lukaspradel.steamapi.webapi.client.SteamWebApiClient;
 import gq.luma.bot.reference.KeyReference;
+import gq.luma.bot.services.Service;
 
 public class SteamApi implements Service {
 

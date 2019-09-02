@@ -1,4 +1,4 @@
-package gq.luma.bot.services;
+package gq.luma.bot.services.apis;
 
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpTransport;
@@ -10,6 +10,7 @@ import com.google.api.services.youtube.model.Channel;
 import com.google.api.services.youtube.model.Video;
 import gq.luma.bot.reference.KeyReference;
 import gq.luma.bot.LumaException;
+import gq.luma.bot.services.Service;
 
 import java.io.IOException;
 import java.net.URL;

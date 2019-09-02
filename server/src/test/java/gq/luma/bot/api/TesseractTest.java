@@ -1,6 +1,6 @@
 package gq.luma.bot.api;
 
-import gq.luma.bot.services.TesseractApi;
+import gq.luma.bot.services.apis.TesseractApi;
 import org.junit.Before;
 import org.junit.Test;
 

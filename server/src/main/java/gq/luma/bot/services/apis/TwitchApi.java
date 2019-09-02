@@ -1,6 +1,7 @@
-package gq.luma.bot.services;
+package gq.luma.bot.services.apis;
 
 import gq.luma.bot.reference.KeyReference;
+import gq.luma.bot.services.Service;
 import me.philippheuer.twitch4j.TwitchClient;
 import me.philippheuer.twitch4j.TwitchClientBuilder;
 
