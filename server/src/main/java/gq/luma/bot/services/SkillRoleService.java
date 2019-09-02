@@ -1,7 +1,9 @@
 package gq.luma.bot.services;
 
+import com.fasterxml.jackson.core.JsonFactory;
 import gq.luma.bot.Luma;
 import gq.luma.bot.services.apis.IVerbApi;
+import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +28,7 @@ public class SkillRoleService implements Service {
     private ScheduledFuture<?> refreshFuture;
     private Instant latestProccessedScore;
 
-    private static final int FIRST_COOP_MAP_INDEX = 59;
+    private static final int FIRST_COOP_MAP_INDEX = 60;
     private static final int[] IVERB_MAP_IDS = {
             62761, // Container Ride
             62758, // Portal Carousel
@@ -101,7 +103,7 @@ public class SkillRoleService implements Service {
             47825, // Buttons
             47828, // Lasers
             47829, // Rat Maze
-            45476, // Laser Crusher
+            45467, // Laser Crusher
             46362, // Behind the Scenes
 
             47831, // Flings
@@ -175,7 +177,8 @@ public class SkillRoleService implements Service {
                         mapScores.computeIfAbsent(score, s -> new ArrayList<>())
                                 .add(metadata);
                         // Set the latest processed timestamp to the earliest timestamp found.
-                        if(latestProccessedScore == null || metadata.timeGained.isAfter(latestProccessedScore)) {
+                        if(metadata.timeGained != null &&
+                                (latestProccessedScore == null || metadata.timeGained.isAfter(latestProccessedScore))) {
                             latestProccessedScore = metadata.timeGained;
                         }
                     });
@@ -196,51 +199,56 @@ public class SkillRoleService implements Service {
 
         AtomicReference<Instant> newLatestProcessedScore = new AtomicReference<>();
 
-        long bytesRead = IVerbApi.fetchScoreUpdates(1,
-                scoreUpdate -> scoreUpdate.metadata.timeGained.isAfter(latestProccessedScore), // Only fetch scores that are after the latest processed score.
-                scoreUpdate -> {
-                    var mapScores = scores.get(scoreUpdate.mapId);
+        long dataFetched = 0;
+        try {
+            dataFetched = IVerbApi.fetchScoreUpdates(1,
+                    scoreUpdate -> scoreUpdate.metadata.timeGained.isAfter(latestProccessedScore), // Only fetch scores that are after the latest processed score.
+                    scoreUpdate -> {
+                        var mapScores = scores.get(scoreUpdate.mapId);
 
-                    // If the player's rank changed, add them to the update queue
-                    if(scoreUpdate.postRank != scoreUpdate.preRank) {
-                        updatedUsers.add(scoreUpdate.metadata.steamId);
-                    }
-
-                    // Clean out obsolete scores from the Player
-                    mapScores.forEach((score, metadatas) -> {
-                        if(score > scoreUpdate.score) {
-                            metadatas.removeIf(m -> m.steamId == scoreUpdate.metadata.steamId);
-                            if(metadatas.isEmpty()) {
-                                mapScores.remove(score);
-                            }
+                        // If the player's rank changed, add them to the update queue
+                        if(scoreUpdate.postRank != scoreUpdate.preRank) {
+                            updatedUsers.add(scoreUpdate.metadata.steamId);
                         }
-                    });
 
-                    // Add new score
-                    mapScores.computeIfAbsent(scoreUpdate.score, s -> new ArrayList<>()).add(scoreUpdate.metadata);
+                        // Clean out obsolete scores from the Player
+                        mapScores.forEach((score, metadatas) -> {
+                            if(score > scoreUpdate.score) {
+                                metadatas.removeIf(m -> m.steamId == scoreUpdate.metadata.steamId);
+                                if(metadatas.isEmpty()) {
+                                    mapScores.remove(score);
+                                }
+                            }
+                        });
 
-                    // Clean out other scores that are now not top 200 or otherwise need to be updated
-                    AtomicInteger rank = new AtomicInteger(1);
-                    mapScores.forEach((score, metadatas) -> {
-                        if(rank.get() <= 200) {
-                            // If the rank is below (greater than) the new score, it was likely updated
-                            if(rank.get() > scoreUpdate.postRank) {
+                        // Add new score
+                        mapScores.computeIfAbsent(scoreUpdate.score, s -> new ArrayList<>()).add(scoreUpdate.metadata);
+
+                        // Clean out other scores that are now not top 200 or otherwise need to be updated
+                        AtomicInteger rank = new AtomicInteger(1);
+                        mapScores.forEach((score, metadatas) -> {
+                            if(rank.get() <= 200) {
+                                // If the rank is below (greater than) the new score, it was likely updated
+                                if(rank.get() > scoreUpdate.postRank) {
+                                    metadatas.forEach(m -> updatedUsers.add(m.steamId));
+                                }
+                                rank.addAndGet(metadatas.size());
+                            } else {
+                                mapScores.remove(score);
                                 metadatas.forEach(m -> updatedUsers.add(m.steamId));
                             }
-                            rank.addAndGet(metadatas.size());
-                        } else {
-                            mapScores.remove(score);
-                            metadatas.forEach(m -> updatedUsers.add(m.steamId));
+                        });
+
+                        if(newLatestProcessedScore.get() == null
+                                || scoreUpdate.metadata.timeGained.isAfter(newLatestProcessedScore.get())) {
+                            newLatestProcessedScore.set(scoreUpdate.metadata.timeGained);
                         }
                     });
+        } catch (IOException e) {
+            logger.error("Failed to fetch score updates", e);
+        }
 
-                    if(newLatestProcessedScore.get() == null
-                            || scoreUpdate.metadata.timeGained.isAfter(newLatestProcessedScore.get())) {
-                        newLatestProcessedScore.set(scoreUpdate.metadata.timeGained);
-                    }
-                });
-
-        logger.info("Fetched score updates. Fetched " + (bytesRead/1000f) + "kb of data and updating " + updatedUsers.size() + " players.");
+        logger.info("Fetched score updates. Fetched " + (dataFetched/1000f) +  "kb of data and updating " + updatedUsers.size() + " players.");
 
         latestProccessedScore = newLatestProcessedScore.get();
         updatedUsers.forEach(this::onScoreUpdate);
@@ -252,7 +260,7 @@ public class SkillRoleService implements Service {
         // TODO: Update discord roles here.
     }
 
-    private float calculateSpPoints(long steamId) {
+    public float calculateSpPoints(long steamId) {
         float[] totalSpPoints = { 0f };
 
         for(int i = 0; i < FIRST_COOP_MAP_INDEX; i++) {
@@ -262,7 +270,7 @@ public class SkillRoleService implements Service {
         return totalSpPoints[0];
     }
 
-    private float calculateCoopPoints(long steamId) {
+    public float calculateCoopPoints(long steamId) {
         float[] totalCoopPoints = { 0f };
 
         for(int i = FIRST_COOP_MAP_INDEX; i < IVERB_MAP_IDS.length; i++) {
@@ -296,5 +304,28 @@ public class SkillRoleService implements Service {
         refreshFuture.cancel(false);
 
         startService();
+    }
+
+    public static void main(String[] args) throws IOException {
+        Luma.okHttpClient = new OkHttpClient();
+        Luma.jsonFactory = new JsonFactory();
+        SkillRoleService service = new SkillRoleService();
+
+        service.startService();
+
+        Scanner scanner = new Scanner(System.in);
+        String line;
+        while(!(line = scanner.nextLine()).equals("stop")) {
+            long steamId = Long.parseLong(line);
+
+            float spPoints = service.calculateSpPoints(steamId);
+            float coopPoints = service.calculateCoopPoints(steamId);
+
+            System.out.println("Points for SteamId: " + steamId);
+            System.out.println("Sp: " + spPoints);
+            System.out.println("Coop: " + coopPoints);
+            //TODO: Remember that Sp points and coop points are rounded separately before being added for overall points
+            System.out.println("Overall: " + (spPoints + coopPoints));
+        }
     }
 }

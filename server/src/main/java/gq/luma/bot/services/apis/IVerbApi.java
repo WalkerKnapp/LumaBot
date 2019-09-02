@@ -3,9 +3,14 @@ package gq.luma.bot.services.apis;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import gq.luma.bot.Luma;
+import gq.luma.bot.services.SkillRoleService;
 import okhttp3.Call;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
+import org.apache.commons.io.input.CountingInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,6 +23,8 @@ import java.util.function.*;
 import java.util.stream.*;
 
 public class IVerbApi {
+    private static Logger logger = LoggerFactory.getLogger(IVerbApi.class);
+
     public static class ScoreUpdate {
         public int score = -1;
         public int preRank = -1;
@@ -103,21 +110,93 @@ public class IVerbApi {
             throw new IllegalStateException("Request to " + changelogUrl + " returned status code " + response.code());
         }
 
-        if(response.body() == null) {
+        ResponseBody body = response.body();
+
+        if(body == null) {
             throw new IllegalStateException("Request to " + changelogUrl + " returned no data.");
         }
 
-        try (InputStream is = response.body().byteStream(); JsonParser jsonParser = Luma.jsonFactory.createParser(is)) {
+        try (CountingInputStream is = new CountingInputStream(body.byteStream());
+             JsonParser jsonParser = Luma.jsonFactory.createParser(is)) {
             int objectDepth = 0;
             ScoreUpdate currentScoreUpdate = null;
 
-            while(!jsonParser.isClosed()) {
-                switch (jsonParser.nextToken()) {
+            while(!jsonParser.isClosed() && jsonParser.nextToken() != null) {
+                switch (jsonParser.currentToken()) {
                     case START_OBJECT:
                         objectDepth++;
                         if(objectDepth == 1) { // Score update object is starting
                             currentScoreUpdate = new ScoreUpdate();
                             currentScoreUpdate.metadata = new ScoreMetadata();
+                        }
+                        break;
+                    case FIELD_NAME:
+                        if(objectDepth == 1) { // The field name is a param in the score update object
+                            switch (jsonParser.getCurrentName()) {
+                                case "score":
+                                    if(currentScoreUpdate == null) {
+                                        throw new IllegalStateException("Encountered \"score\" parameter at an unexpected point.");
+                                    }
+                                    if(jsonParser.nextToken() != JsonToken.VALUE_STRING) {
+                                        throw new IllegalStateException("\"score\" param is not a String, instead is a " + jsonParser.currentToken().name());
+                                    }
+                                    currentScoreUpdate.score = Integer.parseInt(jsonParser.getValueAsString());
+                                    break;
+                                case "mapid":
+                                    if(currentScoreUpdate == null) {
+                                        throw new IllegalStateException("Encountered \"mapid\" parameter at an unexpected point.");
+                                    }
+                                    if(jsonParser.nextToken() != JsonToken.VALUE_STRING) {
+                                        throw new IllegalStateException("\"mapid\" param is not a String, instead is a " + jsonParser.currentToken().name());
+                                    }
+                                    currentScoreUpdate.mapId = Integer.parseInt(jsonParser.getValueAsString());
+                                    break;
+                                case "post_rank":
+                                    if(currentScoreUpdate == null) {
+                                        throw new IllegalStateException("Encountered \"post_rank\" parameter at an unexpected point.");
+                                    }
+                                    if(jsonParser.nextToken() != JsonToken.VALUE_STRING) {
+                                        throw new IllegalStateException("\"post_rank\" param is not a String, instead is a " + jsonParser.currentToken().name());
+                                    }
+                                    currentScoreUpdate.postRank = Integer.parseInt(jsonParser.getValueAsString());
+                                    break;
+                                case "pre_rank":
+                                    if(currentScoreUpdate == null) {
+                                        throw new IllegalStateException("Encountered \"pre_rank\" parameter at an unexpected point.");
+                                    }
+                                    jsonParser.nextToken();
+                                    if(jsonParser.currentToken() == JsonToken.VALUE_NULL) {
+                                        break;
+                                    }
+                                    if(jsonParser.currentToken() != JsonToken.VALUE_STRING) {
+                                        throw new IllegalStateException("\"pre_rank\" param is not a String, instead is a " + jsonParser.currentToken().name());
+                                    }
+                                    currentScoreUpdate.preRank = Integer.parseInt(jsonParser.getValueAsString());
+                                    break;
+                                case "profile_number":
+                                    if(currentScoreUpdate == null) {
+                                        throw new IllegalStateException("Encountered \"profile_number\" parameter at an unexpected point.");
+                                    }
+                                    if(jsonParser.nextToken() != JsonToken.VALUE_STRING) {
+                                        throw new IllegalStateException("\"profile_number\" param is not a String, instead is a " + jsonParser.currentToken().name());
+                                    }
+                                    currentScoreUpdate.metadata.steamId = Long.parseLong(jsonParser.getValueAsString());
+                                    break;
+                                case "time_gained":
+                                    if(currentScoreUpdate == null) {
+                                        throw new IllegalStateException("Encountered \"time_gained\" parameter at an unexpected point.");
+                                    }
+                                    if(jsonParser.nextToken() != JsonToken.VALUE_STRING) {
+                                        throw new IllegalStateException("\"time_gained\" param is not a String, instead is a " + jsonParser.currentToken().name());
+                                    }
+                                    String originalDate = jsonParser.getValueAsString();
+                                    // Change the date format to be compliant with ISO instants
+                                    String isoDate = originalDate.replace(' ', 'T') + ".00Z";
+                                    currentScoreUpdate.metadata.timeGained = Instant.parse(isoDate);
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
                         break;
                     case END_OBJECT:
@@ -126,18 +205,43 @@ public class IVerbApi {
                             if(currentScoreUpdate == null) {
                                 throw new IllegalStateException("Unexpected data format.");
                             }
+                            if(currentScoreUpdate.score == -1) {
+                                throw new IllegalStateException("Score update did not contain \"score\" parameter.");
+                            }
+                            if(currentScoreUpdate.mapId == -1) {
+                                throw new IllegalStateException("Score update did not contain \"mapid\" parameter.");
+                            }
+                            if(currentScoreUpdate.postRank == -1) {
+                                throw new IllegalStateException("Score update did not contain \"post_rank\" parameter.");
+                            }
+                            if(currentScoreUpdate.metadata.steamId == -1) {
+                                throw new IllegalStateException("Score update did not contain \"profile_number\" parameter.");
+                            }
+                            if(currentScoreUpdate.metadata.timeGained == null) {
+                                throw new IllegalStateException("Score update did not contain \"time_gained\" parameter.");
+                            }
 
+                            // Keep taking scores while takeWhile returns true, otherwise end
+                            if(takeWhile.test(currentScoreUpdate)) {
+                                // Pass the score to the caller.
+                                consumer.accept(currentScoreUpdate);
+                            } else {
+                                return is.getByteCount();
+                            }
                         }
                         break;
                     default:
                         break;
                 }
             }
+
+            return is.getByteCount();
         }
     }
 
     public static long fetchMapScores(int mapId, BiConsumer<Integer, ScoreMetadata> consumer) throws IOException {
         final String mapDataUrl = "https://board.iverb.me/chamber/" + mapId + "/json";
+        logger.debug("Making request to " + mapDataUrl);
 
         Request request = new Request.Builder().url(mapDataUrl).header("User-Agent", "LumaBot").build();
 
@@ -156,14 +260,14 @@ public class IVerbApi {
             throw new IllegalStateException("Request to " + mapDataUrl + " returned no data.");
         }
 
-        try (InputStream is = response.body().byteStream(); JsonParser jsonParser = Luma.jsonFactory.createParser(is)) {
+        try (CountingInputStream is = new CountingInputStream(response.body().byteStream()); JsonParser jsonParser = Luma.jsonFactory.createParser(is)) {
 
             int objectDepth = 0;
             ScoreMetadata currentScoreMetadata = null;
             int currentScore = -1;
 
-            while(!jsonParser.isClosed()) {
-                switch (jsonParser.nextToken()) {
+            while(!jsonParser.isClosed() && jsonParser.nextToken() != null) {
+                switch (jsonParser.currentToken()) {
                     case START_OBJECT:
                         objectDepth++;
                         break;
@@ -177,20 +281,24 @@ public class IVerbApi {
                                     if(currentScoreMetadata == null) {
                                         throw new IllegalStateException("Encountered \"score\" parameter at an unexpected point.");
                                     }
-                                    if(!(jsonParser.nextToken() == JsonToken.VALUE_STRING)) {
-                                        throw new IllegalStateException("\"score\" param is not a String.");
+                                    if(jsonParser.nextToken() != JsonToken.VALUE_STRING) {
+                                        throw new IllegalStateException("\"score\" param is not a String, instead is a " + jsonParser.currentToken().name());
                                     }
                                     currentScore = Integer.parseInt(jsonParser.getValueAsString());
                                     break;
                                 case "date":
                                     if(currentScoreMetadata == null) {
-                                        throw new IllegalStateException("Encountered \"score\" parameter at an unexpected point.");
+                                        throw new IllegalStateException("Encountered \"date\" parameter at an unexpected point.");
                                     }
-                                    if(!(jsonParser.nextToken() == JsonToken.VALUE_STRING)) {
-                                        throw new IllegalStateException("\"date\" param is not a String.");
+                                    jsonParser.nextToken();
+                                    if(jsonParser.currentToken() == JsonToken.VALUE_NULL) {
+                                        break;
+                                    }
+                                    if(jsonParser.currentToken() != JsonToken.VALUE_STRING) {
+                                        throw new IllegalStateException("\"date\" param is not a String, instead is a " + jsonParser.currentToken().name());
                                     }
                                     String originalDate = jsonParser.getValueAsString();
-                                    String isoDate = originalDate.replace(' ', 'T'); // Change the date format to be compliant with ISO Instants.
+                                    String isoDate = originalDate.replace(' ', 'T') + ".00Z"; // Change the date format to be compliant with ISO Instants.
                                     currentScoreMetadata.timeGained = Instant.parse(isoDate);
                                     break;
                                 default:
@@ -203,9 +311,6 @@ public class IVerbApi {
                         if(objectDepth == 1) { // Finished score object
                             if(currentScoreMetadata == null) {
                                 throw new IllegalStateException("Unexpected Data Formatting");
-                            }
-                            if(currentScoreMetadata.timeGained == null) {
-                                throw new IllegalStateException("Score returned from " + mapDataUrl + " request has no date parameter.");
                             }
                             if(currentScoreMetadata.steamId == -1) {
                                 throw new IllegalStateException("Score returned from " + mapDataUrl + " had no associated player.");
@@ -224,8 +329,8 @@ public class IVerbApi {
                         break;
                 }
             }
-        }
 
-        return response.body().contentLength();
+            return is.getByteCount();
+        }
     }
 }

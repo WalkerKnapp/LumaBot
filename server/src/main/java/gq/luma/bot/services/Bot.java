@@ -55,7 +55,6 @@ public class Bot implements Service {
         executor.registerCommand(new MemeCommands());
         executor.registerCommand(new AnalyzeCommand());
         executor.registerCommand(new IdentifyCommand());
-        executor.registerCommand(new RenderCommand());
         executor.registerCommand(new ServerCommands());
 
         api.addMessageCreateListener(new SlowMode());
