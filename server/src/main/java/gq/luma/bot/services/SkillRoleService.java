@@ -250,7 +250,9 @@ public class SkillRoleService implements Service {
 
         logger.info("Fetched score updates. Fetched " + (dataFetched/1000f) +  "kb of data and updating " + updatedUsers.size() + " players.");
 
-        latestProccessedScore = newLatestProcessedScore.get();
+        if(newLatestProcessedScore.get() != null) {
+            latestProccessedScore = newLatestProcessedScore.get();
+        }
         updatedUsers.forEach(this::onScoreUpdate);
     }
 
