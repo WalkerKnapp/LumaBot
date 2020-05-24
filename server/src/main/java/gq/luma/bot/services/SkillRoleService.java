@@ -359,7 +359,8 @@ public class SkillRoleService implements Service {
                                 Instant latestScore = getLatestScore(steamId);
 
                                 // Elite Qualifications
-                                elite.compareAndSet(false, top3Users.contains(steamId));
+                                elite.compareAndSet(false, totalPointsRounded >= 20000);
+                                //elite.compareAndSet(false, top3Users.contains(steamId));
 
                                 // Professionals Qualifications
                                 professionals.compareAndSet(false, totalPointsRounded >= 16500);
