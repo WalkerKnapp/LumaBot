@@ -256,10 +256,10 @@ public class WebServer implements Service {
         }
 
         private boolean lookupConnections(DiscordProfile discordProfile, SteamOpenIdProfile steamProfile, OidcProfile twitchProfile, long serverId) {
-            System.out.println("Discord user accessed verify.luma.gq:");
-            System.out.println("Id: "+ discordProfile.getId());
-            System.out.println("Name: " + discordProfile.getUsername() + "#" + discordProfile.getDiscriminator());
-            //System.out.println("IP: " + exchange.getRequestHeaders().get("CF-Connecting-IP").getFirst());
+            logger.trace("Discord user accessed verify.luma.gq:");
+            logger.trace("Id: "+ discordProfile.getId());
+            logger.trace("Name: " + discordProfile.getUsername() + "#" + discordProfile.getDiscriminator());
+            //logger.trace("IP: " + exchange.getRequestHeaders().get("CF-Connecting-IP").getFirst());
             try {
                 String jsonConnections = Objects.requireNonNull(Luma.okHttpClient.newCall(new Request.Builder()
                         .url("https://discordapp.com/api/v6/users/@me/connections")
@@ -292,7 +292,7 @@ public class WebServer implements Service {
 
                 for(JsonValue val : Json.parse(jsonConnections).asArray()) {
                     JsonObject connectionObj = val.asObject();
-                    System.out.println("trying to add connection: " + connectionObj.toString());
+                    logger.trace("trying to add connection: " + connectionObj.toString());
                     String id = connectionObj.get("id").asString();
                     String type = connectionObj.get("type").asString();
                     if("steam".equals(type)) {
@@ -328,18 +328,18 @@ public class WebServer implements Service {
         private FileServeHandler(Path path) throws IOException {
             System.out.println("Loading page " + path.toString() + " =====");
             this.uncompressedBuffer = ByteBuffer.wrap(Files.readAllBytes(path));
-            System.out.println("Uncompressed - " + this.uncompressedBuffer.capacity());
+            logger.debug("Uncompressed - " + this.uncompressedBuffer.capacity());
             Path brPath = Paths.get(path.toString() + ".br");
             Path gzipPath = Paths.get(path.toString() + ".gz");
             supportsBr = Files.exists(brPath);
             supportsGzip = Files.exists(gzipPath);
             if(supportsBr) {
                 this.brBuffer = ByteBuffer.wrap(Files.readAllBytes(brPath));
-                System.out.println("Brotli - " + this.brBuffer.capacity());
+                logger.debug("Brotli - " + this.brBuffer.capacity());
             }
             if(supportsGzip) {
                 this.gzipBuffer = ByteBuffer.wrap(Files.readAllBytes(gzipPath));
-                System.out.println("GZip - " + this.gzipBuffer.capacity());
+                logger.debug("GZip - " + this.gzipBuffer.capacity());
             }
         }
 
@@ -350,27 +350,27 @@ public class WebServer implements Service {
         @Override
         public void handleRequest(HttpServerExchange exchange) throws Exception {
             final List<String> res = exchange.getRequestHeaders().get(Headers.ACCEPT_ENCODING);
-            System.out.println("Got request for resource. =========");
-            System.out.println(exchange.getRequestHeaders().toString());
-            System.out.println("Accept-Encoding Headers: " + res.size());
-            res.forEach(System.out::println);
+            //System.out.println("Got request for resource. =========");
+            //System.out.println(exchange.getRequestHeaders().toString());
+            //System.out.println("Accept-Encoding Headers: " + res.size());
+            //res.forEach(System.out::println);
             //System.out.println(res.size());
             //System.out.println(exchange.getRequestHeaders().count("accept-encoding"));
             //System.out.println(res.get(0));
             //int algo = res.size() > 0 ? getOptimalCompressionAlgoritm(res.get(0).toCharArray()) : 0;
             //System.out.println(algo);
             if(res.contains("br") && supportsBr) {
-                System.out.println("Sending br buffer.");
+                //System.out.println("Sending br buffer.");
                 brBuffer.rewind();
                 exchange.getResponseHeaders().add(Headers.CONTENT_ENCODING, "br");
                 exchange.getResponseSender().send(brBuffer);
             } else if(res.contains("gzip") && supportsGzip) {
-                System.out.println("Sending gzip buffer.");
+                //System.out.println("Sending gzip buffer.");
                 gzipBuffer.rewind();
                 exchange.getResponseHeaders().add(Headers.CONTENT_ENCODING, "gzip");
                 exchange.getResponseSender().send(gzipBuffer);
             } else {
-                System.out.println("Sending uncompressed buffer.");
+                //System.out.println("Sending uncompressed buffer.");
                 uncompressedBuffer.rewind();
                 exchange.getResponseSender().send(uncompressedBuffer);
             }
@@ -452,13 +452,16 @@ public class WebServer implements Service {
 
         HttpHandler cdnHandler = exchange -> {
             String[] split = exchange.getRelativePath().split("/");
+            if(split.length < 1) {
+                return;
+            }
             String filename = split[split.length - 1];
 
-            System.out.println("Rel uncompressedBuffer: " + exchange.getRelativePath());
-            System.out.println("File name: " + filename);
+            //System.out.println("Rel uncompressedBuffer: " + exchange.getRelativePath());
+            logger.trace("Cdn request for file name: " + filename);
 
             for(Path path : Files.list(CDN_PATH).collect(Collectors.toCollection(ArrayList::new))) {
-                System.out.println(path.getFileName().toString() + "=?=" + filename);
+                //System.out.println(path.getFileName().toString() + "=?=" + filename);
                 if(path.getFileName().toString().equalsIgnoreCase(filename)) {
                     try {
                         exchange.getResponseSender().transferFrom(FileChannel.open(path), IoCallback.END_EXCHANGE);
@@ -669,7 +672,7 @@ public class WebServer implements Service {
                 .setServerOption(UndertowOptions.ENABLE_HTTP2, true)
                 .addHttpListener(80, "0.0.0.0")
                 .setHandler(new SessionAttachmentHandler(exchange -> {
-                    System.out.println("Call to host name: " + exchange.getHostName());
+                    logger.trace("Call to host name: " + exchange.getHostName());
                     switch (exchange.getHostName()) {
                         case "luma.gq":
                         case "www.luma.gq":
@@ -685,7 +688,7 @@ public class WebServer implements Service {
                             //apiHandler.handleRequest(exchange);
                             //break;
                         default:
-                            System.err.println("No host name found for host: " + exchange.getHostName());
+                            logger.debug("No host name found for host: " + exchange.getHostName());
                             exchange.setStatusCode(404);
                             exchange.getResponseSender().send("Invalid subdomain.", IoCallback.END_EXCHANGE);
                     }
@@ -700,7 +703,7 @@ public class WebServer implements Service {
             try(StreamSourceChannel channel = exchange.getRequestChannel()) {
                 byte[] patchData = new byte[size];
                 ByteBuffer buffer = ByteBuffer.wrap(patchData);
-                System.out.println(channel.read(buffer));
+                channel.read(buffer);
                 return patchData;
             } catch (IOException e) {
                 e.printStackTrace();
@@ -710,7 +713,7 @@ public class WebServer implements Service {
             }
         } else {
             exchange.setStatusCode(403);
-            System.err.println("Channel is not available for PATCH request");
+            logger.debug("Channel is not available for PATCH request");
             exchange.endExchange();
             return null;
         }
@@ -725,7 +728,7 @@ public class WebServer implements Service {
                 if (parser.nextToken() == JsonToken.FIELD_NAME) {
                     if (key.equals(parser.getCurrentName())) {
                         if (parser.nextToken() != JsonToken.VALUE_NUMBER_INT) {
-                            System.err.println(key + " is not a string for inputted data");
+                            logger.debug(key + " is not a string for inputted data");
                             return -1;
                         }
                         return parser.getValueAsInt();

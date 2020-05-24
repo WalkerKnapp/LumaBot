@@ -77,7 +77,7 @@ public class FilterManager implements Service, MessageCreateListener {
                                     List<String> addressedConsequences = new ArrayList<>();
                                     List<String> generalConsequences = new ArrayList<>();
                                     if (filter.getEffect().get("should_remove_message").asBoolean()) {
-                                        if (filter.getEffect().contains("remove_message_strikes")) {
+                                        if (filter.getEffect().get("remove_message_strikes") != null) {
                                             actionType = 1;
                                             //TODO: Filter Strikes
                                         } else {
@@ -89,7 +89,7 @@ public class FilterManager implements Service, MessageCreateListener {
                                         }
                                     }
                                     if (filter.getEffect().get("should_give_role").asBoolean()) {
-                                        if (filter.getEffect().contains("give_role_strikes")) {
+                                        if (filter.getEffect().get("give_role_strikes") != null) {
                                             actionType = 1;
                                             //TODO: Filter Strikes
                                         } else {
@@ -108,7 +108,7 @@ public class FilterManager implements Service, MessageCreateListener {
                                         }
                                     }
                                     if (filter.getEffect().get("should_kick").asBoolean()) {
-                                        if (filter.getEffect().contains("kick_strikes")) {
+                                        if (filter.getEffect().get("kick_strikes") != null) {
                                             actionType = 1;
                                             //TODO: Filter Strikes
                                         } else {
@@ -120,7 +120,7 @@ public class FilterManager implements Service, MessageCreateListener {
                                         }
                                     }
                                     if (filter.getEffect().get("should_ban").asBoolean()) {
-                                        if (filter.getEffect().contains("ban_strikes")) {
+                                        if (filter.getEffect().get("ban_strikes") != null) {
                                             actionType = 1;
                                             //TODO: Filter Strikes
                                         } else {
@@ -161,7 +161,7 @@ public class FilterManager implements Service, MessageCreateListener {
                                             author.asUser().ifPresent(user -> user.sendMessage(finalMessage));
                                         }
                                     }
-                                    if (filter.getEffect().contains("log")) {
+                                    if (filter.getEffect().get("log") != null) {
                                         server.getTextChannelById(filter.getEffect().get("log").asLong())
                                                 .ifPresentOrElse(channel -> channel.sendMessage(generateLogEmbed(logConsequence, author, filter, result, channel)),
                                                         () -> logger.error("Unabled to find text channel for id: " + filter.getEffect().get("log").asLong()));

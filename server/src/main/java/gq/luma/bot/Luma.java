@@ -47,6 +47,7 @@ public class Luma {
     public static GDrive gDrive;
     public static YoutubeApi youtubeApi;
     public static SteamApi steamApi;
+    public static SkillRoleService skillRoleService;
     public static Bot bot;
 
     private static List<Service> services;
@@ -56,9 +57,9 @@ public class Luma {
         services.add(new FileReference());
         services.add(new KeyReference());
         services.add(database = new Database());
-        services.add(new WordEncoder());
+        //services.add(new WordEncoder());
         services.add(youtubeApi = new YoutubeApi());
-        services.add(nodeServer = new NodeServer());
+        //services.add(nodeServer = new NodeServer());
         services.add(twitchApi = new TwitchApi());
         services.add(new TaskScheduler());
         services.add(new WebServer());
@@ -70,6 +71,7 @@ public class Luma {
         services.add(steamApi = new SteamApi());
         services.add(twitchApi = new TwitchApi());
         services.add(bot = new Bot());
+        services.add(skillRoleService = new SkillRoleService());
         //services.add(new TwitchNotifier());
     }
 

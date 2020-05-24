@@ -39,7 +39,7 @@ public class IVerbApi {
         public Instant timeGained = null;
     }
 
-    public static int getOverallRankFromUserJsonLink(String link) throws IOException {
+    /*public static int getOverallRankFromUserJsonLink(String link) throws IOException {
         Request request = new Request.Builder().url(link).build();
         Call call = Luma.okHttpClient.newCall(request);
         Response response = call.execute();
@@ -92,7 +92,7 @@ public class IVerbApi {
         } else {
             return -1;
         }
-    }
+    }*/
 
     public static long fetchScoreUpdates(int maxDaysAgo, Predicate<ScoreUpdate> takeWhile, Consumer<ScoreUpdate> consumer) throws IOException {
         final String changelogUrl = "https://board.iverb.me/changelog/json?maxDaysAgo=" + maxDaysAgo;

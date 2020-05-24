@@ -3,12 +3,15 @@ plugins {
     id 'org.hidetake.ssh' version '2.9.0'
 }
 
+applicationDefaultJvmArgs = ['-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005']
+
 mainClassName = "gq.luma.bot.Luma"
 
 sourceCompatibility = 10
 
 repositories {
     mavenLocal()
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
     maven {
         url 'https://repository.apache.org/content/repositories/snapshots/'
         maven { url 'https://jitpack.io' }
@@ -18,14 +21,16 @@ repositories {
 dependencies {
     compile project(':common')
     compile group: 'commons-validator', name: 'commons-validator', version: '1.6'
-    //compile 'org.javacord:javacord:3.0.1'
-    implementation 'com.github.Bastian:Javacord:263488da7a'
+    compile group: 'org.javacord', name: 'javacord-core', version: '3.0.4'
+    implementation 'org.javacord:javacord:3.0.4'
     //compile "org.javacord:javacord:3.0.0-11"
     //compile project(':javacord')
     //implementation project(':javacord-core')
     compile group: 'org.java-websocket', name: 'Java-WebSocket', version: '1.3.7'
     compile group: 'com.google.apis', name: 'google-api-services-youtube', version: 'v3-rev192-1.23.0'
     compile group: 'mysql', name: 'mysql-connector-java', version: '8.0.9-rc'
+
+    compile 'com.eclipsesource.minimal-json:minimal-json:0.9.5'
 
     compile 'org.apache.commons:commons-imaging:1.0-SNAPSHOT'
 

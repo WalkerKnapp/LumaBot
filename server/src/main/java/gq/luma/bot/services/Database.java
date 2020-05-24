@@ -26,6 +26,7 @@ import java.sql.*;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Stream;
 
 public class Database implements Service {
     private static final Logger logger = LoggerFactory.getLogger(Database.class);
@@ -83,6 +84,7 @@ public class Database implements Service {
     private PreparedStatement getVerifiedConnectionsByUser;
     private PreparedStatement getVerifiedConnectionsByUserAndType;
     private PreparedStatement getVerifiedConnectionsByType;
+    private PreparedStatement getVerifiedConnectionsByTypeAndId;
     private PreparedStatement updateVerifiedConnectionRemovedByUserServerAndId;
     private PreparedStatement updateVerifiedConnectionNotifyByUserServerAndId;
     private PreparedStatement insertVerifiedConnection;
@@ -154,6 +156,7 @@ public class Database implements Service {
         getVerifiedConnectionsByUser = conn.prepareStatement("SELECT * FROM verified_connections WHERE user_id = ? AND server_id = ?");
         getVerifiedConnectionsByUserAndType = conn.prepareStatement("SELECT * FROM verified_connections WHERE user_id = ? AND server_id = ? AND connection_type = ?");
         getVerifiedConnectionsByType = conn.prepareStatement("SELECT * FROM verified_connections WHERE connection_type = ?");
+        getVerifiedConnectionsByTypeAndId = conn.prepareStatement("SELECT * FROM verified_connections WHERE connection_type = ? AND id = ?");
         updateVerifiedConnectionRemovedByUserServerAndId = conn.prepareStatement("UPDATE verified_connections SET removed = ? WHERE user_id = ? AND server_id = ? AND id = ?");
         updateVerifiedConnectionNotifyByUserServerAndId = conn.prepareStatement("UPDATE verified_connections SET notify = ? WHERE user_id = ? AND server_id = ? AND id = ?");
         insertVerifiedConnection = conn.prepareStatement("INSERT INTO verified_connections (user_id, server_id, id, connection_type, connection_name, token) VALUES (?,?,?,?,?,?)");
@@ -571,7 +574,7 @@ public class Database implements Service {
                     jsonGenerator.writeStringField("steamLink", "https://steamcommunity.com/profiles/" + steamId);
                     String iverbLink = "https://board.iverb.me/profile/" + steamId;
                     jsonGenerator.writeStringField("iverbLink", iverbLink);
-                    int rank = IVerbApi.getOverallRankFromUserJsonLink(iverbLink + "/json");
+                    int rank = Luma.skillRoleService.calculateRoundedTotalPoints(Long.parseLong(steamId));
                     if (rank != -1) {
                         jsonGenerator.writeNumberField("iverbRank", rank);
                     }
@@ -667,6 +670,45 @@ public class Database implements Service {
         } catch (SQLException | IOException | InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
+    }
+
+    public synchronized List<User> getVerifiedConnectionsById(long id, String type) {
+        try {
+            getVerifiedConnectionsByTypeAndId.setString(1, String.valueOf(id));
+            getVerifiedConnectionsByTypeAndId.setString(2, type);
+
+            ResultSet rs = getVerifiedConnectionsByTypeAndId.executeQuery();
+
+            ArrayList<User> ret = new ArrayList<>();
+            while (rs.next()) {
+                ret.add(Bot.api.getUserById(rs.getString("user_id")).join());
+            }
+
+            return ret;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return new ArrayList<>();
+    }
+
+    public synchronized Map<String, List<String>> getVerifiedConnectionsByUser(long userId, long serverId) {
+        HashMap<String, List<String>> ret = new HashMap<>();
+
+        try {
+            getVerifiedConnectionsByUser.setLong(1, userId);
+            getVerifiedConnectionsByUser.setLong(2, serverId);
+            ResultSet rs = getVerifiedConnectionsByUser.executeQuery();
+
+            while (rs.next()) {
+                ret.computeIfAbsent(rs.getString("connection_type"), str -> new ArrayList<>())
+                        .add(rs.getString("id"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return ret;
     }
 
     private void writeStreamField(JsonGenerator generator, StreamRead read) throws IOException {

@@ -4,15 +4,20 @@ import com.fasterxml.jackson.core.JsonFactory;
 import gq.luma.bot.Luma;
 import gq.luma.bot.services.apis.IVerbApi;
 import okhttp3.OkHttpClient;
+import org.javacord.api.entity.permission.Role;
+import org.javacord.api.entity.user.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -154,11 +159,22 @@ public class SkillRoleService implements Service {
             48287 // Crazier Box
     };
 
+    private static final long ELITE_ROLE = 574794615971119135L;
+    private static final long ADVANCED_ROLE = 608364011028742162L;
+    private static final long PROFESSIONALS_ROLE = 313760989180985344L;
+    private static final long INTERMEDIATE_ROLE = 574794742462677008L;
+    private static final long BEGINNER_ROLE = 146432621071564800L;
+
     // This should be a full mirror of the Iverb scores database.
+    // <Map id, <Rank, List<Scores>>>
     private HashMap<Integer, ConcurrentSkipListMap<Integer, ArrayList<IVerbApi.ScoreMetadata>>> scores;
+    // Updated every cycle, a list of the people in the top 3 ranks
+    // <Rank, List<User ids>>
+    private ArrayList<Long> top3Users;
 
     public SkillRoleService() {
         this.scores = new HashMap<>();
+        this.top3Users = new ArrayList<>();
     }
 
     @Override
@@ -190,6 +206,10 @@ public class SkillRoleService implements Service {
 
         refreshFuture = Luma.schedulerService
                 .scheduleAtFixedRate(this::runChangelogFetch, milliRefreshTime, milliRefreshTime, TimeUnit.MILLISECONDS);
+
+        // Update all users on bot start.
+        Bot.api.getServerById(146404426746167296L)
+                .ifPresent(server -> server.getMembers().forEach(this::onScoreUpdate));
     }
 
     private void runChangelogFetch() {
@@ -248,6 +268,8 @@ public class SkillRoleService implements Service {
             logger.error("Failed to fetch score updates", e);
         }
 
+        updatedUsers.addAll(updateTop3());
+
         logger.info("Fetched score updates. Fetched " + (dataFetched/1000f) +  "kb of data and updating " + updatedUsers.size() + " players.");
 
         if(newLatestProcessedScore.get() != null) {
@@ -256,10 +278,147 @@ public class SkillRoleService implements Service {
         updatedUsers.forEach(this::onScoreUpdate);
     }
 
+    /**
+     *
+     * @return The users that need to be updated.
+     */
+    private Set<Long> updateTop3() {
+        // <Steam id>
+        ArrayList<Long> allUsers = new ArrayList<>();
+
+        this.scores.forEach((mapId, mapScores) -> mapScores.forEach((rank, rankScores) -> {
+            rankScores.forEach(metadata -> {
+                if(!allUsers.contains(metadata.steamId)) {
+                    allUsers.add(metadata.steamId);
+                }
+            });
+        }));
+
+        // <Score, List<User id>>
+        ConcurrentSkipListMap<Integer, List<Long>> allOveralls = new ConcurrentSkipListMap<>();
+        for(long steamId : allUsers) {
+            int overallScore = calculateRoundedTotalPoints(steamId);
+            allOveralls.computeIfAbsent(overallScore, s -> new ArrayList<>())
+                    .add(steamId);
+        }
+
+        Set<Long> updatesNeeded = new HashSet<>();
+        ArrayList<Long> newTop3 = new ArrayList<>();
+
+        // Pop the 3 highest scores
+        for(int i = 0; i < 3; i++) {
+            var lastEntry = allOveralls.pollLastEntry();
+            for(long steamId : lastEntry.getValue()) {
+                newTop3.add(steamId);
+                if(!this.top3Users.contains(steamId)) {
+                    updatesNeeded.add(steamId);
+                }
+            }
+        }
+
+        // Iterate through the old and see if anyone lost their spot
+        for(long steamId : this.top3Users) {
+            if(!newTop3.contains(steamId)) {
+                updatesNeeded.add(steamId);
+            }
+        }
+
+        this.top3Users = newTop3;
+
+        return updatesNeeded;
+    }
+
     private void onScoreUpdate(long steamId) {
         logger.debug("Score updated for steam account: " + steamId);
 
-        // TODO: Update discord roles here.
+        for(User user : Luma.database.getVerifiedConnectionsById(steamId, "steam")) {
+            onScoreUpdate(user);
+        }
+    }
+
+    private void onScoreUpdate(User discordUser) {
+
+        AtomicBoolean elite = new AtomicBoolean(false);
+        AtomicBoolean professionals = new AtomicBoolean(false);
+        AtomicBoolean advanced = new AtomicBoolean(false);
+        AtomicBoolean intermediate = new AtomicBoolean(false);
+        AtomicBoolean beginner = new AtomicBoolean(false);
+
+        final Instant oneMonthAgo = Instant.now().minus(30, ChronoUnit.DAYS);
+
+        Luma.database.getVerifiedConnectionsByUser(discordUser.getId(), 146404426746167296L)
+                .forEach((type, ids) -> {
+                    switch (type) {
+                        case "steam":
+                            // Check a user's iverb account(s).
+                            for(String steamIdString : ids) {
+                                long steamId = Long.parseLong(steamIdString);
+                                float spPoints = calculateSpPoints(steamId);
+                                float coopPoints = calculateCoopPoints(steamId);
+                                int totalPointsRounded = Math.round(spPoints) + Math.round(coopPoints);
+                                Instant latestScore = getLatestScore(steamId);
+
+                                // Elite Qualifications
+                                elite.compareAndSet(false, top3Users.contains(steamId));
+
+                                // Professionals Qualifications
+                                professionals.compareAndSet(false, totalPointsRounded >= 16500);
+                                professionals.compareAndSet(false, spPoints >= 9500);
+                                professionals.compareAndSet(false, coopPoints >= 8000);
+
+                                // Advanced Qualifications
+                                advanced.compareAndSet(false, spPoints >= 7000);
+                                advanced.compareAndSet(false, coopPoints >= 6000);
+
+                                // Intermediate Qualifications
+                                intermediate.compareAndSet(false, spPoints >= 2000);
+                                intermediate.compareAndSet(false, coopPoints >= 2500);
+
+                                // Beginner Qualifications
+                                beginner.compareAndSet(false, latestScore.isAfter(oneMonthAgo));
+                            }
+                            break;
+                        case "srcom":
+                            // TODO: Speedrun.com data
+                            break;
+                        default:
+                            break;
+                    }
+                });
+
+        Bot.api.getRoleById(ELITE_ROLE)
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, elite),
+                        () -> logger.error("Failed to find elite role."));
+
+        Bot.api.getRoleById(PROFESSIONALS_ROLE)
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, professionals),
+                        () -> logger.error("Failed to find professionals role."));
+
+        Bot.api.getRoleById(ADVANCED_ROLE)
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, advanced),
+                        () -> logger.error("Failed to find advanced role."));
+
+        Bot.api.getRoleById(INTERMEDIATE_ROLE)
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, intermediate),
+                        () -> logger.error("Failed to find intermediate role."));
+
+        Bot.api.getRoleById(BEGINNER_ROLE)
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, beginner),
+                        () -> logger.error("Failed to find beginner role."));
+    }
+
+    private void giveOrTakeRole(Role role, User discordUser, AtomicBoolean state) {
+        if(!role.getUsers().contains(discordUser)) {
+            if(state.get()) {
+                logger.debug("Giving {} {} role", discordUser.getDiscriminatedName(), role.getName());
+                discordUser.addRole(role);
+            }
+        } else {
+            if(!state.get()) {
+                logger.debug("Removing {} {} role", discordUser.getDiscriminatedName(), role.getName());
+                // TODO: Remove role
+            }
+        }
     }
 
     public float calculateSpPoints(long steamId) {
@@ -282,6 +441,10 @@ public class SkillRoleService implements Service {
         return totalCoopPoints[0];
     }
 
+    public int calculateRoundedTotalPoints(long steamId) {
+        return Math.round(calculateSpPoints(steamId)) + Math.round(calculateCoopPoints(steamId));
+    }
+
     private void sumMapPoints(long steamId, float[] totalCoopPoints, int mapId) {
         var mapScores = scores.get(IVERB_MAP_IDS[mapId]);
 
@@ -294,6 +457,20 @@ public class SkillRoleService implements Service {
             });
             rank.addAndGet(metadatas.size());
         });
+    }
+
+    private Instant getLatestScore(long steamId) {
+        AtomicReference<Instant> latestScore = new AtomicReference<>(Instant.MIN);
+        this.scores.forEach((mapId, mapScores) ->
+                mapScores.forEach((rank, rankScores) ->
+                        rankScores.forEach(meta -> {
+            if(meta.steamId == steamId && meta.timeGained != null) {
+                if(meta.timeGained.isAfter(latestScore.get())) {
+                    latestScore.set(meta.timeGained);
+                }
+            }
+        })));
+        return latestScore.get();
     }
 
     private float calculatePoints(int rank) {
