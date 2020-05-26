@@ -280,7 +280,8 @@ public class WebServer implements Service {
 
                 if(twitchProfile != null) {
                     long twitchUserId = Long.parseLong(twitchProfile.getId());
-                    String displayName = Luma.twitchApi.client.getUserEndpoint().getUser(twitchUserId).getDisplayName();
+                    String displayName = Luma.twitchApi.client.getHelix().getUsers(Luma.twitchApi.appAccessToken, List.of(String.valueOf(twitchUserId)), null).execute().getUsers().get(0).getDisplayName();
+                    //Luma.twitchApi.client.getUserEndpoint().getUser(twitchUserId).getDisplayName();
 
                     Luma.database.addVerifiedConnection(Long.parseLong(discordProfile.getId()),
                             serverId,

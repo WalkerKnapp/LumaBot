@@ -32,7 +32,7 @@ import java.util.concurrent.*;
 public class Luma {
     private static Logger logger = LoggerFactory.getLogger(Luma.class);
 
-    public static ScheduledExecutorService schedulerService = Executors.newScheduledThreadPool(4);
+    public static ScheduledExecutorService schedulerService = Executors.newScheduledThreadPool(12);
     public static ExecutorService executorService = new ThreadPoolExecutor(4, Integer.MAX_VALUE, 5, TimeUnit.MINUTES, new SynchronousQueue<>());
     public static OkHttpClient okHttpClient;
     public static JsonFactory jsonFactory;
@@ -60,7 +60,7 @@ public class Luma {
         //services.add(new WordEncoder());
         services.add(youtubeApi = new YoutubeApi());
         //services.add(nodeServer = new NodeServer());
-        services.add(twitchApi = new TwitchApi());
+        //services.add(twitchApi = new TwitchApi());
         services.add(new TaskScheduler());
         services.add(new WebServer());
         services.add(clarifai = new Clarifai());
@@ -69,9 +69,9 @@ public class Luma {
         services.add(filterManager = new FilterManager());
         services.add(gDrive = new GDrive());
         services.add(steamApi = new SteamApi());
-        services.add(twitchApi = new TwitchApi());
         services.add(bot = new Bot());
         services.add(skillRoleService = new SkillRoleService());
+        services.add(twitchApi = new TwitchApi());
         //services.add(new TwitchNotifier());
     }
 

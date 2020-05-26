@@ -11,11 +11,14 @@ sourceCompatibility = 10
 
 repositories {
     mavenLocal()
+    jcenter()
+    maven { url "https://oss.jfrog.org/artifactory/libs-release"}
     maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
     maven {
         url 'https://repository.apache.org/content/repositories/snapshots/'
     }
     maven { url 'https://jitpack.io' }
+
 }
 
 dependencies {
@@ -32,7 +35,7 @@ dependencies {
 
     compile 'com.eclipsesource.minimal-json:minimal-json:0.9.5'
 
-    implementation 'com.github.WalkerKnapp.JSpeedrun:jspeedrun-api:a53fc0fc48'
+    implementation 'com.github.WalkerKnapp.JSpeedrun:jspeedrun-api:242e3d1b46'
 
     compile 'org.apache.commons:commons-imaging:1.0-SNAPSHOT'
 
@@ -44,7 +47,7 @@ dependencies {
     implementation 'org.pac4j:pac4j-oidc:3.4.0'
     
     implementation 'com.lukaspradel:steam-web-api:1.2'
-    compile group: 'com.github.twitch4j', name: 'twitch4j', version: 'v0.12.0'
+    compile group: 'com.github.twitch4j', name: 'twitch4j', version: '1.0.0-alpha.24'
 
     compile group: 'org.jsoup', name: 'jsoup', version: '1.11.2'
 

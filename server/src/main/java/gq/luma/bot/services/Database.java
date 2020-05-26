@@ -1,6 +1,7 @@
 package gq.luma.bot.services;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.github.twitch4j.TwitchClient;
 import gq.luma.bot.Luma;
 import gq.luma.bot.commands.subsystem.permissions.PermissionSet;
 import gq.luma.bot.reference.DefaultReference;
@@ -13,7 +14,6 @@ import gq.luma.bot.systems.filtering.filters.LinkFilter;
 import gq.luma.bot.systems.filtering.filters.SimpleFilter;
 import gq.luma.bot.systems.filtering.filters.VirusFilter;
 import gq.luma.bot.systems.filtering.filters.types.Filter;
-import me.philippheuer.twitch4j.model.Channel;
 import org.javacord.api.entity.channel.ServerTextChannel;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.server.Server;
@@ -622,10 +622,10 @@ public class Database implements Service {
         long discordId;
         User user;
         long twitchId;
-        me.philippheuer.twitch4j.model.User twitchUser;
+        com.github.twitch4j.helix.domain.User twitchUser;
         boolean isLive;
 
-        public StreamRead(int notify, long discordId, User user, long twitchId, me.philippheuer.twitch4j.model.User twitchUser, boolean isLive) {
+        public StreamRead(int notify, long discordId, User user, long twitchId, com.github.twitch4j.helix.domain.User twitchUser, boolean isLive) {
             this.notify = notify;
             this.discordId = discordId;
             this.user = user;
@@ -649,10 +649,11 @@ public class Database implements Service {
                 futures.add(Luma.executorService.submit(() -> {
                     try {
                         User user = Bot.api.getUserById(discordId).join();
-                        me.philippheuer.twitch4j.model.User twitchUser = Luma.twitchApi.client.getUserEndpoint().getUser(twitchId);
+                        com.github.twitch4j.helix.domain.User twitchUser = Luma.twitchApi.client.getHelix().getUsers(Luma.twitchApi.appAccessToken, List.of(String.valueOf(twitchId)), null).execute().getUsers().get(0);
                         if(twitchUser != null) {
-                            Channel twitchChannel = Luma.twitchApi.client.getChannelEndpoint().getChannel(twitchId);
-                            boolean isLive = Luma.twitchApi.client.getStreamEndpoint().isLive(twitchChannel);
+                            //Channel twitchChannel = Luma.twitchApi.client.getHelix()(twitchId);
+                            //boolean isLive = Luma.twitchApi.client.getStreamEndpoint().isLive(twitchChannel);
+                            boolean isLive = false;
                             return new StreamRead(notify, discordId, user, twitchId, twitchUser, isLive);
                         } else {
                             System.err.println("Twitch user deleted, id=" + twitchId + " for user " + user.getDiscriminatedName());
@@ -672,10 +673,30 @@ public class Database implements Service {
         }
     }
 
-    public synchronized List<User> getVerifiedConnectionsById(long id, String type) {
+    public synchronized List<String> getVerifiedConnectionsByType(String type) {
         try {
-            getVerifiedConnectionsByTypeAndId.setString(1, String.valueOf(id));
-            getVerifiedConnectionsByTypeAndId.setString(2, type);
+            getVerifiedConnectionsByType.setString(1, type);
+
+            ResultSet rs = getVerifiedConnectionsByType.executeQuery();
+
+            ArrayList<String> ret = new ArrayList<>();
+            while(rs.next()) {
+                ret.add(rs.getString("id"));
+            }
+
+            return ret;
+
+        } catch (SQLException t) {
+            t.printStackTrace();
+        }
+
+        return List.of();
+    }
+
+    public synchronized List<User> getVerifiedConnectionsById(String id, String type) {
+        try {
+            getVerifiedConnectionsByTypeAndId.setString(1, type);
+            getVerifiedConnectionsByTypeAndId.setString(2, id);
 
             ResultSet rs = getVerifiedConnectionsByTypeAndId.executeQuery();
 
@@ -719,8 +740,8 @@ public class Database implements Service {
         generator.writeStringField("discordName", read.user.getDiscriminatedName());
         generator.writeStringField("discordAvatarUrl", read.user.getAvatar().getUrl().toString());
         generator.writeNumberField("twitchId", read.twitchId);
-        generator.writeStringField("twitchName", read.twitchUser.getName());
-        generator.writeStringField("twitchAvatarUrl", read.twitchUser.getLogo());
+        generator.writeStringField("twitchName", read.twitchUser.getDisplayName());
+        generator.writeStringField("twitchAvatarUrl", read.twitchUser.getProfileImageUrl());
         generator.writeBooleanField("live", read.isLive);
         generator.writeEndObject();
     }

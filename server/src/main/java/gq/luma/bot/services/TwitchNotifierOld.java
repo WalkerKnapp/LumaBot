@@ -1,11 +1,9 @@
 package gq.luma.bot.services;
 
-import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonArray;
 import com.eclipsesource.json.JsonObject;
 import com.eclipsesource.json.JsonValue;
 import gq.luma.bot.Luma;
-import gq.luma.bot.reference.KeyReference;
 import org.javacord.api.entity.message.MessageBuilder;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.slf4j.Logger;
@@ -21,8 +19,8 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
-public class TwitchNotifier implements Service {
-    private static final Logger logger = LoggerFactory.getLogger(TwitchNotifier.class);
+public class TwitchNotifierOld implements Service {
+    private static final Logger logger = LoggerFactory.getLogger(TwitchNotifierOld.class);
 
     private static final String STREAM_LOOKUP_URL = "https://api.twitch.tv/helix/streams";
     private static final String USER_LOOKUP_URL = "https://api.twitch.tv/helix/users";

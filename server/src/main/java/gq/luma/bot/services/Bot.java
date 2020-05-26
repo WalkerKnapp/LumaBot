@@ -81,10 +81,17 @@ public class Bot implements Service {
 
         api.addServerJoinListener(event -> {
             try {
-                // Check if user is 
                 Luma.database.addServer(event.getServer(), DefaultReference.CLARIFAI_CAP, Instant.now());
             } catch (SQLException e) {
                 e.printStackTrace();
+            }
+        });
+
+        api.addServerMemberJoinListener(event -> {
+            // Check if user was previously verified
+            if(Luma.database.getUserVerified(event.getUser().getId()) == 2) {
+                // Give user the Verified role
+                event.getUser().addRole(api.getRoleById(558133536784121857L).orElseThrow(AssertionError::new));
             }
         });
 
