@@ -69,67 +69,72 @@ public class TwitchApi implements Service {
     }
 
     public void updateStreams() {
-        logger.info("Updating twitch streams...");
+        try {
+            logger.info("Updating twitch streams...");
 
-        List<String> twitchIds = Luma.database.getVerifiedConnectionsByType("twitch");
-        List<Stream> streams = getStreams(twitchIds);
+            List<String> twitchIds = Luma.database.getVerifiedConnectionsByType("twitch");
+            List<Stream> streams = getStreams(twitchIds);
 
 
-        TextChannel streamsChannel = Bot.api.getTextChannelById(STREAMS_CHANNEL).orElseThrow(AssertionError::new);
+            TextChannel streamsChannel = Bot.api.getTextChannelById(STREAMS_CHANNEL).orElseThrow(AssertionError::new);
 
-        // Check that announced streams are still live
-        HashMap<String, Long> announcementsToRemove = new HashMap<>();
+            // Check that announced streams are still live
+            HashMap<String, Long> announcementsToRemove = new HashMap<>();
 
-        currentAnnouncements.forEach((twitchId, message) -> {
-            if(twitchIds.contains(twitchId)) {
-                // Remove announced ids
-                twitchIds.remove(twitchId);
+            currentAnnouncements.forEach((twitchId, message) -> {
+                if (twitchIds.contains(twitchId)) {
+                    // Remove announced ids
+                    twitchIds.remove(twitchId);
 
-                if(streams.stream().noneMatch(s -> s.getUserId().equals(twitchId))) {
+                    if (streams.stream().noneMatch(s -> s.getUserId().equals(twitchId))) {
+                        announcementsToRemove.put(twitchId, message);
+                    }
+                } else {
                     announcementsToRemove.put(twitchId, message);
                 }
-            } else {
-                announcementsToRemove.put(twitchId, message);
-            }
-        });
+            });
 
-        announcementsToRemove.forEach((twitchId, message) -> {
-            Bot.api.getMessageById(message, streamsChannel).thenAccept(Message::delete);
-        });
+            announcementsToRemove.forEach((twitchId, message) -> {
+                Bot.api.getMessageById(message, streamsChannel).thenAccept(Message::delete);
+                currentAnnouncements.remove(twitchId);
+            });
 
-        // Announce new streams
-        streams.forEach(stream -> {
-            if(!currentAnnouncements.containsKey(stream.getUserId())) {
-                AtomicReference<Color> embedColor = new AtomicReference<>(new Color(100, 65, 164));
-                AtomicReference<String> userTag = new AtomicReference<>();
-                AtomicReference<String> profileUrl = new AtomicReference<>();
+            // Announce new streams
+            streams.forEach(stream -> {
+                if (!currentAnnouncements.containsKey(stream.getUserId())) {
+                    AtomicReference<Color> embedColor = new AtomicReference<>(new Color(100, 65, 164));
+                    AtomicReference<String> userTag = new AtomicReference<>();
+                    AtomicReference<String> profileUrl = new AtomicReference<>();
 
-                Luma.database.getVerifiedConnectionsById(stream.getUserId(), "twitch")
-                        .stream()
-                        .findFirst().ifPresent(discordUser -> {
-                            discordUser.getRoleColor(Bot.api.getServerById(146404426746167296L).orElseThrow(AssertionError::new))
-                                    .ifPresent(embedColor::set);
+                    Luma.database.getVerifiedConnectionsById(stream.getUserId(), "twitch")
+                            .stream()
+                            .findFirst().ifPresent(discordUser -> {
+                        discordUser.getRoleColor(Bot.api.getServerById(146404426746167296L).orElseThrow(AssertionError::new))
+                                .ifPresent(embedColor::set);
 
-                            userTag.set(discordUser.getDiscriminatedName());
-                            profileUrl.set(discordUser.getAvatar().getUrl().toString());
-                        });
+                        userTag.set(discordUser.getDiscriminatedName());
+                        profileUrl.set(discordUser.getAvatar().getUrl().toString());
+                    });
 
-                client.getHelix().getUsers(appAccessToken, List.of(stream.getUserId()), null)
-                        .execute()
-                        .getUsers().stream()
-                        .findFirst().ifPresent(twitchUser -> {
-                    Message message = streamsChannel.sendMessage(new EmbedBuilder()
-                            .setTimestamp(stream.getStartedAt().toInstant())
-                            .setTitle(stream.getUserName() + " is live!")
-                            .addField(stream.getTitle(), "https://twitch.tv/" + stream.getUserName())
-                            .setColor(embedColor.get())
-                            .setAuthor(userTag.get(), "https://twitch.tv/" + stream.getUserName(), profileUrl.get())
-                            .setImage(stream.getThumbnailUrl() == null ? twitchUser.getProfileImageUrl() : stream.getThumbnailUrl())).join();
+                    client.getHelix().getUsers(appAccessToken, List.of(stream.getUserId()), null)
+                            .execute()
+                            .getUsers().stream()
+                            .findFirst().ifPresent(twitchUser -> {
+                        Message message = streamsChannel.sendMessage(new EmbedBuilder()
+                                .setTimestamp(stream.getStartedAt().toInstant())
+                                .setTitle(stream.getUserName() + " is live!")
+                                .addField(stream.getTitle(), "https://twitch.tv/" + stream.getUserName())
+                                .setColor(embedColor.get())
+                                .setAuthor(userTag.get(), "https://twitch.tv/" + stream.getUserName(), profileUrl.get())
+                                .setImage(stream.getThumbnailUrl() == null ? twitchUser.getProfileImageUrl() : stream.getThumbnailUrl())).join();
 
-                    currentAnnouncements.put(stream.getUserId(), message.getId());
-                });
-            }
-        });
+                        currentAnnouncements.put(stream.getUserId(), message.getId());
+                    });
+                }
+            });
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
     }
 
     public List<Stream> getStreams(List<String> userIds) {

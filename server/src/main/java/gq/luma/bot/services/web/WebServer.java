@@ -60,6 +60,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class WebServer implements Service {
@@ -117,12 +119,27 @@ public class WebServer implements Service {
             if(latestDiscordProfile != null) {
                 Luma.database.addUserRecord(Long.parseLong(latestDiscordProfile.getId()), serverId, latestDiscordProfile.getAccessToken());
                 String ip = exchange.getRequestHeaders().get("CF-Connecting-IP").getFirst();
+
+                boolean lookupConnectionsSucceeded = lookupConnections(latestDiscordProfile, latestSteamProfile, latestTwitchProfile, serverId);
+
                 if(Luma.database.getUserVerified(Long.parseLong(latestDiscordProfile.getId())) < 1) {
                     attemptToVerifyUser(latestDiscordProfile, serverId, ip);
+                } else {
+                    // Still try to give them the verified role
+                    Bot.api.getServerById(serverId).ifPresent(server -> {
+                        Bot.api.getRoleById(VERIFIED_ROLE).ifPresent(role -> {
+                            Bot.api.getUserById(latestDiscordProfile.getId()).thenAccept(user -> {
+                               if(!user.getRoles(server).contains(role)) {
+                                   user.addRole(role);
+                               }
+                            });
+                        });
+                    });
                 }
+
                 Luma.database.addUserConnectionAttempt(Long.parseLong(latestDiscordProfile.getId()), serverId, ip);
 
-                if(lookupConnections(latestDiscordProfile, latestSteamProfile, latestTwitchProfile, serverId)) {
+                if(lookupConnectionsSucceeded) {
                     servePage(exchange, latestDiscordProfile, latestSteamProfile, latestTwitchProfile);
                 } else {
                     exchange.setStatusCode(500);
@@ -155,16 +172,16 @@ public class WebServer implements Service {
         private static final long VERIFICATION_REVIEW_ROLE = 596219515251982347L;
 
         private static final long VERIFICATION_REVIEW_CHANNEL = 586288946271617024L;
-        private static final long DELETED_MESSAGES_CHANNEL = 434199302609305601L;
+        private static final long VERIFICATION_LOG_CHANNEL = 782042783442927616L;
 
         private synchronized void attemptToVerifyUser(DiscordProfile profile, long serverId, String ip) {
-            Bot.api.getUserById(profile.getId()).thenAccept(user -> {
-                        Bot.api.getTextChannelById(DELETED_MESSAGES_CHANNEL).ifPresent(channel -> {
-                            new MessageBuilder()
-                                    .append("Trying to verify user ").append(user.getDiscriminatedName()).append(".\n")
-                                    .send(channel);
-                        });
-                    });
+            Bot.api.getUserById(profile.getId()).thenAccept(user -> Bot.api.getTextChannelById(VERIFICATION_LOG_CHANNEL).ifPresent(channel -> {
+                new MessageBuilder()
+                        .append("Verification: ")
+                        .append(user.getMentionTag())
+                        .append(" (").append(user.getDiscriminatedName()).append(")")
+                        .send(channel);
+            }));
 
 
             // Quarantine if users joined in last 5 minutes exceeds 5
@@ -172,7 +189,7 @@ public class WebServer implements Service {
             while (last5Joins.peek() != null && last5Joins.peek().time < System.currentTimeMillis() - (1000 * 60 * 5)) {
                 last5Joins.pop();
             }
-            UserJoin thisJoin = new UserJoin(Long.valueOf(profile.getId()), System.currentTimeMillis());
+            UserJoin thisJoin = new UserJoin(Long.parseLong(profile.getId()), System.currentTimeMillis());
             last5Joins.push(thisJoin);
 
             /*
@@ -211,12 +228,19 @@ public class WebServer implements Service {
                 return;
             }*/
 
-            // Quarantine if IP address matches an existing user.
-            List<Long> prevConnections = Luma.database.getUserConnectionAttemptsByIP(ip);
-            if(prevConnections.size() > 0) {
-                thisJoin.quarantined = true;
-                Bot.api.getServerById(serverId).ifPresent(server -> {
-                    Bot.api.getUserById(thisJoin.userId).thenAccept(user -> {
+            Bot.api.getServerById(serverId).ifPresent(server -> {
+                Bot.api.getUserById(thisJoin.userId).thenAccept(user -> {
+                    AtomicBoolean altNotice = new AtomicBoolean(false);
+
+                    StringBuilder altNoticeText = new StringBuilder("Alt notice: ").append(user.getMentionTag())
+                            .append(" (").append(user.getDiscriminatedName()).append("\n")
+                            .append("Reasons: \n");
+
+                    // Check if the IP address matches an existing user
+                    List<Long> prevConnections = Luma.database.getUserConnectionAttemptsByIP(ip);
+                    if(prevConnections.size() > 0) {
+                        altNotice.set(true);
+                        thisJoin.quarantined = true;
                         /*Bot.api.getRoleById(VERIFIED_ROLE).ifPresent(role -> {
                             server.removeRoleFromUser(user, role).join();
                         });
@@ -231,22 +255,41 @@ public class WebServer implements Service {
                                     .append("\nIn the mean time, you can help us by telling us why you joined the server.")
                                     .send(channel).join();
                         });*/
-                        Bot.api.getTextChannelById(DELETED_MESSAGES_CHANNEL).ifPresent(channel -> {
-                            StringBuilder sb = new StringBuilder();
-                            prevConnections.forEach(id ->
-                                    Bot.api.getUserById(id).thenAccept(mention ->
-                                            sb.append(mention.getDiscriminatedName()).append(" ")));
-                            new MessageBuilder()
-                                    .append("Alt notice: ").append(user.getDiscriminatedName()).append(".\n")
-                                    .append("Reason:\n")
-                                    .append("Has the same IP address as users: " + sb.toString())
-                                    .send(channel).join();
-                        });
+
+                        altNoticeText.append("Has the same IP address as users: ");
+                        CompletableFuture<?>[] userLookups = prevConnections.stream()
+                                .map(id -> Bot.api.getUserById(id).thenAccept(mention ->
+                                        altNoticeText.append(mention.getDiscriminatedName()).append(" "))).toArray(CompletableFuture[]::new);
+                        altNoticeText.append('\n');
+
+                        CompletableFuture.allOf(userLookups).join();
+
+                        //Luma.database.updateUserRecordVerified(Long.parseLong(profile.getId()), serverId, 1);
+                        //return;
+                    }
+
+                    Luma.database.getVerifiedConnectionsByUser(thisJoin.userId, serverId).forEach((type, ids) -> {
+                        for (String id : ids) {
+                            Luma.database.getVerifiedConnectionsById(id, type).stream()
+                                    .filter(checkUser -> !checkUser.equals(user))
+                                    .forEach(checkUser -> {
+                                        altNotice.set(true);
+                                        altNoticeText.append("Shares a ").append(type)
+                                                .append(" account (").append(id).append(") with user: ")
+                                                .append(checkUser.getMentionTag())
+                                                .append(" (").append(checkUser.getDiscriminatedName()).append(")\n");
+                                    });
+                        }
                     });
+
+                    if (altNotice.get()) {
+                        Bot.api.getTextChannelById(VERIFICATION_LOG_CHANNEL).ifPresent(channel -> {
+                            channel.sendMessage(altNoticeText.toString());
+                        });
+                    }
                 });
-                //Luma.database.updateUserRecordVerified(Long.parseLong(profile.getId()), serverId, 1);
-                //return;
-            }
+            });
+
 
             Bot.api.getServerById(146404426746167296L).ifPresent(server ->
                     Bot.api.getUserById(profile.getId()).thenAccept(user ->
@@ -262,7 +305,7 @@ public class WebServer implements Service {
             //logger.trace("IP: " + exchange.getRequestHeaders().get("CF-Connecting-IP").getFirst());
             try {
                 String jsonConnections = Objects.requireNonNull(Luma.okHttpClient.newCall(new Request.Builder()
-                        .url("https://discordapp.com/api/v6/users/@me/connections")
+                        .url("https://discord.com/api/v6/users/@me/connections")
                         .addHeader("Authorization", "Bearer " + discordProfile.getAccessToken())
                         .build()).execute().body()).string();
 
@@ -274,7 +317,7 @@ public class WebServer implements Service {
                     GetPlayerSummaries summary = Luma.steamApi.steamWebApiClient.processRequest(request);
                     String playerName = summary.getResponse().getPlayers().get(0).getPersonaname();
                     String id = summary.getResponse().getPlayers().get(0).getSteamid();
-                    id = String.valueOf(Long.valueOf(id) | 0x100000000L);
+                    id = String.valueOf(Long.parseLong(id) | 0x100000000L);
                     Luma.database.addVerifiedConnection(Long.parseLong(discordProfile.getId()), serverId, id, "steam", playerName, steamProfile.getLinkedId());
                 }
 

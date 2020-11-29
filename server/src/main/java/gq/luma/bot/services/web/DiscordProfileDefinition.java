@@ -16,7 +16,7 @@ import java.util.Arrays;
 import java.util.Map;
 
 /**
- * @see <a href="https://discordapp.com/developers/docs/resources/user#user-object">Discord user object</a>
+ * @see <a href="https://discord.com/developers/docs/resources/user#user-object">Discord user object</a>
  */
 @SuppressWarnings("WeakerAccess")
 public class DiscordProfileDefinition extends OAuth20ProfileDefinition<DiscordProfile, OAuth20Configuration> {
@@ -43,7 +43,7 @@ public class DiscordProfileDefinition extends OAuth20ProfileDefinition<DiscordPr
 
     @Override
     public String getProfileUrl(OAuth2AccessToken accessToken, OAuth20Configuration configuration) {
-        return "https://discordapp.com/api/users/@me";
+        return "https://discord.com/api/users/@me";
     }
 
     @Override
@@ -69,7 +69,7 @@ public class DiscordProfileDefinition extends OAuth20ProfileDefinition<DiscordPr
             ), null);
 
             // Get a picture URL image or a fallback image.
-            // See <https://discordapp.com/developers/docs/reference#image-formatting-cdn-endpoints>.
+            // See <https://discord.com/developers/docs/reference#image-formatting-cdn-endpoints>.
             String avatar;
             String discriminator;
             String pictureURL = null;

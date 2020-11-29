@@ -155,7 +155,11 @@ public class IVerbApi {
                                     if(currentScoreUpdate == null) {
                                         throw new IllegalStateException("Encountered \"post_rank\" parameter at an unexpected point.");
                                     }
-                                    if(jsonParser.nextToken() != JsonToken.VALUE_STRING) {
+                                    jsonParser.nextToken();
+                                    if(jsonParser.currentToken() == JsonToken.VALUE_NULL) {
+                                        break;
+                                    }
+                                    if(jsonParser.currentToken() != JsonToken.VALUE_STRING) {
                                         throw new IllegalStateException("\"post_rank\" param is not a String, instead is a " + jsonParser.currentToken().name());
                                     }
                                     currentScoreUpdate.postRank = Integer.parseInt(jsonParser.getValueAsString());
@@ -212,7 +216,8 @@ public class IVerbApi {
                                 throw new IllegalStateException("Score update did not contain \"mapid\" parameter.");
                             }
                             if(currentScoreUpdate.postRank == -1) {
-                                throw new IllegalStateException("Score update did not contain \"post_rank\" parameter.");
+                                logger.debug("Score update did not contain \"post_rank\" parameter.");
+                                break;
                             }
                             if(currentScoreUpdate.metadata.steamId == -1) {
                                 throw new IllegalStateException("Score update did not contain \"profile_number\" parameter.");

@@ -77,10 +77,10 @@ public class InfoCommand {
         return null;
     }
 
-    @Command(aliases = {"invite"}, description = "invite_description", usage = "")
+    /*@Command(aliases = {"invite"}, description = "invite_description", usage = "")
     public EmbedBuilder onInvite(CommandEvent event){
         return new EmbedBuilder()
                 .setColor(BotReference.LUMA_COLOR)
                 .addField(event.getLocalization().get("invite_title"), "https://discordapp.com/oauth2/authorize?client_id=396497193915383808&scope=bot&permissions=0", false);
-    }
+    }*/
 }

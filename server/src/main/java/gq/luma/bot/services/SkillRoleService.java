@@ -9,6 +9,7 @@ import gq.luma.bot.services.apis.IVerbApi;
 import okhttp3.OkHttpClient;
 import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.user.User;
+import org.javacord.api.util.logging.ExceptionLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -242,85 +243,99 @@ public class SkillRoleService implements Service {
     }
 
     private void runChangelogFetch() {
-        logger.debug("Fetching score updates on board.iverb.me...");
-
-        Set<Long> updatedSteamUsers = new HashSet<>();
-        Set<Long> updatedSrcomUsers = new HashSet<>();
-
-        AtomicReference<Instant> newLatestProcessedScore = new AtomicReference<>();
-
-        long dataFetched = 0;
         try {
-            dataFetched = IVerbApi.fetchScoreUpdates(1,
-                    scoreUpdate -> scoreUpdate.metadata.timeGained.isAfter(latestProccessedScore), // Only fetch scores that are after the latest processed score.
-                    scoreUpdate -> {
-                        var mapScores = scores.get(scoreUpdate.mapId);
+            logger.debug("Fetching score updates on board.iverb.me...");
 
-                        // If the player's rank changed, add them to the update queue
-                        if(scoreUpdate.postRank != scoreUpdate.preRank) {
-                            updatedSteamUsers.add(scoreUpdate.metadata.steamId);
-                        }
+            Set<Long> updatedSteamUsers = new HashSet<>();
+            Set<Long> updatedSrcomUsers = new HashSet<>();
 
-                        // Clean out obsolete scores from the Player
-                        mapScores.forEach((score, metadatas) -> {
-                            if(score > scoreUpdate.score) {
-                                metadatas.removeIf(m -> m.steamId == scoreUpdate.metadata.steamId);
-                                if(metadatas.isEmpty()) {
+            AtomicReference<Instant> newLatestProcessedScore = new AtomicReference<>();
+
+            long dataFetched = 0;
+            try {
+                dataFetched = IVerbApi.fetchScoreUpdates(1,
+                        scoreUpdate -> scoreUpdate.metadata.timeGained.isAfter(latestProccessedScore), // Only fetch scores that are after the latest processed score.
+                        scoreUpdate -> {
+                            var mapScores = scores.get(scoreUpdate.mapId);
+
+                            // If the player's rank changed, add them to the update queue
+                            if (scoreUpdate.postRank != scoreUpdate.preRank) {
+                                updatedSteamUsers.add(scoreUpdate.metadata.steamId);
+                            }
+
+                            // Clean out obsolete scores from the Player
+                            mapScores.forEach((score, metadatas) -> {
+                                metadatas.removeIf(m -> (score >= scoreUpdate.score) &&
+                                        (m.steamId == scoreUpdate.metadata.steamId));
+                            });
+                            /*mapScores.forEach((score, metadatas) -> {
+                                if (score >= scoreUpdate.score) {
+                                    metadatas.removeIf(m -> m.steamId == scoreUpdate.metadata.steamId);
+                                }
+
+                                // Remove scores that happened before the latest, if they are not the same score
+                                if (score != scoreUpdate.score) {
+                                    metadatas.removeIf(m -> m.steamId == scoreUpdate.metadata.steamId && m.timeGained.isBefore(scoreUpdate.metadata.timeGained));
+                                }
+
+                                if (metadatas.isEmpty()) {
                                     mapScores.remove(score);
                                 }
-                            }
-                        });
+                            });*/
 
-                        // Add new score
-                        mapScores.computeIfAbsent(scoreUpdate.score, s -> new ArrayList<>()).add(scoreUpdate.metadata);
+                            // Add new score
+                            mapScores.computeIfAbsent(scoreUpdate.score, s -> new ArrayList<>()).add(scoreUpdate.metadata);
 
-                        // Clean out other scores that are now not top 200 or otherwise need to be updated
-                        AtomicInteger rank = new AtomicInteger(1);
-                        mapScores.forEach((score, metadatas) -> {
-                            if(rank.get() <= 200) {
-                                // If the rank is below (greater than) the new score, it was likely updated
-                                if(rank.get() > scoreUpdate.postRank) {
+                            // Clean out other scores that are now not top 200 or otherwise need to be updated
+                            AtomicInteger rank = new AtomicInteger(1);
+                            mapScores.forEach((score, metadatas) -> {
+                                if (rank.get() <= 200) {
+                                    // If the rank is below (greater than) the new score, it was likely updated
+                                    if (rank.get() > scoreUpdate.postRank) {
+                                        metadatas.forEach(m -> updatedSteamUsers.add(m.steamId));
+                                    }
+                                    rank.addAndGet(metadatas.size());
+                                } else {
+                                    mapScores.remove(score);
                                     metadatas.forEach(m -> updatedSteamUsers.add(m.steamId));
                                 }
-                                rank.addAndGet(metadatas.size());
-                            } else {
-                                mapScores.remove(score);
-                                metadatas.forEach(m -> updatedSteamUsers.add(m.steamId));
+                            });
+
+                            if (newLatestProcessedScore.get() == null
+                                    || scoreUpdate.metadata.timeGained.isAfter(newLatestProcessedScore.get())) {
+                                newLatestProcessedScore.set(scoreUpdate.metadata.timeGained);
                             }
                         });
+            } catch (IOException e) {
+                logger.error("Failed to fetch score updates", e);
+            }
 
-                        if(newLatestProcessedScore.get() == null
-                                || scoreUpdate.metadata.timeGained.isAfter(newLatestProcessedScore.get())) {
-                            newLatestProcessedScore.set(scoreUpdate.metadata.timeGained);
-                        }
-                    });
-        } catch (IOException e) {
-            logger.error("Failed to fetch score updates", e);
+            // With the new elite qualification,
+            //updatedSteamUsers.addAll(updateTop3());
+
+            logger.info("Fetched iVerb score updates. Fetched " + (dataFetched / 1000f) + "kb of data and updating " + updatedSteamUsers.size() + " players.");
+
+            if (newLatestProcessedScore.get() != null) {
+                latestProccessedScore = newLatestProcessedScore.get();
+            }
+
+            logger.debug("Fetching leaderboard from speedrun.com...");
+
+            CompletableFuture.allOf(
+                    jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, SP_CATEGORY_SRCOM_ID).thenAccept(response -> {
+                        spLeaderboard = response.getData().get(0);
+                    }),
+                    jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, COOP_CATEGORY_SRCOM_ID, Map.of(COOP_SUBCATEGORY_VARIABLE_ID, AMC_VARIABLE_CHOICE_ID)).thenAccept(response -> {
+                        coopAMCLeaderboard = response.getData().get(0);
+                    })).join();
+
+            // TODO: Only update users if they change on the srcom boards. For now, update everyone.
+            //updatedSteamUsers.forEach(this::onScoreUpdate);
+            Bot.api.getServerById(146404426746167296L)
+                    .ifPresent(server -> server.getMembers().forEach(this::onScoreUpdate));
+        } catch (Throwable t) {
+            t.printStackTrace();
         }
-
-        // With the new elite qualification,
-        //updatedSteamUsers.addAll(updateTop3());
-
-        logger.info("Fetched iVerb score updates. Fetched " + (dataFetched/1000f) +  "kb of data and updating " + updatedSteamUsers.size() + " players.");
-
-        if(newLatestProcessedScore.get() != null) {
-            latestProccessedScore = newLatestProcessedScore.get();
-        }
-
-        logger.debug("Fetching leaderboard from speedrun.com...");
-
-        CompletableFuture.allOf(
-                jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, SP_CATEGORY_SRCOM_ID).thenAccept(response -> {
-                    spLeaderboard = response.getData().get(0);
-                }),
-                jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, COOP_CATEGORY_SRCOM_ID, Map.of(COOP_SUBCATEGORY_VARIABLE_ID, AMC_VARIABLE_CHOICE_ID)).thenAccept(response -> {
-                    coopAMCLeaderboard = response.getData().get(0);
-                })).join();
-
-        // TODO: Only update users if they change on the srcom boards. For now, update everyone.
-        //updatedSteamUsers.forEach(this::onScoreUpdate);
-        Bot.api.getServerById(146404426746167296L)
-                .ifPresent(server -> server.getMembers().forEach(this::onScoreUpdate));
     }
 
     /**
@@ -381,15 +396,17 @@ public class SkillRoleService implements Service {
         }
     }
 
-    private void onScoreUpdate(User discordUser) {
+    public void onScoreUpdate(User discordUser) {
 
         //logger.info("Updating discord user: " + discordUser.getDiscriminatedName());
 
-        AtomicBoolean elite = new AtomicBoolean(false);
-        AtomicBoolean professionals = new AtomicBoolean(false);
-        AtomicBoolean advanced = new AtomicBoolean(false);
-        AtomicBoolean intermediate = new AtomicBoolean(false);
-        AtomicBoolean beginner = new AtomicBoolean(false);
+        ArrayList<Long> assignedRoles = Luma.database.getAssignedRoles(discordUser.getId(), 146404426746167296L);
+
+        AtomicBoolean elite = new AtomicBoolean(assignedRoles.contains(ELITE_ROLE));
+        AtomicBoolean professionals = new AtomicBoolean(assignedRoles.contains(PROFESSIONALS_ROLE));
+        AtomicBoolean advanced = new AtomicBoolean(assignedRoles.contains(ADVANCED_ROLE));
+        AtomicBoolean intermediate = new AtomicBoolean(assignedRoles.contains(INTERMEDIATE_ROLE));
+        AtomicBoolean beginner = new AtomicBoolean(assignedRoles.contains(BEGINNER_ROLE));
 
         final Instant oneMonthAgo = Instant.now().minus(30, ChronoUnit.DAYS);
 
@@ -455,6 +472,10 @@ public class SkillRoleService implements Service {
                                 double amcTimePlayerBelowRank = Double.MAX_VALUE;
                                 double amcTimePlayerAboveRank = Double.MAX_VALUE;
 
+                                int singlePlayerRank = Integer.MAX_VALUE;
+                                int amcRankPlayerBelow = Integer.MAX_VALUE;
+                                int amcRankPlayerAbove = Integer.MAX_VALUE;
+
                                 OffsetDateTime latestRun = null;
 
                                 // Check single player leaderboards
@@ -485,6 +506,10 @@ public class SkillRoleService implements Service {
 
                                         if (singlePlayerTime > place.run.times.primaryTime) {
                                             singlePlayerTime = place.run.times.primaryTime;
+                                        }
+
+                                        if (place.place > 0 && singlePlayerRank > place.place) {
+                                            singlePlayerRank = place.place;
                                         }
                                     }
                                 }
@@ -538,68 +563,80 @@ public class SkillRoleService implements Service {
                                                     }
                                                 }
 
-                                                if (containsPartner && partnerHighestRank > partnerPlace.place) {
+                                                if (place.place > 0 && containsPartner && partnerHighestRank > partnerPlace.place) {
                                                     partnerHighestRank = partnerPlace.place;
                                                 }
                                             }
                                         }
 
-                                        if (amcTimePlayerBelowRank > place.run.times.primaryTime && place.place <= partnerHighestRank) {
-                                            amcTimePlayerBelowRank = place.run.times.primaryTime;
-                                        }
-
-                                        if (amcTimePlayerAboveRank > place.run.times.primaryTime && place.place > partnerHighestRank) {
-                                            amcTimePlayerAboveRank = place.run.times.primaryTime;
+                                        if (place.place > 0) {
+                                            if (place.place <= partnerHighestRank) {
+                                                // Partner is below current rank
+                                                if (amcTimePlayerBelowRank > place.run.times.primaryTime) {
+                                                    amcTimePlayerBelowRank = place.run.times.primaryTime;
+                                                }
+                                                if (amcRankPlayerBelow > place.place) {
+                                                    amcRankPlayerBelow = place.place;
+                                                }
+                                            } else {
+                                                // Partner is above current rank
+                                                if (amcTimePlayerAboveRank > place.run.times.primaryTime) {
+                                                    amcTimePlayerAboveRank = place.run.times.primaryTime;
+                                                }
+                                                if (amcRankPlayerAbove > place.place) {
+                                                    amcRankPlayerAbove = place.place;
+                                                }
+                                            }
                                         }
                                     }
                                 }
 
-                                if (logger.isDebugEnabled()) {
-                                    //logger.debug(discordUser.getDiscriminatedName() + " - srcom - " + srcomId + " - sp=" + singlePlayerTime + " - amcAbove=" + amcTimePlayerAboveRank + " - amcBelow=" + amcTimePlayerBelowRank);
-                                }
+                                //if (logger.isDebugEnabled()) {
+                                    //logger.info(discordUser.getDiscriminatedName() + " - srcom - " + srcomId + " - sp=" + singlePlayerRank + " - amcAbove=" + amcRankPlayerAbove + " - amcBelow=" + amcRankPlayerBelow);
+                                //}
 
                                 // Elite Qualifications
-                                if (setIfTrue(elite, singlePlayerTime < (1 * 60 * 60) + (1 * 60))) { // Sub 1:01
-                                    logger.debug("Giving Elite due to Sub 1:01 Single Player Time: " + singlePlayerTime);
+                                if (setIfTrue(elite, singlePlayerRank <= 3)) { // Top 3
+                                    logger.debug("Giving Elite due to Top 3 Single Player Time: " + singlePlayerRank);
                                 }
-                                if (setIfTrue(elite, amcTimePlayerAboveRank < (28 * 60))) { // Sub 28:00
-                                    logger.debug("Giving Elite due to Sub 28:00 AMC Time: " + amcTimePlayerAboveRank);
+                                if (setIfTrue(elite, amcRankPlayerAbove <= 2)) { // Top 2
+                                    logger.debug("Giving Elite due to Top 3 AMC Time: " + amcRankPlayerAbove);
                                 }
-                                if (setIfTrue(elite, amcTimePlayerBelowRank < (28 * 60))) { // Sub 28:00
-                                    logger.debug("Giving Elite due to Sub 28:00 AMC Time: " + amcTimePlayerBelowRank);
+                                if (setIfTrue(elite, amcRankPlayerBelow <= 2)) { // Top 2
+                                    logger.debug("Giving Elite due to Top 3 AMC Time: " + amcRankPlayerBelow);
                                 }
 
                                 // Professionals Qualifications
-                                if (setIfTrue(professionals, singlePlayerTime < (1 * 60 * 60) + (4 * 60) + 30)) { // Sub 1:04:30
-                                    logger.debug("Giving Professionals due to Sub 1:04:30 Single Player Time: " + singlePlayerTime);
+                                if (setIfTrue(professionals, singlePlayerRank <= 10)) { // Top 10
+                                    logger.debug("Giving Professionals due to Top 10 Single Player Time: " + singlePlayerTime);
                                 }
-                                if (setIfTrue(professionals, amcTimePlayerAboveRank < (29 * 60))) { // Sub 29:00
-                                    logger.debug("Giving Professionals due to Sub 29:00 AMC Time: " + amcTimePlayerAboveRank);
+                                /*if (setIfTrue(professionals, amcRankPlayerAbove <= 5)) { // Top 5
+                                    logger.debug("Giving Professionals due to Top 5 AMC Time: " + amcRankPlayerAbove);
                                 }
-                                if (setIfTrue(professionals, amcTimePlayerBelowRank < (29 * 60))) { // Sub 29:00
-                                    logger.debug("Giving Professionals due to Sub 29:00 AMC Time: " + amcTimePlayerBelowRank);
-                                }
+                                if (setIfTrue(professionals, amcRankPlayerBelow <= 8)) { // Top 8
+                                    logger.debug("Giving Professionals due to Top 8 AMC Time: " + amcRankPlayerBelow);
+                                }*/
 
                                 // Advanced Qualifications
-                                if (setIfTrue(advanced, singlePlayerTime < (1 * 60 * 60) + (9 * 60))) { // Sub 1:09
-                                    logger.debug("Giving Advanced due to Sub 1:09 Single Player Time: " + singlePlayerTime);
+                                if (setIfTrue(advanced, singlePlayerRank <= 25)) { // Top 25
+                                    logger.debug("Giving Advanced due to Top 25 Single Player Time: " + singlePlayerRank);
                                 }
-                                if (setIfTrue(advanced, amcTimePlayerAboveRank < (30 * 60))) { // Sub 30:00
-                                    logger.debug("Giving Advanced due to Sub 30:00 AMC Time: " + amcTimePlayerAboveRank);
+                                /*if (setIfTrue(advanced, amcRankPlayerAbove <= 12)) { // Top 12
+                                    logger.debug("Giving Advanced due to Top 12 AMC Time: " + amcRankPlayerAbove);
                                 }
-                                if (setIfTrue(advanced, amcTimePlayerBelowRank < (32 * 60))) { // Sub 32:00
-                                    logger.debug("Giving Advanced due to Sub 32:00 AMC Time: " + amcTimePlayerBelowRank);
-                                }
+                                if (setIfTrue(advanced, amcRankPlayerBelow <= 20)) { // Top 20
+                                    logger.debug("Giving Advanced due to Top 20 AMC Time: " + amcRankPlayerBelow);
+                                }*/
 
                                 // Intermediate Qualifications
-                                if (setIfTrue(intermediate, singlePlayerTime < (1 * 60 * 60) + (20 * 60))) { // Sub 1:20
-                                    logger.debug("Giving Intermediate due to Sub 1:20 Single Player Time: " + singlePlayerTime);
+                                if (setIfTrue(intermediate, singlePlayerRank <= 115)) { // Top 115
+                                    logger.debug("Giving Intermediate due to Top 115 Single Player Time: " + singlePlayerRank);
                                 }
-                                if (setIfTrue(intermediate, amcTimePlayerAboveRank < (40 * 60))) { // Sub 40:00
-                                    logger.debug("Giving Intermediate due to Sub 40:00 AMC Time: " + amcTimePlayerAboveRank);
+                                if (setIfTrue(intermediate, amcRankPlayerAbove <= 85)) { // Top 85
+                                    logger.debug("Giving Intermediate due to Top 85 AMC Time: " + amcRankPlayerAbove);
                                 }
-                                if(setIfTrue(intermediate, amcTimePlayerBelowRank < (40 * 60))) { // Sub 40:00
-                                    logger.debug("Giving Intermediate due to Sub 40:00 AMC Time: " + amcTimePlayerBelowRank);
+                                if(setIfTrue(intermediate, amcRankPlayerBelow <= 85)) { // Top 85
+                                    logger.debug("Giving Intermediate due to Top 85 AMC Time: " + amcRankPlayerBelow);
                                 }
 
                                 // Beginner Qualifications
@@ -649,12 +686,12 @@ public class SkillRoleService implements Service {
         if(!role.getUsers().contains(discordUser)) {
             if(state.get()) {
                 logger.info("Giving {} {} role", discordUser.getDiscriminatedName(), role.getName());
-                discordUser.addRole(role);
+                discordUser.addRole(role).exceptionally(ExceptionLogger.get());
             }
         } else if (autoRemoveRole) {
             if(!state.get()) {
-                //logger.info("Removing {} {} role", discordUser.getDiscriminatedName(), role.getName());
-                // TODO: Remove role
+                logger.info("Removing {} {} role", discordUser.getDiscriminatedName(), role.getName());
+                discordUser.removeRole(role).exceptionally(ExceptionLogger.get());
             }
         }
     }
@@ -688,11 +725,17 @@ public class SkillRoleService implements Service {
 
         AtomicInteger rank = new AtomicInteger(1);
         mapScores.forEach((score, metadatas) -> {
-            metadatas.forEach(metadata -> {
+            boolean added = false;
+            for (IVerbApi.ScoreMetadata metadata : metadatas) {
                 if(metadata.steamId == steamId) {
-                    totalCoopPoints[0] += calculatePoints(rank.get());
+                    if (!added) {
+                        totalCoopPoints[0] += calculatePoints(rank.get());
+                        added = true;
+                    } else {
+                        logger.error("USER " + steamId + " HAS DUPLICATED SCORE ON MAP: " + mapId + " AT RANK " + rank.get());
+                    }
                 }
-            });
+            }
             rank.addAndGet(metadatas.size());
         });
     }

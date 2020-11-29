@@ -1,7 +1,6 @@
 package gq.luma.bot.commands;
 
 import gq.luma.bot.Luma;
-import gq.luma.bot.services.Bot;
 import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
@@ -17,11 +16,11 @@ import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
 import org.javacord.api.util.logging.ExceptionLogger;
-import org.javacord.core.util.FileContainer;
 
 import java.awt.*;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.SQLException;
 import java.util.*;
@@ -137,10 +136,14 @@ public class ServerCommands {
             }
 
             for(MessageAttachment attachment : event.getMessage().getAttachments()) {
-                new BufferedReader(new InputStreamReader(new FileContainer(attachment.getUrl()).asInputStream(Bot.api).join())).lines().forEach(str -> {
-                    Luma.database.insertVotingKey(str, serverId);
-                    added.getAndIncrement();
-                });
+                try {
+                    new BufferedReader(new InputStreamReader(attachment.downloadAsInputStream())).lines().forEach(str -> {
+                        Luma.database.insertVotingKey(str, serverId);
+                        added.getAndIncrement();
+                    });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
 
             int newCount = Luma.database.countVotingKeysByServer(serverId);
@@ -166,10 +169,14 @@ public class ServerCommands {
             }
 
             for(MessageAttachment attachment : event.getMessage().getAttachments()) {
-                new BufferedReader(new InputStreamReader(new FileContainer(attachment.getUrl()).asInputStream(Bot.api).join())).lines().forEach(str -> {
-                    Luma.database.removeVotingKey(str, serverId);
-                    removed.getAndIncrement();
-                });
+                try {
+                    new BufferedReader(new InputStreamReader(attachment.downloadAsInputStream())).lines().forEach(str -> {
+                        Luma.database.removeVotingKey(str, serverId);
+                        removed.getAndIncrement();
+                    });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
 
             int newCount = Luma.database.countVotingKeysByServer(serverId);

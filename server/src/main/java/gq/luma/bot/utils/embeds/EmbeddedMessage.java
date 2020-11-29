@@ -2,6 +2,7 @@ package gq.luma.bot.utils.embeds;
 
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
+import org.javacord.api.entity.user.User;
 import org.javacord.api.event.message.reaction.ReactionAddEvent;
 import org.javacord.api.listener.message.reaction.ReactionAddListener;
 import gq.luma.bot.reference.BotReference;
@@ -50,20 +51,20 @@ public class EmbeddedMessage implements ReactionAddListener {
 
     @Override
     public void onReactionAdd(ReactionAddEvent event) {
-        event.getEmoji().asUnicodeEmoji()
-                .filter(s -> !event.getUser().isYourself())
-                .filter(s -> s.equals(BotReference.LEFT_ARROW) || s.equals(BotReference.RIGHT_ARROW))
-                .ifPresent(s -> {
-                    event.removeReaction();
-                    if(s.equals(BotReference.LEFT_ARROW) && index.get() > 0){
-                        index.getAndDecrement();
-                        updatePage();
-                    }
-                    else if(s.equals(BotReference.RIGHT_ARROW) && index.get() < pages.size() + 1){
-                        index.getAndIncrement();
-                        updatePage();
-                    }
-                });
+        if (event.getUser().map(User::isYourself).map(b -> !b).orElse(true)) {
+            event.getEmoji().asUnicodeEmoji()
+                    .filter(s -> s.equals(BotReference.LEFT_ARROW) || s.equals(BotReference.RIGHT_ARROW))
+                    .ifPresent(s -> {
+                        event.removeReaction();
+                        if (s.equals(BotReference.LEFT_ARROW) && index.get() > 0) {
+                            index.getAndDecrement();
+                            updatePage();
+                        } else if (s.equals(BotReference.RIGHT_ARROW) && index.get() < pages.size() + 1) {
+                            index.getAndIncrement();
+                            updatePage();
+                        }
+                    });
+        }
     }
 
     private static EmbedBuilder createBuilder(EmbedBuilder builder, EmbedPage page){

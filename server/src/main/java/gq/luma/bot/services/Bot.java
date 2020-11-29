@@ -13,7 +13,9 @@ import gq.luma.bot.systems.watchers.SlowMode;
 import org.apache.commons.io.FilenameUtils;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
+import org.javacord.api.entity.intent.Intent;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
+import org.javacord.api.entity.permission.Role;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +26,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 public class Bot implements Service {
     private static Logger logger = LoggerFactory.getLogger(Bot.class);
@@ -44,7 +47,9 @@ public class Bot implements Service {
             }
         }
 
-        api = new DiscordApiBuilder().setToken(KeyReference.discordToken).login().join();
+        api = new DiscordApiBuilder().setToken(KeyReference.discordToken)
+                .setWaitForServersOnStartup(true).setWaitForUsersOnStartup(true)
+                .setAllIntents().login().join();
 
         api.updateActivity("?L help");
         CommandExecutor executor = new CommandExecutor(api);
@@ -56,6 +61,7 @@ public class Bot implements Service {
         executor.registerCommand(new AnalyzeCommand());
         executor.registerCommand(new IdentifyCommand());
         executor.registerCommand(new ServerCommands());
+        executor.registerCommand(new RoleCommands());
 
         api.addMessageCreateListener(new SlowMode());
         api.addMessageCreateListener(Luma.filterManager);
@@ -94,6 +100,20 @@ public class Bot implements Service {
                 event.getUser().addRole(api.getRoleById(558133536784121857L).orElseThrow(AssertionError::new));
             }
         });
+
+        // Force update verified once every 15 minutes
+        Role verified = api.getRoleById(558133536784121857L).orElseThrow(AssertionError::new);
+        Luma.schedulerService.scheduleWithFixedDelay(() -> Bot.api.getServerById(146404426746167296L)
+                .ifPresent(server -> server.getMembers().forEach(member -> {
+                    // Check if user was previously verified
+                    if(Luma.database.getUserVerified(member.getId()) == 2) {
+                        // Give user the Verified role
+                        if(!member.getRoles(server).contains(verified)) {
+                            member.addRole(verified);
+                        }
+                    }
+                })),
+                0, 15, TimeUnit.MINUTES);
 
         DiscordLogger discordLogger = new DiscordLogger();
         api.addMessageDeleteListener(discordLogger);

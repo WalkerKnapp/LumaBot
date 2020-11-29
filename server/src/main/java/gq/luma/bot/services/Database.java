@@ -95,6 +95,10 @@ public class Database implements Service {
     private PreparedStatement removeVotingKey;
     private PreparedStatement clearVotingKeys;
 
+    private PreparedStatement getManualRoleAssignmentsByUser;
+    private PreparedStatement insertManualRoleAssignment;
+    private PreparedStatement deleteManualRoleAssignment;
+
 
     @Override
     public void startService() throws SQLException, ClassNotFoundException {
@@ -166,6 +170,10 @@ public class Database implements Service {
         insertVotingKey = conn.prepareStatement("INSERT INTO vote_keys (`key`, server_id) VALUES (?,?)");
         removeVotingKey = conn.prepareStatement("DELETE FROM vote_keys WHERE `key` = ? AND `server_id` = ?");
         clearVotingKeys = conn.prepareStatement("DELETE FROM vote_keys WHERE `server_id` = ?");
+
+        getManualRoleAssignmentsByUser = conn.prepareStatement("SELECT * FROM manual_role_assignments WHERE `user_id` = ? AND `server_id` = ?");
+        insertManualRoleAssignment = conn.prepareStatement("INSERT INTO manual_role_assignments (`user_id`, `server_id`, `role_id`) VALUES (?, ?, ?)");
+        deleteManualRoleAssignment = conn.prepareStatement("DELETE FROM manual_role_assignments WHERE `user_id` = ? AND `server_id` = ? AND `role_id` = ?");
     }
 
     //Results
@@ -916,6 +924,53 @@ public class Database implements Service {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    public synchronized void assignRole(long roleId, long serverId, long userId) {
+        try {
+            getManualRoleAssignmentsByUser.setLong(1, userId);
+            getManualRoleAssignmentsByUser.setLong(2, serverId);
+            ResultSet rs = getManualRoleAssignmentsByUser.executeQuery();
+            while (rs.next()) {
+                if (rs.getLong("role_id") == roleId) {
+                    return;
+                }
+            }
+
+            insertManualRoleAssignment.setLong(1, userId);
+            insertManualRoleAssignment.setLong(2, serverId);
+            insertManualRoleAssignment.setLong(3, roleId);
+            insertManualRoleAssignment.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void unassignRole(long roleId, long serverId, long userId) {
+        try {
+            deleteManualRoleAssignment.setLong(1, userId);
+            deleteManualRoleAssignment.setLong(2, serverId);
+            deleteManualRoleAssignment.setLong(3, roleId);
+            deleteManualRoleAssignment.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized ArrayList<Long> getAssignedRoles(long userId, long serverId) {
+        ArrayList<Long> ret = new ArrayList<>();
+        try {
+            getManualRoleAssignmentsByUser.setLong(1, userId);
+            getManualRoleAssignmentsByUser.setLong(2, serverId);
+            ResultSet rs = getManualRoleAssignmentsByUser.executeQuery();
+
+            while(rs.next()) {
+                ret.add(rs.getLong("role_id"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return ret;
     }
 
     private void close(){
