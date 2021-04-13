@@ -4,6 +4,8 @@ import gq.luma.bot.Luma;
 import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
+import gq.luma.bot.services.SkillRoleService;
+import gq.luma.bot.services.apis.IVerbApi;
 import gq.luma.bot.systems.watchers.SlowMode;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
 import org.javacord.api.entity.channel.ServerChannel;
@@ -50,6 +52,28 @@ public class ServerCommands {
         return null;
     }
 
+    @Command(aliases = {"lblisting"}, description = "lblisting_description", usage = "lblisting_usage", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296;425386024835874826")
+    public void onLbListing(CommandEvent event) {
+        if (event.getCommandArgs().length > 0) {
+
+
+            for(int i = 0; i < SkillRoleService.IVERB_MAP_IDS.length; i++) {
+                StringBuilder sb = new StringBuilder();
+                sb.append("Map: ").append(i).append('\n');
+                for(Integer time : Luma.skillRoleService.scores.get(SkillRoleService.IVERB_MAP_IDS[i]).keySet()) {
+                    ArrayList<IVerbApi.ScoreMetadata> scores = Luma.skillRoleService.scores.get(SkillRoleService.IVERB_MAP_IDS[i]).get(time);
+                    for (IVerbApi.ScoreMetadata m : scores) {
+                        if (m.steamId == Long.parseLong(event.getCommandArgs()[0])) {
+                            sb.append("\tTime: ").append(time);
+                        }
+                    }
+                }
+                sb.append('\n');
+                event.getChannel().sendMessage(sb.toString());
+            }
+        }
+    }
+
     @Command(aliases = {"cleanup"}, description = "cleanup_description", usage = "cleanup_usage", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296;425386024835874826")
     public void onCleanup(CommandEvent event){
         if(event.getCommandArgs().length >= 1){
@@ -65,6 +89,11 @@ public class ServerCommands {
         if(event.getServer().isPresent()) {
             User user = event.getAuthor();
             Server server = event.getServer().get();
+
+            if (event.getChannel().getId() == 586288833771995166L) {
+                return null;
+            }
+
             if (event.getCommandArgs().length >= 1) {
                 Optional<Long> longOptional = Luma.database.getRoleByName(server.getId(), event.getCommandRemainder());
                 System.out.println("LongOptional isPresent: " + longOptional.isPresent());

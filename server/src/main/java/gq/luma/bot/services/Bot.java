@@ -13,9 +13,12 @@ import gq.luma.bot.systems.watchers.SlowMode;
 import org.apache.commons.io.FilenameUtils;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
+import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.intent.Intent;
+import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.permission.Role;
+import org.javacord.api.entity.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +27,8 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -62,6 +67,7 @@ public class Bot implements Service {
         executor.registerCommand(new IdentifyCommand());
         executor.registerCommand(new ServerCommands());
         executor.registerCommand(new RoleCommands());
+        executor.registerCommand(new PinsCommands());
 
         api.addMessageCreateListener(new SlowMode());
         api.addMessageCreateListener(Luma.filterManager);
@@ -93,23 +99,91 @@ public class Bot implements Service {
             }
         });
 
+        api.addReactionRemoveListener(event -> {
+
+            if (event.getServer().map(s -> s.getId() != 146404426746167296L).orElse(true)) {
+                return;
+            }
+
+            TextChannel tc = api.getTextChannelById(828380787531186186L).orElseThrow(AssertionError::new);
+
+            Message m = api.getMessageById(event.getMessageId(), event.getChannel()).join();
+
+            String messageField;
+
+            int requiredMessageLength = ("[](" + m.getLink().toString() + ")").length();
+            if (m.getContent().length() == 0) {
+                messageField = "[*No Content*](" + m.getLink().toString() + ")";
+            } else if (m.getContent().length() + requiredMessageLength <= 1024) {
+                messageField = "[" + m.getContent() + "](" + m.getLink().toString() + ")";
+            } else {
+                messageField = "[" + m.getContent().substring(0, 1024 - requiredMessageLength - 5) + " ...](" + m.getLink().toString() + ")";
+            }
+
+            String emojiField;
+
+            if (event.getEmoji().isCustomEmoji()) {
+                emojiField = event.getEmoji().getMentionTag() + " (" + event.getEmoji().asCustomEmoji().orElseThrow(AssertionError::new).getId() + ")";
+            } else {
+                emojiField = event.getEmoji().asUnicodeEmoji().orElseThrow(AssertionError::new);
+            }
+
+            tc.sendMessage(new EmbedBuilder()
+                    .setDescription("Removed Reaction")
+                    .addInlineField("User", event.getUser().map(u -> u.getMentionTag() + " (" + u.getDiscriminatedName() + "/" + u.getId() + ")").orElse("No User"))
+                    .addInlineField("Emoji", emojiField)
+                    .addInlineField("Message", messageField)
+                    .addInlineField("Removed at", Instant.now().toString()));
+        });
+
+        Role verified = api.getRoleById(558133536784121857L).orElseThrow(AssertionError::new);
+        Role unverified = api.getRoleById(804200620869156885L).orElseThrow(AssertionError::new);
+        Role dunce = api.getRoleById(312324674275115008L).orElseThrow(AssertionError::new);
+        Role speedgaming = api.getRoleById(527595914995695626L).orElseThrow(AssertionError::new);
+        Role botsRole = api.getRoleById(175637908156448768L).orElseThrow(AssertionError::new);
+        Server p2Server = Bot.api.getServerById(146404426746167296L).orElseThrow(AssertionError::new);
+
         api.addServerMemberJoinListener(event -> {
             // Check if user was previously verified
             if(Luma.database.getUserVerified(event.getUser().getId()) == 2) {
                 // Give user the Verified role
                 event.getUser().addRole(api.getRoleById(558133536784121857L).orElseThrow(AssertionError::new));
+                if (event.getUser().getRoles(p2Server).contains(unverified)) {
+                    event.getUser().removeRole(unverified);
+                }
+            } else {
+                // Give the user the Unverified role
+                event.getUser().addRole(api.getRoleById(804200620869156885L).orElseThrow(AssertionError::new));
             }
         });
 
         // Force update verified once every 15 minutes
-        Role verified = api.getRoleById(558133536784121857L).orElseThrow(AssertionError::new);
+
         Luma.schedulerService.scheduleWithFixedDelay(() -> Bot.api.getServerById(146404426746167296L)
                 .ifPresent(server -> server.getMembers().forEach(member -> {
                     // Check if user was previously verified
                     if(Luma.database.getUserVerified(member.getId()) == 2) {
                         // Give user the Verified role
-                        if(!member.getRoles(server).contains(verified)) {
+                        if(!member.getRoles(server).contains(dunce) && !member.getRoles(server).contains(verified)) {
                             member.addRole(verified);
+                            if (member.getRoles(server).contains(unverified)) {
+                                member.removeRole(unverified);
+                            }
+                        }
+                    } else {
+                        // Give the user the Unverified role
+                        if(!member.getRoles(server).contains(dunce) && !member.getRoles(server).contains(verified) && !member.getRoles(server).contains(speedgaming) && !member.getRoles(server).contains(botsRole)) {
+                            member.addRole(unverified).join();
+                        } else {
+                            if (member.getRoles(server).contains(unverified)) {
+                                member.removeRole(unverified).join();
+                            }
+                        }
+
+                        // Kick people who have been unverified for more than 24 hours
+                        if (member.getRoles(server).contains(unverified) && member.getJoinedAtTimestamp(server).map(ins -> ins.isBefore(Instant.now().minus(1, ChronoUnit.DAYS))).orElse(false)) {
+                            logger.info("Kicking user after 24hrs: " + member.getDiscriminatedName());
+                            server.kickUser(member, "Joined for 24 hours without verifying.");
                         }
                     }
                 })),

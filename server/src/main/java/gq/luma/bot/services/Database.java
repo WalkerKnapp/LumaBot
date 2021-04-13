@@ -16,6 +16,9 @@ import gq.luma.bot.systems.filtering.filters.VirusFilter;
 import gq.luma.bot.systems.filtering.filters.types.Filter;
 import org.javacord.api.entity.channel.ServerTextChannel;
 import org.javacord.api.entity.channel.TextChannel;
+import org.javacord.api.entity.emoji.CustomEmoji;
+import org.javacord.api.entity.emoji.Emoji;
+import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
 import org.slf4j.Logger;
@@ -40,13 +43,24 @@ public class Database implements Service {
     private PreparedStatement insertChannel;
 
     private PreparedStatement getServer;
+    private PreparedStatement getServerPinsEmojiUnicode;
+    private PreparedStatement getServerPinsEmojiCustom;
+    private PreparedStatement getServerPinsChannel;
+    private PreparedStatement getServerPinsThreshold;
     private PreparedStatement updateServerPrefix;
     private PreparedStatement updateServerLocale;
     private PreparedStatement updateServerNotify;
     private PreparedStatement updateClarifaiMonthlyCap;
     private PreparedStatement updateClarifaiCount;
     private PreparedStatement updateClarifaiResetDate;
+    private PreparedStatement updateServerPinsEmojiUnicode;
+    private PreparedStatement updateServerPinsEmojiCustom;
+    private PreparedStatement updateServerPinsChannel;
+    private PreparedStatement updateServerPinsThreshold;
     private PreparedStatement insertServer;
+
+    private PreparedStatement getPinNotificationByPinnedMessage;
+    private PreparedStatement insertPinNotification;
 
     private PreparedStatement getUser;
     private PreparedStatement updateUserNotify;
@@ -99,6 +113,10 @@ public class Database implements Service {
     private PreparedStatement insertManualRoleAssignment;
     private PreparedStatement deleteManualRoleAssignment;
 
+    private PreparedStatement getPins;
+    private PreparedStatement insertPins;
+    private PreparedStatement deletePin;
+
 
     @Override
     public void startService() throws SQLException, ClassNotFoundException {
@@ -119,11 +137,22 @@ public class Database implements Service {
         insertChannel = conn.prepareStatement("INSERT INTO channels (prefix, locale, notify, id) VALUES (?, ?, ?, ?)");
 
         getServer = conn.prepareStatement("SELECT * FROM servers WHERE id = ?");
+        getServerPinsEmojiUnicode = conn.prepareStatement("SELECT pin_emoji_unicode FROM servers WHERE id = ?");
+        getServerPinsEmojiCustom = conn.prepareStatement("SELECT pin_emoji_custom FROM servers WHERE id = ?");
+        getServerPinsChannel = conn.prepareStatement("SELECT pin_channel FROM servers WHERE id = ?");
+        getServerPinsThreshold = conn.prepareStatement("SELECT pin_threshold FROM servers WHERE id = ?");
         updateServerPrefix = conn.prepareStatement("UPDATE servers SET prefix = ? WHERE id = ?");
         updateServerLocale = conn.prepareStatement("UPDATE servers SET locale = ? WHERE id = ?");
         updateServerNotify = conn.prepareStatement("UPDATE servers SET notify = ? WHERE id = ?");
         updateClarifaiCount = conn.prepareStatement("UPDATE servers SET clarifai_count = ? WHERE id = ?");
+        updateServerPinsEmojiUnicode = conn.prepareStatement("UPDATE servers SET pin_emoji_unicode = ? WHERE id = ?");
+        updateServerPinsEmojiCustom = conn.prepareStatement("UPDATE servers SET pin_emoji_custom = ? WHERE id = ?");
+        updateServerPinsChannel = conn.prepareStatement("UPDATE servers SET pin_channel = ? WHERE id = ?");
+        updateServerPinsThreshold = conn.prepareStatement("UPDATE servers SET pin_threshold = ? WHERE id = ?");
         insertServer = conn.prepareStatement("INSERT INTO servers (prefix, locale, logging_channel, streams_channel, notify, monthly_clarifai_cap, clarifai_count, clarifai_reset_date, id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+        getPinNotificationByPinnedMessage = conn.prepareStatement("SELECT * FROM pin_notifications WHERE pinned_message = ?");
+        insertPinNotification = conn.prepareStatement("INSERT INTO pin_notifications (pinned_message, pin_notification) VALUES (?, ?)");
 
         getUser = conn.prepareStatement("SELECT * FROM users WHERE id = ?");
         updateUserNotify = conn.prepareStatement("UPDATE users SET notify = ? WHERE id = ?");
@@ -414,6 +443,221 @@ public class Database implements Service {
             insertChannel.setInt(3, 0);
             insertChannel.setLong(4, channel.getId());
             insertChannel.execute();
+        }
+    }
+
+    public synchronized Optional<String> getServerPinEmojiMention(Server server) {
+        try {
+            // Check for unicode emojis
+
+            getServerPinsEmojiUnicode.setLong(1, server.getId());
+
+            ResultSet rs = getServerPinsEmojiUnicode.executeQuery();
+
+            if (rs.next()) {
+                String emoji = rs.getString("pin_emoji_unicode");
+
+                if (emoji != null) {
+                    return Optional.of(emoji);
+                }
+            }
+
+            // Check for custom emojis
+
+            getServerPinsEmojiCustom.setLong(1, server.getId());
+
+            rs = getServerPinsEmojiCustom.executeQuery();
+
+            if (rs.next()) {
+                long id = rs.getLong("pin_emoji_custom");
+
+                if (id != 0) {
+                    return Bot.api.getCustomEmojiById(id).map(CustomEmoji::getMentionTag);
+                }
+            }
+
+            return Optional.empty();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    public synchronized boolean ifServerPinEmojiMatches(Server server, Emoji otherEmoji) {
+        try {
+            if (otherEmoji.isUnicodeEmoji()) {
+                // Check for unicode emojis
+
+                getServerPinsEmojiUnicode.setLong(1, server.getId());
+
+                ResultSet rs = getServerPinsEmojiUnicode.executeQuery();
+
+                if (rs.next()) {
+                    String emoji = rs.getString("pin_emoji_unicode");
+
+                    if (emoji != null) {
+                        return otherEmoji.asUnicodeEmoji().get().equals(emoji);
+                    }
+                }
+            } else if (otherEmoji.isCustomEmoji()) {
+
+                // Check for custom emojis
+
+                getServerPinsEmojiCustom.setLong(1, server.getId());
+
+                ResultSet rs = getServerPinsEmojiCustom.executeQuery();
+
+                if (rs.next()) {
+                    long id = rs.getLong("pin_emoji_custom");
+
+                    if (id != 0) {
+                        return id == otherEmoji.asCustomEmoji().get().getId();
+                    }
+                }
+            }
+
+            return false;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public synchronized void setServerPinEmojiCustom(long serverId, long emojiId) {
+        try {
+            updateServerPinsEmojiCustom.setLong(1, emojiId);
+            updateServerPinsEmojiCustom.setLong(2, serverId);
+            updateServerPinsEmojiCustom.execute();
+
+            updateServerPinsEmojiUnicode.setNull(1, Types.VARCHAR);
+            updateServerPinsEmojiUnicode.setLong(2, serverId);
+            updateServerPinsEmojiUnicode.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void setServerPinEmojiUnicode(long serverId, String emoji) {
+        try {
+            updateServerPinsEmojiUnicode.setString(1, emoji);
+            updateServerPinsEmojiUnicode.setLong(2, serverId);
+            updateServerPinsEmojiUnicode.execute();
+
+            updateServerPinsEmojiCustom.setNull(1, Types.BIGINT);
+            updateServerPinsEmojiCustom.setLong(2, serverId);
+            updateServerPinsEmojiCustom.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized OptionalInt getServerPinThreshold(Server server) {
+        try {
+            getServerPinsThreshold.setLong(1, server.getId());
+
+            ResultSet rs = getServerPinsThreshold.executeQuery();
+
+            if (rs.next()) {
+                int threshold = rs.getInt("pin_threshold");
+
+                if (threshold != 0) {
+                    return OptionalInt.of(threshold);
+                }
+            }
+
+            return OptionalInt.empty();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return OptionalInt.empty();
+        }
+    }
+
+    public synchronized void setServerPinThreshold(long serverId, int threshold) {
+        try {
+            updateServerPinsThreshold.setInt(1, threshold);
+            updateServerPinsThreshold.setLong(2, serverId);
+
+            updateServerPinsThreshold.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized Optional<ServerTextChannel> getServerPinChannel(Server server) {
+        try {
+            getServerPinsChannel.setLong(1, server.getId());
+
+            ResultSet rs = getServerPinsChannel.executeQuery();
+
+            if (rs.next()) {
+                long channelId = rs.getLong("pin_channel");
+
+                if (channelId != 0) {
+                    return Bot.api.getServerTextChannelById(channelId);
+                }
+            }
+
+            return Optional.empty();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    public synchronized void setServerPinChannel(long serverId, long channelId) {
+        try {
+            updateServerPinsChannel.setLong(1, channelId);
+            updateServerPinsChannel.setLong(2, serverId);
+
+            updateServerPinsChannel.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized boolean isPinnedMessageNotified(long pinnedMessageId) {
+        try {
+            getPinNotificationByPinnedMessage.setLong(1, pinnedMessageId);
+
+            ResultSet rs = getPinNotificationByPinnedMessage.executeQuery();
+
+            return rs.next();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public synchronized Message getPinNotificationByPinnedMessage(long pinnedMessageId, long notificationChannelId) {
+        try {
+            getPinNotificationByPinnedMessage.setLong(1, pinnedMessageId);
+
+            ResultSet rs = getPinNotificationByPinnedMessage.executeQuery();
+
+            if (rs.next()) {
+                long id = rs.getLong("pin_notification");
+
+                return Bot.api.getMessageById(id, Bot.api.getTextChannelById(notificationChannelId)
+                        .orElseThrow(AssertionError::new)).join();
+            }
+
+            throw new AssertionError("Tried to get pin notification for illegal message.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new AssertionError("Tried to get pin notification and had SQL failure.");
+        }
+    }
+
+    public synchronized void createPinNotification(long pinnedMessageId, long pinNotificationId) {
+        try {
+            insertPinNotification.setLong(1, pinnedMessageId);
+            insertPinNotification.setLong(2, pinNotificationId);
+
+            insertPinNotification.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 

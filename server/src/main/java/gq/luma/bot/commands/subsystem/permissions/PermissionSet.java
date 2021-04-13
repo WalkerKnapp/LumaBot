@@ -23,6 +23,7 @@ public class PermissionSet {
         SET_PANIC_MODE(35),
         CLEANUP(36),
         VOTES(37),
+        PINS(38),
         DEVELOPER(64);
 
         int index;
