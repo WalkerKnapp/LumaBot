@@ -34,6 +34,10 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public class Bot implements Service {
+
+    private static final long P2SR_SERVER_ID = 146404426746167296L;
+    private static final long DUNCE_ROLE_ID = 312324674275115008L;
+
     private static Logger logger = LoggerFactory.getLogger(Bot.class);
 
     public static DiscordApi api;
@@ -68,6 +72,7 @@ public class Bot implements Service {
         executor.registerCommand(new ServerCommands());
         executor.registerCommand(new RoleCommands());
         executor.registerCommand(new PinsCommands());
+        executor.registerCommand(new DunceCommand());
 
         api.addMessageCreateListener(new SlowMode());
         api.addMessageCreateListener(Luma.filterManager);
@@ -144,6 +149,15 @@ public class Bot implements Service {
         Server p2Server = Bot.api.getServerById(146404426746167296L).orElseThrow(AssertionError::new);
 
         api.addServerMemberJoinListener(event -> {
+            if (event.getServer().getId() == P2SR_SERVER_ID) {
+                if (Luma.database.isDunced(event.getUser().getId())) {
+                    // Add dunce role
+                    event.getServer()
+                            .getRoleById(DUNCE_ROLE_ID).orElseThrow(AssertionError::new)
+                            .addUser(event.getUser());
+                }
+            }
+
             // Check if user was previously verified
             if(Luma.database.getUserVerified(event.getUser().getId()) == 2) {
                 // Give user the Verified role
@@ -195,7 +209,7 @@ public class Bot implements Service {
     }
 
     public void sendMessage(long serverId, long channelId, String text, EmbedBuilder embedBuilder){
-        api.getServerById(serverId).ifPresent(s -> s.getTextChannelById(channelId).ifPresent(tc -> tc.sendMessage(text, embedBuilder)));
+        api.getServerById(serverId).flatMap(s -> s.getTextChannelById(channelId)).ifPresent(tc -> tc.sendMessage(text, embedBuilder));
     }
 
 }

@@ -1,5 +1,6 @@
 package gq.luma.bot.services.apis;
 
+import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import gq.luma.bot.Luma;
@@ -11,6 +12,8 @@ import okhttp3.ResponseBody;
 import org.apache.commons.io.input.CountingInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import it.unimi.dsi.fastutil.longs.Long2IntMap;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,6 +40,156 @@ public class IVerbApi {
     public static class ScoreMetadata {
         public long steamId = -1;
         public Instant timeGained = null;
+    }
+
+    public static Long2IntMap getAggregatedSpRanks() throws IOException {
+        Long2IntMap aggregatedSpRanks = new Long2IntOpenHashMap();
+
+        Request request = new Request.Builder().url("https://board.portal2.sr/aggregated/sp/json").build();
+        Call call = Luma.okHttpClient.newCall(request);
+        Response response = call.execute();
+        if (!response.isSuccessful() || (response.code() < 200 || response.code() >= 300)) {
+            logger.error("Request for aggregated sp ranks failed: success: " + response.isSuccessful() + ", code: " + response.code());
+            return null;
+        }
+
+        ResponseBody body = response.body();
+
+        if (body == null) {
+            logger.error("Request for aggregated sp ranks failed: no body.");
+            return null;
+        }
+
+        try (InputStream is = body.byteStream(); JsonParser jsonParser = new JsonFactory().createParser(is)) {
+            // Looking for points.[uid].scoreData.score
+            int objectDepth = 0;
+            int depthMatched = 0;
+
+            String currentSteamId = null;
+
+            while (!jsonParser.isClosed()) {
+                if (jsonParser.nextToken() == null) {
+                    break;
+                }
+
+                switch (jsonParser.currentToken()) {
+                    case START_OBJECT:
+                        objectDepth++;
+                        break;
+                    case END_OBJECT:
+                        objectDepth--;
+                        if (depthMatched >= objectDepth) {
+                            depthMatched = objectDepth - 1;
+                        }
+                        break;
+                    case FIELD_NAME:
+                        switch (objectDepth) {
+                            case 1:
+                                if ("points".equalsIgnoreCase(jsonParser.currentName())) {
+                                    depthMatched = 1;
+                                }
+                                break;
+                            case 2:
+                                if (depthMatched == 1) {
+                                    currentSteamId = jsonParser.currentName();
+                                    depthMatched = 2;
+                                }
+                                break;
+                            case 3:
+                                if (depthMatched == 2 && "scoreData".equalsIgnoreCase(jsonParser.currentName())) {
+                                    depthMatched = 3;
+                                }
+                                break;
+                            case 4:
+                                if (depthMatched == 3 && "score".equalsIgnoreCase(jsonParser.currentName())) {
+                                    if(jsonParser.nextToken() != JsonToken.VALUE_NUMBER_INT) {
+                                        System.err.println("points." + currentSteamId + ".scoreData.score is not a number in https://board.portal2.sr/aggregated/sp/json");
+                                        return null;
+                                    }
+                                    aggregatedSpRanks.put(Long.parseLong(currentSteamId), jsonParser.getValueAsInt());
+                                }
+                        }
+                        break;
+                }
+            }
+        }
+
+        return aggregatedSpRanks;
+    }
+
+    public static Long2IntMap getAggregatedCoopRanks() throws IOException {
+        Long2IntMap aggregatedSpRanks = new Long2IntOpenHashMap();
+
+        Request request = new Request.Builder().url("https://board.portal2.sr/aggregated/coop/json").build();
+        Call call = Luma.okHttpClient.newCall(request);
+        Response response = call.execute();
+        if (!response.isSuccessful() || (response.code() < 200 || response.code() >= 300)) {
+            logger.error("Request for aggregated coop ranks failed: success: " + response.isSuccessful() + ", code: " + response.code());
+            return null;
+        }
+
+        ResponseBody body = response.body();
+
+        if (body == null) {
+            logger.error("Request for aggregated coop ranks failed: no body.");
+            return null;
+        }
+
+        try (InputStream is = body.byteStream(); JsonParser jsonParser = new JsonFactory().createParser(is)) {
+            // Looking for points.[uid].scoreData.score
+            int objectDepth = 0;
+            int depthMatched = 0;
+
+            String currentSteamId = null;
+
+            while (!jsonParser.isClosed()) {
+                if (jsonParser.nextToken() == null) {
+                    break;
+                }
+
+                switch (jsonParser.currentToken()) {
+                    case START_OBJECT:
+                        objectDepth++;
+                        break;
+                    case END_OBJECT:
+                        objectDepth--;
+                        if (depthMatched >= objectDepth) {
+                            depthMatched = objectDepth - 1;
+                        }
+                        break;
+                    case FIELD_NAME:
+                        switch (objectDepth) {
+                            case 1:
+                                if ("points".equalsIgnoreCase(jsonParser.currentName())) {
+                                    depthMatched = 1;
+                                }
+                                break;
+                            case 2:
+                                if (depthMatched == 1) {
+                                    currentSteamId = jsonParser.currentName();
+                                    depthMatched = 2;
+                                }
+                                break;
+                            case 3:
+                                if (depthMatched == 2 && "scoreData".equalsIgnoreCase(jsonParser.currentName())) {
+                                    depthMatched = 3;
+                                }
+                                break;
+                            case 4:
+                                if (depthMatched == 3 && "score".equalsIgnoreCase(jsonParser.currentName())) {
+                                    if(jsonParser.nextToken() != JsonToken.VALUE_NUMBER_INT) {
+                                        System.err.println("points." + currentSteamId + ".scoreData.score is not a number in https://board.portal2.sr/aggregated/coop/json");
+                                        return null;
+                                    }
+                                    aggregatedSpRanks.put(Long.parseLong(currentSteamId), jsonParser.getValueAsInt());
+                                }
+                        }
+                        break;
+                }
+            }
+        }
+
+        return aggregatedSpRanks;
     }
 
     /*public static int getOverallRankFromUserJsonLink(String link) throws IOException {
@@ -95,7 +248,7 @@ public class IVerbApi {
     }*/
 
     public static long fetchScoreUpdates(int maxDaysAgo, Predicate<ScoreUpdate> takeWhile, Consumer<ScoreUpdate> consumer) throws IOException {
-        final String changelogUrl = "https://board.iverb.me/changelog/json?maxDaysAgo=" + maxDaysAgo;
+        final String changelogUrl = "https://board.portal2.sr/changelog/json?maxDaysAgo=" + maxDaysAgo;
 
         Request request = new Request.Builder().url(changelogUrl).header("User-Agent", "LumaBot").build();
 
@@ -245,7 +398,7 @@ public class IVerbApi {
     }
 
     public static long fetchMapScores(int mapId, BiConsumer<Integer, ScoreMetadata> consumer) throws IOException {
-        final String mapDataUrl = "https://board.iverb.me/chamber/" + mapId + "/json";
+        final String mapDataUrl = "https://board.portal2.sr/chamber/" + mapId + "/json";
         logger.debug("Making request to " + mapDataUrl);
 
         Request request = new Request.Builder().url(mapDataUrl).header("User-Agent", "LumaBot").build();

@@ -6,6 +6,8 @@ import com.walker.jspeedrun.api.leaderboards.Leaderboard;
 import com.walker.jspeedrun.api.run.Run;
 import gq.luma.bot.Luma;
 import gq.luma.bot.services.apis.IVerbApi;
+import it.unimi.dsi.fastutil.longs.Long2IntMap;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import okhttp3.OkHttpClient;
 import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.user.User;
@@ -27,13 +29,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SkillRoleService implements Service {
-
     private static Logger logger = LoggerFactory.getLogger(SkillRoleService.class);
 
     private static final int FIRST_SP_CHAPTER = 7;
     private static final int FIRST_COOP_CHAPTER = 1;
 
-    private long milliRefreshTime = 1000 * 60 * 15; // 15 minutes
+    private long milliRefreshTime = 1000 * 60 * 5; // 5 minutes
 
     private ScheduledFuture<?> refreshFuture;
     private Instant latestProccessedScore;
@@ -41,7 +42,7 @@ public class SkillRoleService implements Service {
     private JSpeedrun jSpeedrun;
 
     private static final int FIRST_COOP_MAP_INDEX = 60;
-    private static final int[] IVERB_MAP_IDS = {
+    public static final int[] IVERB_MAP_IDS = {
             62761, // Container Ride
             62758, // Portal Carousel
             47458, // Portal Gun
@@ -176,11 +177,14 @@ public class SkillRoleService implements Service {
     private static final long ADVANCED_ROLE = 608364011028742162L;
     private static final long PROFESSIONALS_ROLE = 313760989180985344L;
     private static final long INTERMEDIATE_ROLE = 574794742462677008L;
+    private static final long MEDIOCRE_ROLE = 832011322568081448L;
     private static final long BEGINNER_ROLE = 146432621071564800L;
 
     // This should be a full mirror of the Iverb scores database.
     // <Map id, <Rank, List<Scores>>>
-    private HashMap<Integer, ConcurrentSkipListMap<Integer, ArrayList<IVerbApi.ScoreMetadata>>> scores;
+    public HashMap<Integer, ConcurrentSkipListMap<Integer, ArrayList<IVerbApi.ScoreMetadata>>> scores;
+    public Long2IntMap spAggregated;
+    public Long2IntMap coopAggregated;
     // Updated every cycle, a list of the people in the top 3 ranks
     // <Rank, List<User ids>>
     private ArrayList<Long> top3Users;
@@ -192,6 +196,8 @@ public class SkillRoleService implements Service {
         this.jSpeedrun = new JSpeedrun();
 
         this.scores = new HashMap<>();
+        this.spAggregated = new Long2IntOpenHashMap();
+        this.coopAggregated = new Long2IntOpenHashMap();
         this.top3Users = new ArrayList<>();
     }
 
@@ -220,7 +226,10 @@ public class SkillRoleService implements Service {
             this.scores.put(id, mapScores);
         }
 
-        logger.info("Fetched all map scores on board.iverb.me. Fetched " + scoreCount.get() + " scores and used " + (totalSize/1000f) + "kb of data.");
+        this.spAggregated = IVerbApi.getAggregatedSpRanks();
+        this.coopAggregated = IVerbApi.getAggregatedCoopRanks();
+
+        logger.info("Fetched all map scores on board.portal2.sr. Fetched " + scoreCount.get() + " scores and used " + (totalSize/1000f) + "kb of data.");
 
         refreshFuture = Luma.schedulerService
                 .scheduleAtFixedRate(this::runChangelogFetch, milliRefreshTime, milliRefreshTime, TimeUnit.MILLISECONDS);
@@ -244,7 +253,7 @@ public class SkillRoleService implements Service {
 
     private void runChangelogFetch() {
         try {
-            logger.debug("Fetching score updates on board.iverb.me...");
+            logger.debug("Fetching score updates on board.portal2.sr...");
 
             Set<Long> updatedSteamUsers = new HashSet<>();
             Set<Long> updatedSrcomUsers = new HashSet<>();
@@ -309,6 +318,9 @@ public class SkillRoleService implements Service {
             } catch (IOException e) {
                 logger.error("Failed to fetch score updates", e);
             }
+
+            this.spAggregated = IVerbApi.getAggregatedSpRanks();
+            this.coopAggregated = IVerbApi.getAggregatedCoopRanks();
 
             // With the new elite qualification,
             //updatedSteamUsers.addAll(updateTop3());
@@ -400,6 +412,11 @@ public class SkillRoleService implements Service {
 
         //logger.info("Updating discord user: " + discordUser.getDiscriminatedName());
 
+        if (discordUser.getRoles(Bot.api.getServerById(146404426746167296L).orElseThrow()).stream().anyMatch(r -> r.getId() == 312324674275115008L)) {
+            logger.debug("Skipping discord user: " + discordUser.getDiscriminatedName() + " for being dunced.");
+            return;
+        }
+
         ArrayList<Long> assignedRoles = Luma.database.getAssignedRoles(discordUser.getId(), 146404426746167296L);
 
         AtomicBoolean elite = new AtomicBoolean(assignedRoles.contains(ELITE_ROLE));
@@ -407,8 +424,9 @@ public class SkillRoleService implements Service {
         AtomicBoolean advanced = new AtomicBoolean(assignedRoles.contains(ADVANCED_ROLE));
         AtomicBoolean intermediate = new AtomicBoolean(assignedRoles.contains(INTERMEDIATE_ROLE));
         AtomicBoolean beginner = new AtomicBoolean(assignedRoles.contains(BEGINNER_ROLE));
+        AtomicBoolean mediocre = new AtomicBoolean(assignedRoles.contains(MEDIOCRE_ROLE));
 
-        final Instant oneMonthAgo = Instant.now().minus(30, ChronoUnit.DAYS);
+        final Instant sixMonthsAgo = Instant.now().minus(6 * 30, ChronoUnit.DAYS);
 
         Luma.database.getVerifiedConnectionsByUser(discordUser.getId(), 146404426746167296L)
                 .forEach((type, ids) -> {
@@ -427,17 +445,17 @@ public class SkillRoleService implements Service {
                                 }
 
                                 // Elite Qualifications
-                                if(setIfTrue(elite, totalPointsRounded >= 20000)) {
-                                    logger.debug("Giving Elite due to having >= 20,000 total points: " + totalPointsRounded);
+                                if(setIfTrue(elite, totalPointsRounded >= 20300)) {
+                                    logger.debug("Giving Elite due to having >= 20,300 total points: " + totalPointsRounded);
                                 }
                                 //elite.compareAndSet(false, top3Users.contains(steamId));
 
                                 // Professionals Qualifications
-                                if(setIfTrue(professionals, totalPointsRounded >= 16500)) {
-                                    logger.debug("Giving Professionals due to having >= 16,500 total points: " + totalPointsRounded);
+                                if(setIfTrue(professionals, totalPointsRounded >= 17500)) {
+                                    logger.debug("Giving Professionals due to having >= 17,500 total points: " + totalPointsRounded);
                                 }
-                                if(setIfTrue(professionals, spPoints >= 9500)) {
-                                    logger.debug("Giving Professionals due to having >= 9,500 sp points: " + spPoints);
+                                if(setIfTrue(professionals, spPoints >= 10300)) {
+                                    logger.debug("Giving Professionals due to having >= 10,300 sp points: " + spPoints);
                                 }
                                 if(setIfTrue(professionals, coopPoints >= 8000)) {
                                     logger.debug("Giving Professionals due to having >= 8,000 coop points: " + coopPoints);
@@ -452,16 +470,24 @@ public class SkillRoleService implements Service {
                                 }
 
                                 // Intermediate Qualifications
-                                if(setIfTrue(intermediate, spPoints >= 2000)) {
-                                    logger.debug("Giving Intermediate due to having >= 2,000 sp points: " + spPoints);
+                                if(setIfTrue(intermediate, spPoints >= 4000)) {
+                                    logger.debug("Giving Intermediate due to having >= 4,000 sp points: " + spPoints);
                                 }
-                                if(setIfTrue(intermediate, coopPoints >= 2500)) {
-                                    logger.debug("Giving Intermediate due to having >= 2,500 sp points: " + coopPoints);
+                                if(setIfTrue(intermediate, coopPoints >= 3500)) {
+                                    logger.debug("Giving Intermediate due to having >= 3,500 sp points: " + coopPoints);
+                                }
+
+                                // Mediocre Qualifications
+                                if(setIfTrue(mediocre, spPoints >= 1500)) {
+                                    logger.debug("Giving Mediocre due to having >= 1500 sp points: " + spPoints);
+                                }
+                                if(setIfTrue(mediocre, coopPoints >= 2000)) {
+                                    logger.debug("Giving Mediocre due to having >= 2000 coop points: " + coopPoints);
                                 }
 
                                 // Beginner Qualifications
-                                if(setIfTrue(beginner, latestScore.isAfter(oneMonthAgo))) {
-                                    logger.debug("Giving Beginner due to iVerb activity in the last month: " + latestScore.toString());
+                                if(setIfTrue(beginner, latestScore.isAfter(sixMonthsAgo) && discordUser.getId() != 103656524617900032L)) {
+                                    logger.debug("Giving Beginner due to iVerb activity in the last 6 months: " + latestScore.toString());
                                 }
                             }
                             break;
@@ -599,49 +625,60 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(elite, singlePlayerRank <= 3)) { // Top 3
                                     logger.debug("Giving Elite due to Top 3 Single Player Time: " + singlePlayerRank);
                                 }
-                                if (setIfTrue(elite, amcRankPlayerAbove <= 2)) { // Top 2
-                                    logger.debug("Giving Elite due to Top 3 AMC Time: " + amcRankPlayerAbove);
+                                if (setIfTrue(elite, amcTimePlayerAboveRank < (26 * 60) + 30)) { // Sub 26:30
+                                    logger.debug("Giving Elite due to a sub 26:30 AMC Time: " + amcTimePlayerAboveRank);
                                 }
-                                if (setIfTrue(elite, amcRankPlayerBelow <= 2)) { // Top 2
-                                    logger.debug("Giving Elite due to Top 3 AMC Time: " + amcRankPlayerBelow);
+                                if (setIfTrue(elite, amcTimePlayerBelowRank < (26 * 60) + 30)) { // Sub 26:30
+                                    logger.debug("Giving Elite due to a sub 26:30 AMC Time: " + amcTimePlayerBelowRank);
                                 }
 
                                 // Professionals Qualifications
                                 if (setIfTrue(professionals, singlePlayerRank <= 10)) { // Top 10
                                     logger.debug("Giving Professionals due to Top 10 Single Player Time: " + singlePlayerTime);
                                 }
-                                /*if (setIfTrue(professionals, amcRankPlayerAbove <= 5)) { // Top 5
-                                    logger.debug("Giving Professionals due to Top 5 AMC Time: " + amcRankPlayerAbove);
+                                if (setIfTrue(professionals, amcTimePlayerAboveRank < (27 * 60) + 15)) { // Sub 27:15
+                                    logger.debug("Giving Professionals due to a sub 27:15 AMC Time: " + amcTimePlayerAboveRank);
                                 }
-                                if (setIfTrue(professionals, amcRankPlayerBelow <= 8)) { // Top 8
-                                    logger.debug("Giving Professionals due to Top 8 AMC Time: " + amcRankPlayerBelow);
-                                }*/
+                                if (setIfTrue(professionals, amcTimePlayerBelowRank < (27 * 60) + 15)) { // Sub 27:15
+                                    logger.debug("Giving Professionals due to a sub 27:15 AMC Time: " + amcTimePlayerBelowRank);
+                                }
 
                                 // Advanced Qualifications
-                                if (setIfTrue(advanced, singlePlayerRank <= 25)) { // Top 25
-                                    logger.debug("Giving Advanced due to Top 25 Single Player Time: " + singlePlayerRank);
+                                if (setIfTrue(advanced, singlePlayerRank <= 30)) { // Top 30
+                                    logger.debug("Giving Advanced due to Top 30 Single Player Time: " + singlePlayerRank);
                                 }
-                                /*if (setIfTrue(advanced, amcRankPlayerAbove <= 12)) { // Top 12
-                                    logger.debug("Giving Advanced due to Top 12 AMC Time: " + amcRankPlayerAbove);
+                                if (setIfTrue(advanced, amcTimePlayerAboveRank < (28 * 60) + 15)) { // Sub 28:15
+                                    logger.debug("Giving Advanced due to a sub 28:15 AMC Time w/ Above Rank: " + amcTimePlayerAboveRank);
                                 }
-                                if (setIfTrue(advanced, amcRankPlayerBelow <= 20)) { // Top 20
-                                    logger.debug("Giving Advanced due to Top 20 AMC Time: " + amcRankPlayerBelow);
-                                }*/
+                                if (setIfTrue(advanced, amcTimePlayerBelowRank < (29 * 60))) { // Sub 29:00
+                                    logger.debug("Giving Advanced due to a sub 29:00 AMC Time w/ Below Rank: " + amcTimePlayerBelowRank);
+                                }
 
                                 // Intermediate Qualifications
-                                if (setIfTrue(intermediate, singlePlayerRank <= 115)) { // Top 115
-                                    logger.debug("Giving Intermediate due to Top 115 Single Player Time: " + singlePlayerRank);
+                                if (setIfTrue(intermediate, singlePlayerRank <= 65)) { // Top 65
+                                    logger.debug("Giving Intermediate due to Top 65 Single Player Time: " + singlePlayerRank);
                                 }
-                                if (setIfTrue(intermediate, amcRankPlayerAbove <= 85)) { // Top 85
-                                    logger.debug("Giving Intermediate due to Top 85 AMC Time: " + amcRankPlayerAbove);
+                                if (setIfTrue(intermediate, amcTimePlayerAboveRank < (32 * 60))) { // Sub 32:00
+                                    logger.debug("Giving Intermediate due to a sub 27:15 AMC Time: " + amcTimePlayerAboveRank);
                                 }
-                                if(setIfTrue(intermediate, amcRankPlayerBelow <= 85)) { // Top 85
-                                    logger.debug("Giving Intermediate due to Top 85 AMC Time: " + amcRankPlayerBelow);
+                                if (setIfTrue(intermediate, amcTimePlayerBelowRank < (32 * 60))) { // Sub 32:00
+                                    logger.debug("Giving Intermediate due to a sub 27:15 AMC Time: " + amcTimePlayerBelowRank);
+                                }
+
+                                // Mediocre Qualifications
+                                if (setIfTrue(mediocre, singlePlayerRank <= 130)) { // Top 130
+                                    logger.debug("Giving Mediocre due to Top 130 Single Player Time: " + singlePlayerRank);
+                                }
+                                if (setIfTrue(mediocre, amcTimePlayerAboveRank < (36 * 60))) { // Sub 36:00
+                                    logger.debug("Giving Mediocre due to a sub 36:00 AMC Time: " + amcTimePlayerAboveRank);
+                                }
+                                if (setIfTrue(mediocre, amcTimePlayerBelowRank < (36 * 60))) { // Sub 36:00
+                                    logger.debug("Giving Mediocre due to a sub 36:00 AMC Time: " + amcTimePlayerBelowRank);
                                 }
 
                                 // Beginner Qualifications
                                 if(latestRun != null) {
-                                    if(setIfTrue(beginner, latestRun.isAfter(OffsetDateTime.now().minus(6, ChronoUnit.MONTHS)))) { // Run in the last 6 months
+                                    if(setIfTrue(beginner, latestRun.isAfter(OffsetDateTime.now().minus(6, ChronoUnit.MONTHS)) && discordUser.getId() != 103656524617900032L)) { // Run in the last 6 months
                                         logger.debug("Giving Beginner due to srcom activity in the last 6 months: " + latestRun.toString());
                                     }
                                 }
@@ -657,7 +694,7 @@ public class SkillRoleService implements Service {
                         () -> logger.error("Failed to find elite role."));
 
         Bot.api.getRoleById(PROFESSIONALS_ROLE)
-                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, professionals, false),
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, professionals, true),
                         () -> logger.error("Failed to find professionals role."));
 
         Bot.api.getRoleById(ADVANCED_ROLE)
@@ -667,6 +704,10 @@ public class SkillRoleService implements Service {
         Bot.api.getRoleById(INTERMEDIATE_ROLE)
                 .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, intermediate, true),
                         () -> logger.error("Failed to find intermediate role."));
+
+        Bot.api.getRoleById(MEDIOCRE_ROLE)
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, mediocre, true),
+                        () -> logger.error("Failed to find mediocre role."));
 
         Bot.api.getRoleById(BEGINNER_ROLE)
                 .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, beginner, false),
@@ -697,23 +738,25 @@ public class SkillRoleService implements Service {
     }
 
     public float calculateSpPoints(long steamId) {
-        float[] totalSpPoints = { 0f };
+        /*float[] totalSpPoints = { 0f };
 
         for(int i = 0; i < FIRST_COOP_MAP_INDEX; i++) {
             sumMapPoints(steamId, totalSpPoints, i);
         }
 
-        return totalSpPoints[0];
+        return totalSpPoints[0];*/
+        return this.spAggregated.get(steamId);
     }
 
     public float calculateCoopPoints(long steamId) {
-        float[] totalCoopPoints = { 0f };
+        /*float[] totalCoopPoints = { 0f };
 
         for(int i = FIRST_COOP_MAP_INDEX; i < IVERB_MAP_IDS.length; i++) {
             sumMapPoints(steamId, totalCoopPoints, i);
         }
 
-        return totalCoopPoints[0];
+        return totalCoopPoints[0];*/
+        return this.coopAggregated.get(steamId);
     }
 
     public int calculateRoundedTotalPoints(long steamId) {

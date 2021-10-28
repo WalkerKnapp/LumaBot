@@ -25,6 +25,7 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class TwitchApi implements Service {
@@ -106,15 +107,25 @@ public class TwitchApi implements Service {
                     AtomicReference<String> userTag = new AtomicReference<>();
                     AtomicReference<String> profileUrl = new AtomicReference<>();
 
+                    AtomicBoolean presentInServer = new AtomicBoolean(false);
+
                     Luma.database.getVerifiedConnectionsById(stream.getUserId(), "twitch")
                             .stream()
                             .findFirst().ifPresent(discordUser -> {
                         discordUser.getRoleColor(Bot.api.getServerById(146404426746167296L).orElseThrow(AssertionError::new))
                                 .ifPresent(embedColor::set);
 
+                        if (Bot.api.getServerById(146404426746167296L).orElseThrow(AssertionError::new).getMembers().contains(discordUser)) {
+                            presentInServer.set(true);
+                        }
+
                         userTag.set(discordUser.getDiscriminatedName());
                         profileUrl.set(discordUser.getAvatar().getUrl().toString());
                     });
+
+                    if (!presentInServer.get()) {
+                        return;
+                    }
 
                     client.getHelix().getUsers(appAccessToken, List.of(stream.getUserId()), null)
                             .execute()

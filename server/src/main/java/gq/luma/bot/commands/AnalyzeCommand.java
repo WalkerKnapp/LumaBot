@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class AnalyzeCommand {
-    @Command(aliases = {"analyze", "a"}, description = "analyze_desc", usage = "analyze_usage")
+    /*@Command(aliases = {"analyze", "a"}, description = "analyze_desc", usage = "analyze_usage")
     public void onAnalyze(CommandEvent event){
         Localization loc = event.getLocalization();
         CompletableFuture<Message> responseMessage = event.getMessage().getChannel().sendMessage(loc.get("analyze_pending"));
@@ -240,5 +240,5 @@ public class AnalyzeCommand {
                 } catch (IOException ignored) { }
             }
         }
-    }
+    }*/
 }

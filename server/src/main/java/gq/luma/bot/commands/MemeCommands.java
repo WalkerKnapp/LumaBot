@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.Random;
 
 public class MemeCommands {
-    @Command(aliases = {"deepfry"}, description = "deepfry_description", usage = "", parent = "meme")
+    /*@Command(aliases = {"deepfry"}, description = "deepfry_description", usage = "", parent = "meme")
     public EmbedBuilder onDeepFry(CommandEvent event){
         int brightness = 150;
         int sharpness = 150;
@@ -55,7 +55,7 @@ public class MemeCommands {
         filterImage(input, brightness, sharpness, contrast, saturation, noise);
 
         return EmbedUtilities.getImageMessage(input, event.getLocalization());
-    }
+    }*/
 
     private static void filterImage(BufferedImage original, int brightness, int sharpness, int contrast, int saturation, int noise){
 

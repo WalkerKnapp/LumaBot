@@ -34,6 +34,7 @@ import io.undertow.util.PathTemplateMatch;
 import okhttp3.Request;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.entity.message.MessageBuilder;
+import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
 import org.pac4j.core.config.Config;
@@ -61,6 +62,9 @@ import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -126,11 +130,18 @@ public class WebServer implements Service {
                     attemptToVerifyUser(latestDiscordProfile, serverId, ip);
                 } else {
                     // Still try to give them the verified role
+                    Role dunce = Bot.api.getRoleById(312324674275115008L).orElseThrow(AssertionError::new);
+                    Role unverified = Bot.api.getRoleById(UNVERIFIED_ROLE).orElseThrow(AssertionError::new);
+
                     Bot.api.getServerById(serverId).ifPresent(server -> {
                         Bot.api.getRoleById(VERIFIED_ROLE).ifPresent(role -> {
                             Bot.api.getUserById(latestDiscordProfile.getId()).thenAccept(user -> {
-                               if(!user.getRoles(server).contains(role)) {
+                               if(!user.getRoles(server).contains(dunce) && !user.getRoles(server).contains(role)) {
                                    user.addRole(role);
+
+                                   if (user.getRoles(server).contains(unverified)) {
+                                       user.removeRole(unverified);
+                                   }
                                }
                             });
                         });
@@ -155,9 +166,9 @@ public class WebServer implements Service {
             }
         }
 
-        private Map<Long, LinkedList<UserJoin>> last5JoinTimes = new HashMap<>();
+        private final Map<Long, LinkedList<UserJoin>> last5JoinTimes = new HashMap<>();
 
-        private class UserJoin {
+        private static class UserJoin {
             private long userId;
             private long time;
             public boolean quarantined = false;
@@ -169,7 +180,9 @@ public class WebServer implements Service {
         }
 
         private static final long VERIFIED_ROLE = 558133536784121857L;
+        private static final long UNVERIFIED_ROLE = 804200620869156885L;
         private static final long VERIFICATION_REVIEW_ROLE = 596219515251982347L;
+        private static final long MOD_NOTIFICATIONS_ROLE = 797178777754140722L;
 
         private static final long VERIFICATION_REVIEW_CHANNEL = 586288946271617024L;
         private static final long VERIFICATION_LOG_CHANNEL = 782042783442927616L;
@@ -228,20 +241,21 @@ public class WebServer implements Service {
                 return;
             }*/
 
+            Role modNotifRole = Bot.api.getRoleById(MOD_NOTIFICATIONS_ROLE).orElseThrow(AssertionError::new);
+
             Bot.api.getServerById(serverId).ifPresent(server -> {
                 Bot.api.getUserById(thisJoin.userId).thenAccept(user -> {
                     AtomicBoolean altNotice = new AtomicBoolean(false);
 
-                    StringBuilder altNoticeText = new StringBuilder("Alt notice: ").append(user.getMentionTag())
-                            .append(" (").append(user.getDiscriminatedName()).append("\n")
-                            .append("Reasons: \n");
+                    StringBuilder altNoticeText = new StringBuilder(modNotifRole.getMentionTag())
+                            .append(" Alt notice: ").append(user.getMentionTag())
+                            .append(" (").append(user.getDiscriminatedName()).append(")\n");
 
                     // Check if the IP address matches an existing user
                     List<Long> prevConnections = Luma.database.getUserConnectionAttemptsByIP(ip);
-                    if(prevConnections.size() > 0) {
-                        altNotice.set(true);
-                        thisJoin.quarantined = true;
-                        /*Bot.api.getRoleById(VERIFIED_ROLE).ifPresent(role -> {
+                    /*if(prevConnections.size() > 0) {
+
+                        Bot.api.getRoleById(VERIFIED_ROLE).ifPresent(role -> {
                             server.removeRoleFromUser(user, role).join();
                         });
                         Bot.api.getRoleById(VERIFICATION_REVIEW_ROLE).ifPresent(role -> {
@@ -254,18 +268,31 @@ public class WebServer implements Service {
                                     .append("\nIt looks like something went wrong while verifying your profile. Please wait for a few minutes until a Mod can review.")
                                     .append("\nIn the mean time, you can help us by telling us why you joined the server.")
                                     .send(channel).join();
-                        });*/
-
-                        altNoticeText.append("Has the same IP address as users: ");
-                        CompletableFuture<?>[] userLookups = prevConnections.stream()
-                                .map(id -> Bot.api.getUserById(id).thenAccept(mention ->
-                                        altNoticeText.append(mention.getDiscriminatedName()).append(" "))).toArray(CompletableFuture[]::new);
-                        altNoticeText.append('\n');
-
-                        CompletableFuture.allOf(userLookups).join();
+                        });
 
                         //Luma.database.updateUserRecordVerified(Long.parseLong(profile.getId()), serverId, 1);
                         //return;
+                    }*/
+
+                    for (long id : prevConnections) {
+                        // Skip previous connections that match the current user.
+                        if (id == user.getId()) {
+                            continue;
+                        }
+
+                        altNotice.set(true);
+                        thisJoin.quarantined = true;
+
+                        try {
+                            User mention = Bot.api.getUserById(id).get(5, TimeUnit.SECONDS);
+
+                            altNoticeText.append("\t - Has the same IP address as user: ")
+                                    .append(mention.getMentionTag()).append(" (")
+                                    .append(mention.getDiscriminatedName()).append(")\n");
+                        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                            e.printStackTrace();
+                            altNoticeText.append("\t - <@").append(id).append("> (lookup failed: ").append(e.getMessage()).append(") \n");
+                        }
                     }
 
                     Luma.database.getVerifiedConnectionsByUser(thisJoin.userId, serverId).forEach((type, ids) -> {
@@ -274,7 +301,7 @@ public class WebServer implements Service {
                                     .filter(checkUser -> !checkUser.equals(user))
                                     .forEach(checkUser -> {
                                         altNotice.set(true);
-                                        altNoticeText.append("Shares a ").append(type)
+                                        altNoticeText.append("\t - Shares a ").append(type)
                                                 .append(" account (").append(id).append(") with user: ")
                                                 .append(checkUser.getMentionTag())
                                                 .append(" (").append(checkUser.getDiscriminatedName()).append(")\n");
@@ -290,11 +317,21 @@ public class WebServer implements Service {
                 });
             });
 
+            Role dunce = Bot.api.getRoleById(312324674275115008L).orElseThrow(AssertionError::new);
+            Role unverified = Bot.api.getRoleById(UNVERIFIED_ROLE).orElseThrow(AssertionError::new);
 
             Bot.api.getServerById(146404426746167296L).ifPresent(server ->
-                    Bot.api.getUserById(profile.getId()).thenAccept(user ->
+                    Bot.api.getUserById(profile.getId()).thenAccept(user -> {
+                        if (!user.getRoles(server).contains(dunce)) {
                             Bot.api.getRoleById(VERIFIED_ROLE).ifPresent( role ->
-                                    server.addRoleToUser(user, role))));
+                                    server.addRoleToUser(user, role));
+
+                            if (user.getRoles(server).contains(unverified)) {
+                                user.removeRole(unverified);
+                            }
+                        }
+                    }));
+
             Luma.database.updateUserRecordVerified(Long.parseLong(profile.getId()), serverId, 2);
         }
 

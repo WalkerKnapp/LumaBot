@@ -33,7 +33,7 @@ export class Profile extends LitElement {
                 <div class="c-tableRow">
                     <div class="c-tableCell c-tableHeader">Name</div>
                     <div class="c-tableCell c-tableHeader">Steam Link</div>
-                    <div class="c-tableCell c-tableHeader">board.iverb.me Link</div>
+                    <div class="c-tableCell c-tableHeader">board.portal2.sr Link</div>
                     <div class="c-tableCell c-tableHeader c-center">Rank</div>
                     <div class="c-tableCell c-tableHeader c-center">Remove</div>
                 </div>
@@ -80,7 +80,7 @@ export class Profile extends LitElement {
         return html`<div class="c-tableRow">
                     <div class="c-tableCell">${account.name}</div>
                     <div class="c-tableCell">${account.steamLink != undefined ? html`<a href="${account.steamLink}" target="_blank">Steam  ${feather.externalLink}</a>` : ''}</div>
-                    <div class="c-tableCell">${account.iverbLink != undefined ? html`<a href="${account.iverbLink}" target="_blank">board.iverb.me  ${feather.externalLink}</a>` : ''}</div>
+                    <div class="c-tableCell">${account.iverbLink != undefined ? html`<a href="${account.iverbLink}" target="_blank">board.portal2.sr  ${feather.externalLink}</a>` : ''}</div>
                     <div class="c-tableCell c-center">${account.iverbRank != undefined ? account.iverbRank : ''}</div>
                     <div class="c-tableCell c-center"><button class="mdc-button--raised c-red" @click=${() => { this.removeAccount(account.id)}}><span class="mdc-button__label">X</span></button></div>
                 </div>`

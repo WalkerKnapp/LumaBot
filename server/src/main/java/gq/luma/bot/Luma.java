@@ -71,6 +71,7 @@ public class Luma {
         services.add(steamApi = new SteamApi());
         services.add(bot = new Bot());
         services.add(new PinsService());
+        services.add(new UndunceService());
         services.add(skillRoleService = new SkillRoleService());
         services.add(twitchApi = new TwitchApi());
         //services.add(new TwitchNotifier());
