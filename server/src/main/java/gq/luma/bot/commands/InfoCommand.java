@@ -1,9 +1,11 @@
 package gq.luma.bot.commands;
 
+import gq.luma.bot.Luma;
 import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
 import gq.luma.bot.commands.subsystem.MCommand;
+import gq.luma.bot.services.Database;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
 
@@ -11,7 +13,10 @@ import java.sql.SQLException;
 import java.time.temporal.ChronoField;
 
 public class InfoCommand {
-    @Command(aliases = {"info"}, description = "info_description", usage = "")
+
+    private static final long P2SR_BOT_SPAM_ID = 401828833189429258L;
+
+    /*@Command(aliases = {"info"}, description = "info_description", usage = "")
     public EmbedBuilder onInfoCommand(CommandEvent event){
         return new EmbedBuilder()
                 .addField(event.getLocalization().get("info_who_topic"), event.getLocalization().get("info_who_content"), true)
@@ -19,16 +24,41 @@ public class InfoCommand {
                 .addField(event.getLocalization().get("info_support_topic"), event.getLocalization().get("info_support_content"), true)
                 .setThumbnail(event.getApi().getYourself().getAvatar().getUrl().toString())
                 .setColor(BotReference.LUMA_COLOR);
-    }
+    }*/
 
     @Command(aliases = {"ping"}, description = "ping_description", usage = "")
     public EmbedBuilder onPing(CommandEvent event){
-        return new EmbedBuilder()
-            .addField(event.getLocalization().get("ping_response"),event.getMessage().getCreationTimestamp().minusMillis(System.currentTimeMillis()).get(ChronoField.NANO_OF_SECOND)/1000000 + " ms", true)
-            .setColor(BotReference.LUMA_COLOR);
+        int pingAmt = event.getMessage().getCreationTimestamp().minusMillis(System.currentTimeMillis()).get(ChronoField.NANO_OF_SECOND)/1000000;
+
+        if (event.getChannel().getId() == P2SR_BOT_SPAM_ID) {
+            int pingCount = Luma.database.incrementPingCount(event.getAuthor().getId());
+
+            int oldPB = Luma.database.getFastestPing(event.getAuthor().getId());
+            if (pingAmt < oldPB) {
+                Luma.database.setFastestPing(event.getAuthor().getId(), pingAmt);
+                return new EmbedBuilder()
+                        .setAuthor(event.getAuthor())
+                        .addField("Pong!", pingAmt + " ms", true)
+                        .addField("NEW PERSONAL BEST", "Old: " + (oldPB != Integer.MAX_VALUE ? (oldPB + " ms") : ""), true)
+                        .addField("Leaderboard", Luma.database.getPingLeaderboard(), false)
+                        .setFooter("You have pinged " + pingCount + " times.")
+                        .setColor(BotReference.LUMA_COLOR);
+            } else {
+                return new EmbedBuilder()
+                        .setAuthor(event.getAuthor())
+                        .addField("Pong!", pingAmt + " ms", true)
+                        .addField("Leaderboard", Luma.database.getPingLeaderboard(), false)
+                        .setFooter("You have pinged " + pingCount + " times.")
+                        .setColor(BotReference.LUMA_COLOR);
+            }
+        } else {
+            return new EmbedBuilder()
+                    .addField(event.getLocalization().get("ping_response"), pingAmt + " ms", true)
+                    .setColor(BotReference.LUMA_COLOR);
+        }
     }
 
-    @Command(aliases = {"help"}, description = "help_description", usage = "")
+    /*@Command(aliases = {"help"}, description = "help_description", usage = "")
     public EmbedBuilder onHelp(CommandEvent event){
         try {
             if(event.getCommandArgs().length == 0) {
@@ -49,7 +79,7 @@ public class InfoCommand {
                                     "You can upload a demo in various ways:\n" +
                                     "-Attach a file via discord.\n" +
                                     "-Link directly to a demo or zip file\n" +
-                                    "-Link to an indirect source such as board.iverb.me.\n\n" +
+                                    "-Link to an indirect source such as board.portal2.sr.\n\n" +
                                     "The bot will search the past 100 messages, starting with the request message, for any of these.\n", false)
                             .addField("Options", "`-preset`: Sets a preset. Specific options can be overwritten by other options.\n" +
                                     "`-resolution`: Sets the resolution. Supports the format `widthxheight` or `heightp`\n" +
@@ -75,7 +105,7 @@ public class InfoCommand {
             return EmbedUtilities.getErrorMessage(e.getMessage(), event.getLocalization());
         }
         return null;
-    }
+    }*/
 
     /*@Command(aliases = {"invite"}, description = "invite_description", usage = "")
     public EmbedBuilder onInvite(CommandEvent event){
