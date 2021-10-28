@@ -19,6 +19,7 @@ import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.emoji.CustomEmoji;
 import org.javacord.api.entity.emoji.Emoji;
 import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
 import org.slf4j.Logger;
@@ -29,6 +30,7 @@ import java.sql.*;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
 public class Database implements Service {
@@ -57,10 +59,17 @@ public class Database implements Service {
     private PreparedStatement updateServerPinsEmojiCustom;
     private PreparedStatement updateServerPinsChannel;
     private PreparedStatement updateServerPinsThreshold;
+    private PreparedStatement getPinEditableByServer;
+    private PreparedStatement updateServerPinsEditable;
     private PreparedStatement insertServer;
 
     private PreparedStatement getPinNotificationByPinnedMessage;
     private PreparedStatement insertPinNotification;
+
+    private PreparedStatement getPinBlacklistByServer;
+    private PreparedStatement getPinBlacklistByServerAndChannel;
+    private PreparedStatement insertPinBlacklist;
+    private PreparedStatement removePinBlacklist;
 
     private PreparedStatement getUser;
     private PreparedStatement updateUserNotify;
@@ -117,6 +126,20 @@ public class Database implements Service {
     private PreparedStatement insertPins;
     private PreparedStatement deletePin;
 
+    private PreparedStatement getPingLeaderboard;
+    private PreparedStatement getPingLeaderboardByUser;
+    private PreparedStatement updatePingLeaderboardByUser;
+    private PreparedStatement incrementPingCountByUser;
+    private PreparedStatement getPingCountByUser;
+
+    private PreparedStatement getUndunceInstants;
+    private PreparedStatement getUndunceInstantByUser;
+    private PreparedStatement insertUndunceInstant;
+    private PreparedStatement updateUndunceInstantByUser;
+    private PreparedStatement removeUndunceInstantByUser;
+    private PreparedStatement getDunceStoredRoleByUser;
+    private PreparedStatement insertDunceStoredRole;
+    private PreparedStatement removeDunceStoredRole;
 
     @Override
     public void startService() throws SQLException, ClassNotFoundException {
@@ -153,6 +176,14 @@ public class Database implements Service {
 
         getPinNotificationByPinnedMessage = conn.prepareStatement("SELECT * FROM pin_notifications WHERE pinned_message = ?");
         insertPinNotification = conn.prepareStatement("INSERT INTO pin_notifications (pinned_message, pin_notification) VALUES (?, ?)");
+
+        getPinBlacklistByServer = conn.prepareStatement("SELECT * FROM pin_blacklist WHERE server = ?");
+        getPinBlacklistByServerAndChannel = conn.prepareStatement("SELECT * FROM pin_blacklist WHERE server = ? AND channel = ?");
+        insertPinBlacklist = conn.prepareStatement("INSERT INTO pin_blacklist (server, channel) VALUES (?, ?)");
+        removePinBlacklist = conn.prepareStatement("DELETE FROM pin_blacklist WHERE server = ? AND channel = ?");
+
+        getPinEditableByServer = conn.prepareStatement("SELECT pin_editable FROM servers WHERE id = ?");
+        updateServerPinsEditable = conn.prepareStatement("UPDATE servers SET pin_editable = ? WHERE id = ?");
 
         getUser = conn.prepareStatement("SELECT * FROM users WHERE id = ?");
         updateUserNotify = conn.prepareStatement("UPDATE users SET notify = ? WHERE id = ?");
@@ -203,6 +234,23 @@ public class Database implements Service {
         getManualRoleAssignmentsByUser = conn.prepareStatement("SELECT * FROM manual_role_assignments WHERE `user_id` = ? AND `server_id` = ?");
         insertManualRoleAssignment = conn.prepareStatement("INSERT INTO manual_role_assignments (`user_id`, `server_id`, `role_id`) VALUES (?, ?, ?)");
         deleteManualRoleAssignment = conn.prepareStatement("DELETE FROM manual_role_assignments WHERE `user_id` = ? AND `server_id` = ? AND `role_id` = ?");
+
+        getPingLeaderboard = conn.prepareStatement("SELECT * FROM ping_leaderboard ORDER BY `ping`");
+        getPingLeaderboardByUser = conn.prepareStatement("SELECT ping FROM ping_leaderboard WHERE `user_id` = ?");
+        updatePingLeaderboardByUser = conn.prepareStatement("INSERT INTO ping_leaderboard (`user_id`, `ping`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `ping` = ?");
+
+        incrementPingCountByUser = conn.prepareStatement("INSERT INTO ping_counts (user_id, ping_count) VALUES (?, 1) ON DUPLICATE KEY UPDATE ping_count = ping_count + 1");
+        getPingCountByUser = conn.prepareStatement("SELECT ping_count FROM ping_counts WHERE user_id = ?");
+
+        getUndunceInstants = conn.prepareStatement("SELECT * FROM dunce_instants");
+        getUndunceInstantByUser = conn.prepareStatement("SELECT undunce_instant FROM dunce_instants WHERE user_id = ?");
+        insertUndunceInstant = conn.prepareStatement("INSERT INTO dunce_instants (user_id, undunce_instant) VALUES (?, ?)");
+        updateUndunceInstantByUser = conn.prepareStatement("UPDATE dunce_instants SET undunce_instant = ? WHERE user_id = ?");
+        removeUndunceInstantByUser = conn.prepareStatement("DELETE FROM dunce_instants WHERE user_id = ?");
+
+        getDunceStoredRoleByUser = conn.prepareStatement("SELECT * FROM dunce_stored_roles WHERE user_id = ?");
+        insertDunceStoredRole = conn.prepareStatement("INSERT INTO dunce_stored_roles (user_id, role_id) VALUES (?, ?)");
+        removeDunceStoredRole = conn.prepareStatement("DELETE FROM dunce_stored_roles WHERE user_id = ?");
     }
 
     //Results
@@ -661,6 +709,61 @@ public class Database implements Service {
         }
     }
 
+    public synchronized boolean isChannelPinBlacklisted(long serverId, long channelId) {
+        try {
+            getPinBlacklistByServerAndChannel.setLong(1, serverId);
+            getPinBlacklistByServerAndChannel.setLong(2, channelId);
+
+            ResultSet rs = getPinBlacklistByServerAndChannel.executeQuery();
+
+            return rs.next();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public synchronized Stream<ServerTextChannel> getPinBlacklist(long serverId) {
+        try {
+            getPinBlacklistByServer.setLong(1, serverId);
+
+            ResultSet rs = getPinBlacklistByServer.executeQuery();
+
+            ArrayList<ServerTextChannel> channels = new ArrayList<>();
+
+            while (rs.next()) {
+                Bot.api.getServerTextChannelById(rs.getLong("channel")).ifPresent(channels::add);
+            }
+
+            return channels.stream();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return Stream.empty();
+        }
+    }
+
+    public synchronized void addPinBlacklist(long serverId, long channelId) {
+        try {
+            insertPinBlacklist.setLong(1, serverId);
+            insertPinBlacklist.setLong(2, channelId);
+
+            insertPinBlacklist.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void deletePinBlacklist(long serverId, long channelId) {
+        try {
+            removePinBlacklist.setLong(1, serverId);
+            removePinBlacklist.setLong(2, channelId);
+
+            removePinBlacklist.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     public synchronized Optional<Long> getRoleByName(long serverId, String name) throws SQLException {
         getRoleByName.setString(1, name.substring(0, 1).toUpperCase() + name.substring(1));
         getRoleByName.setLong(2, serverId);
@@ -681,6 +784,23 @@ public class Database implements Service {
             ret.add(rs.getString("name"));
         }
         return ret;
+    }
+
+    public synchronized boolean isServerPinEditable(long serverId) throws SQLException {
+        getPinEditableByServer.setLong(1, serverId);
+        ResultSet rs = getPinEditableByServer.executeQuery();
+
+        if (rs.next()) {
+            return rs.getBoolean("pin_editable");
+        } else {
+            return false;
+        }
+    }
+
+    public synchronized void setServerPinEditable(long serverId, boolean editable) throws SQLException {
+        updateServerPinsEditable.setBoolean(1, editable);
+        updateServerPinsEditable.setLong(2, serverId);
+        updateServerPinsEditable.execute();
     }
 
     //Nodes
@@ -824,7 +944,7 @@ public class Database implements Service {
                     String steamId = rs.getString("id");
                     jsonGenerator.writeStringField("id", steamId);
                     jsonGenerator.writeStringField("steamLink", "https://steamcommunity.com/profiles/" + steamId);
-                    String iverbLink = "https://board.iverb.me/profile/" + steamId;
+                    String iverbLink = "https://board.portal2.sr/profile/" + steamId;
                     jsonGenerator.writeStringField("iverbLink", iverbLink);
                     int rank = Luma.skillRoleService.calculateRoundedTotalPoints(Long.parseLong(steamId));
                     if (rank != -1) {
@@ -1215,6 +1335,157 @@ public class Database implements Service {
             e.printStackTrace();
         }
         return ret;
+    }
+
+    public synchronized String getPingLeaderboard() {
+        try {
+            ResultSet rs = getPingLeaderboard.executeQuery();
+
+            StringBuilder sb = new StringBuilder();
+
+            for (int i = 1; i <= 5; i++) {
+                if (rs.next()) {
+                    sb.append(i).append(": <@").append(rs.getLong("user_id")).append("> - ")
+                            .append(rs.getInt("ping")).append(" ms\n");
+                } else {
+                    break;
+                }
+            }
+
+            return sb.toString();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return "";
+        }
+    }
+
+    public synchronized int getFastestPing(long userId) {
+        try {
+            getPingLeaderboardByUser.setLong(1, userId);
+            ResultSet rs = getPingLeaderboardByUser.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt("ping");
+            } else {
+                return Integer.MAX_VALUE;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return Integer.MAX_VALUE;
+        }
+    }
+
+    public synchronized  void setFastestPing(long userId, int ping) {
+        try {
+            updatePingLeaderboardByUser.setLong(1, userId);
+            updatePingLeaderboardByUser.setInt(2, ping);
+            updatePingLeaderboardByUser.setInt(3, ping);
+            updatePingLeaderboardByUser.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized int incrementPingCount(long userId) {
+        try {
+            incrementPingCountByUser.setLong(1, userId);
+            incrementPingCountByUser.execute();
+
+            getPingCountByUser.setLong(1, userId);
+            ResultSet rs = getPingCountByUser.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt("ping_count");
+            } else {
+                return 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    public synchronized void getCurrentDunces(BiConsumer<Long, Instant> dunceConsumer) {
+        try {
+            ResultSet rs = getUndunceInstants.executeQuery();
+
+            while (rs.next()) {
+                dunceConsumer.accept(rs.getLong("user_id"), rs.getTimestamp("undunce_instant").toInstant());
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized boolean isDunced(long userId) {
+        try {
+            getUndunceInstantByUser.setLong(1, userId);
+            ResultSet rs = getUndunceInstantByUser.executeQuery();
+
+            return rs.next();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public synchronized void insertUndunceInstant(long userId, Instant undunceInstant) {
+        try {
+            insertUndunceInstant.setLong(1, userId);
+            insertUndunceInstant.setTimestamp(2, Timestamp.from(undunceInstant));
+            insertUndunceInstant.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void updateUndunceInstant(long userId, Instant undunceInstant) {
+        try {
+            updateUndunceInstantByUser.setTimestamp(1, Timestamp.from(undunceInstant));
+            updateUndunceInstantByUser.setLong(2, userId);
+            updateUndunceInstantByUser.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void removeUndunceInstant(long userId) {
+        try {
+            removeUndunceInstantByUser.setLong(1, userId);
+            removeUndunceInstantByUser.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void addDunceStoredRoles(User user, Server server) {
+        try {
+            for (Role r : server.getRoles(user)) {
+                if (r.getId() != 312324674275115008L && !r.isEveryoneRole()) {
+                    insertDunceStoredRole.setLong(1, user.getId());
+                    insertDunceStoredRole.setLong(2, r.getId());
+                    insertDunceStoredRole.execute();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void popDunceStoredRoles(User user, Server server) {
+        try {
+            getDunceStoredRoleByUser.setLong(1, user.getId());
+            ResultSet rs = getDunceStoredRoleByUser.executeQuery();
+
+            while (rs.next()) {
+                server.getRoleById(rs.getLong("role_id")).ifPresent(user::addRole);
+            }
+
+            removeDunceStoredRole.setLong(1, user.getId());
+            removeDunceStoredRole.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     private void close(){
