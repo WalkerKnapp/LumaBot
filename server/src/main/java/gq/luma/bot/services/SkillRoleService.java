@@ -640,16 +640,18 @@ public class SkillRoleService implements Service {
                                 }
 
                                 // Beginner Qualifications
-                                if(latestRun != null) {
-                                    if(setIfTrue(beginner, latestRun.isAfter(OffsetDateTime.now().minus(6, ChronoUnit.MONTHS)) && discordUser.getId() != 103656524617900032L)) { // Run in the last 6 months
-                                        logger.debug("Giving Beginner due to srcom activity in the last 6 months: " + latestRun.toString());
+                                if (discordUser.getId() != 103656524617900032L) { // User is not spidda
+                                    if (latestRun != null) {
+                                        if (setIfTrue(beginner, latestRun.isAfter(OffsetDateTime.now().minus(6, ChronoUnit.MONTHS)))) { // Run in the last 6 months
+                                            logger.debug("Giving Beginner due to srcom activity in the last 6 months: " + latestRun.toString());
+                                        }
                                     }
-                                }
-                                if (setIfTrue(beginner, p2srmSpTime < (57 * 60) + 57)) { // Sub 57:57
-                                    logger.debug("Giving Beginner due to sub 57:57 P2SRM Time: " + p2srmSpTime);
-                                }
-                                if (setIfTrue(beginner, melInboundsTime < (45 * 60))) { // Sub 45:00
-                                    logger.debug("Giving Beginner due to a sub 45:00 Mel Time: " + melInboundsTime);
+                                    if (setIfTrue(beginner, p2srmSpTime < (57 * 60) + 57)) { // Sub 57:57
+                                        logger.debug("Giving Beginner due to sub 57:57 P2SRM Time: " + p2srmSpTime);
+                                    }
+                                    if (setIfTrue(beginner, melInboundsTime < (45 * 60))) { // Sub 45:00
+                                        logger.debug("Giving Beginner due to a sub 45:00 Mel Time: " + melInboundsTime);
+                                    }
                                 }
                             }
                             break;
