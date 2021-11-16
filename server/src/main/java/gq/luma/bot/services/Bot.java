@@ -8,6 +8,7 @@ import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.reference.DefaultReference;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.reference.KeyReference;
+import gq.luma.bot.systems.AutoDunceListener;
 import gq.luma.bot.systems.DiscordLogger;
 import gq.luma.bot.systems.watchers.SlowMode;
 import org.apache.commons.io.FilenameUtils;
@@ -206,6 +207,14 @@ public class Bot implements Service {
         DiscordLogger discordLogger = new DiscordLogger();
         api.addMessageDeleteListener(discordLogger);
         api.addMessageEditListener(discordLogger);
+
+        AutoDunceListener autoDunceListener = new AutoDunceListener();
+        api.addMessageCreateListener(autoDunceListener);
+        api.addMessageEditListener(autoDunceListener);
+        api.addServerMemberJoinListener(autoDunceListener);
+        api.addUserChangeNameListener(autoDunceListener);
+        api.addUserChangeNicknameListener(autoDunceListener);
+        api.addUserChangeStatusListener(autoDunceListener);
     }
 
     public void sendMessage(long serverId, long channelId, String text, EmbedBuilder embedBuilder){

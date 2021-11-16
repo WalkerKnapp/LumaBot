@@ -63,6 +63,12 @@ public class AutoDunceListener implements MessageCreateListener, MessageEditList
                         event.getChannel().asServerTextChannel().orElseThrow(AssertionError::new).getMentionTag());
                 event.deleteMessage("Slur");
             }
+
+            // Check if message pings 10 or more people
+            if (event.getMessage().getMentionedUsers().size() >= 10) {
+                autoDunceUser(user, "excessive pings", "message", event.getMessageContent(),
+                        event.getChannel().asServerTextChannel().orElseThrow(AssertionError::new).getMentionTag());
+            }
         }));
     }
 

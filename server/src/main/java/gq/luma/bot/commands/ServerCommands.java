@@ -74,7 +74,7 @@ public class ServerCommands {
         }
     }
 
-    @Command(aliases = {"cleanup"}, description = "cleanup_description", usage = "cleanup_usage", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296;425386024835874826")
+    @Command(aliases = {"cleanup"}, description = "cleanup_description", usage = "cleanup_usage", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296;425386024835874826;902666492817072158")
     public void onCleanup(CommandEvent event){
         if(event.getCommandArgs().length >= 1){
             int messageCount = Math.max(Integer.valueOf(event.getCommandArgs()[0]), 0);
