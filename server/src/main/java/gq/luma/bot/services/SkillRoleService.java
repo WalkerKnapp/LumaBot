@@ -1,6 +1,7 @@
 package gq.luma.bot.services;
 
 import com.fasterxml.jackson.core.JsonFactory;
+import com.google.common.util.concurrent.AtomicDouble;
 import com.walker.jspeedrun.api.JSpeedrun;
 import com.walker.jspeedrun.api.leaderboards.Leaderboard;
 import com.walker.jspeedrun.api.run.Run;
@@ -168,10 +169,17 @@ public class SkillRoleService implements Service {
     };
 
     private static final String PORTAL_2_SRCOM_ID = "om1mw4d2";
-    private static final String SP_CATEGORY_SRCOM_ID = "jzd33ndn";
-    private static final String COOP_CATEGORY_SRCOM_ID = "l9kv40kg";
-    private static final String COOP_SUBCATEGORY_VARIABLE_ID = "38dj54e8";
-    private static final String AMC_VARIABLE_CHOICE_ID = "mln3x8nq";
+    private static final String PORTAL_2_SPEEDRUN_MOD_SRCOM_ID = "lde3eme6";
+    private static final String MEL_SRCOM_ID = "j1nz9l1p";
+
+    private static final String PORTAL_2_SP_CATEGORY_SRCOM_ID = "jzd33ndn";
+    private static final String PORTAL_2_COOP_CATEGORY_SRCOM_ID = "l9kv40kg";
+    private static final String PORTAL_2_COOP_SUBCATEGORY_VARIABLE_ID = "38dj54e8";
+    private static final String PORTAL_2_AMC_VARIABLE_CHOICE_ID = "mln3x8nq";
+    private static final String PORTAL_2_SPEEDRUN_MOD_SP_CATEGORY_SRCOM_ID = "ndx940vd";
+    private static final String MEL_STORY_MODE_CATEGORY_SRCOM_ID = "q25oowgk";
+    private static final String MEL_STORY_MODE_SUBCATEGORY_VARIABLE_ID = "wl333p9l";
+    private static final String MEL_INBOUNDS_VARIABLE_CHOICE_ID = "4lx8vp31";
 
     private static final long ELITE_ROLE = 574794615971119135L;
     private static final long ADVANCED_ROLE = 608364011028742162L;
@@ -191,6 +199,8 @@ public class SkillRoleService implements Service {
 
     private Leaderboard spLeaderboard;
     private Leaderboard coopAMCLeaderboard;
+    private Leaderboard p2srmLeaderboard;
+    private Leaderboard melLeaderboard;
 
     public SkillRoleService() {
         this.jSpeedrun = new JSpeedrun();
@@ -235,11 +245,17 @@ public class SkillRoleService implements Service {
                 .scheduleAtFixedRate(this::runChangelogFetch, milliRefreshTime, milliRefreshTime, TimeUnit.MILLISECONDS);
 
         CompletableFuture.allOf(
-                jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, SP_CATEGORY_SRCOM_ID).thenAccept(response -> {
+                jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, PORTAL_2_SP_CATEGORY_SRCOM_ID).thenAccept(response -> {
                     spLeaderboard = response.getData().get(0);
                 }),
-                jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, COOP_CATEGORY_SRCOM_ID, Map.of(COOP_SUBCATEGORY_VARIABLE_ID, AMC_VARIABLE_CHOICE_ID)).thenAccept(response -> {
+                jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, PORTAL_2_COOP_CATEGORY_SRCOM_ID, Map.of(PORTAL_2_COOP_SUBCATEGORY_VARIABLE_ID, PORTAL_2_AMC_VARIABLE_CHOICE_ID)).thenAccept(response -> {
                     coopAMCLeaderboard = response.getData().get(0);
+                }),
+                jSpeedrun.getCategoryLeaderboard(PORTAL_2_SPEEDRUN_MOD_SRCOM_ID, PORTAL_2_SPEEDRUN_MOD_SP_CATEGORY_SRCOM_ID).thenAccept(response -> {
+                    p2srmLeaderboard = response.getData().get(0);
+                }),
+                jSpeedrun.getCategoryLeaderboard(MEL_SRCOM_ID, MEL_STORY_MODE_CATEGORY_SRCOM_ID, Map.of(MEL_STORY_MODE_SUBCATEGORY_VARIABLE_ID, MEL_INBOUNDS_VARIABLE_CHOICE_ID)).thenAccept(response -> {
+                    melLeaderboard = response.getData().get(0);
                 })).join();
 
         logger.info("Fetched leaderboards on srcom.");
@@ -334,11 +350,17 @@ public class SkillRoleService implements Service {
             logger.debug("Fetching leaderboard from speedrun.com...");
 
             CompletableFuture.allOf(
-                    jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, SP_CATEGORY_SRCOM_ID).thenAccept(response -> {
+                    jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, PORTAL_2_SP_CATEGORY_SRCOM_ID).thenAccept(response -> {
                         spLeaderboard = response.getData().get(0);
                     }),
-                    jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, COOP_CATEGORY_SRCOM_ID, Map.of(COOP_SUBCATEGORY_VARIABLE_ID, AMC_VARIABLE_CHOICE_ID)).thenAccept(response -> {
+                    jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, PORTAL_2_COOP_CATEGORY_SRCOM_ID, Map.of(PORTAL_2_COOP_SUBCATEGORY_VARIABLE_ID, PORTAL_2_AMC_VARIABLE_CHOICE_ID)).thenAccept(response -> {
                         coopAMCLeaderboard = response.getData().get(0);
+                    }),
+                    jSpeedrun.getCategoryLeaderboard(PORTAL_2_SPEEDRUN_MOD_SRCOM_ID, PORTAL_2_SPEEDRUN_MOD_SP_CATEGORY_SRCOM_ID).thenAccept(response -> {
+                        p2srmLeaderboard = response.getData().get(0);
+                    }),
+                    jSpeedrun.getCategoryLeaderboard(MEL_SRCOM_ID, MEL_STORY_MODE_CATEGORY_SRCOM_ID, Map.of(MEL_STORY_MODE_SUBCATEGORY_VARIABLE_ID, MEL_INBOUNDS_VARIABLE_CHOICE_ID)).thenAccept(response -> {
+                        melLeaderboard = response.getData().get(0);
                     })).join();
 
             // TODO: Only update users if they change on the srcom boards. For now, update everyone.
@@ -494,128 +516,45 @@ public class SkillRoleService implements Service {
                         case "srcom":
                             // Check a user's speedrun.com account(s).
                             for(String srcomId : ids) {
-                                double singlePlayerTime = Double.MAX_VALUE;
-                                double amcTimePlayerBelowRank = Double.MAX_VALUE;
-                                double amcTimePlayerAboveRank = Double.MAX_VALUE;
 
-                                int singlePlayerRank = Integer.MAX_VALUE;
-                                int amcRankPlayerBelow = Integer.MAX_VALUE;
-                                int amcRankPlayerAbove = Integer.MAX_VALUE;
+                                AtomicDouble singlePlayerTimeAtomic = new AtomicDouble(Double.MAX_VALUE);
+                                AtomicDouble amcTimePlayerBelowRankAtomic = new AtomicDouble(Double.MAX_VALUE);
+                                AtomicDouble amcTimePlayerAboveRankAtomic = new AtomicDouble(Double.MAX_VALUE);
+                                AtomicDouble p2srmSpTimeAtomic = new AtomicDouble(Double.MAX_VALUE);
+                                AtomicDouble melInboundsTimeAtomic = new AtomicDouble(Double.MAX_VALUE);
 
-                                OffsetDateTime latestRun = null;
+                                AtomicInteger singlePlayerRankAtomic = new AtomicInteger(Integer.MAX_VALUE);
+                                AtomicInteger amcRankPlayerBelowAtomic = new AtomicInteger(Integer.MAX_VALUE);
+                                AtomicInteger amcRankPlayerAboveAtomic = new AtomicInteger(Integer.MAX_VALUE);
+                                AtomicInteger p2srmSpRankAtomic = new AtomicInteger(Integer.MAX_VALUE);
+                                AtomicInteger melInboundsRankAtomic = new AtomicInteger(Integer.MAX_VALUE);
 
-                                // Check single player leaderboards
-                                for (Leaderboard.LeaderboardPlace place : spLeaderboard.runs) {
-                                    // Check that the run is verified
-                                    if (!place.run.status.status.equalsIgnoreCase("verified")) {
-                                        break;
-                                    }
+                                AtomicReference<OffsetDateTime> latestRunAtomic = new AtomicReference<>();
 
-                                    boolean containsPlayer = false;
-                                    for (Run.Player player : place.run.players) {
-                                        if (player.id != null) {
-                                            containsPlayer = containsPlayer || (player.id.equals(srcomId));
-                                        }
-                                    }
+                                // Check P2 SP leaderboards
+                                getSpLeaderboardRank(spLeaderboard, srcomId, latestRunAtomic, singlePlayerRankAtomic, singlePlayerTimeAtomic);
+                                // Check P2 AMC leaderboards
+                                getCoopLeaderboardRank(coopAMCLeaderboard, srcomId, latestRunAtomic, amcRankPlayerAboveAtomic, amcRankPlayerBelowAtomic,
+                                        amcTimePlayerAboveRankAtomic, amcTimePlayerBelowRankAtomic);
+                                // Check P2SRM SP leaderboards
+                                getSpLeaderboardRank(p2srmLeaderboard, srcomId, latestRunAtomic, p2srmSpRankAtomic, p2srmSpTimeAtomic);
+                                // Check Mel Inbounds leaderboards
+                                getSpLeaderboardRank(melLeaderboard, srcomId, latestRunAtomic, melInboundsRankAtomic, melInboundsTimeAtomic);
 
-                                    if (containsPlayer) {
-                                        // Check if this run is the latest
-                                        if (place.run.submitted != null) {
-                                            if (latestRun == null) {
-                                                latestRun = place.run.submitted;
-                                            } else {
-                                                if (place.run.submitted.isAfter(latestRun)) {
-                                                    latestRun = place.run.submitted;
-                                                }
-                                            }
-                                        }
+                                // Unwrap atomics
+                                OffsetDateTime latestRun = latestRunAtomic.get();
 
-                                        if (singlePlayerTime > place.run.times.primaryTime) {
-                                            singlePlayerTime = place.run.times.primaryTime;
-                                        }
+                                double singlePlayerTime = singlePlayerTimeAtomic.get();
+                                double amcTimePlayerBelowRank = amcTimePlayerBelowRankAtomic.get();
+                                double amcTimePlayerAboveRank = amcTimePlayerAboveRankAtomic.get();
+                                double p2srmSpTime = p2srmSpTimeAtomic.get();
+                                double melInboundsTime = melInboundsTimeAtomic.get();
 
-                                        if (place.place > 0 && singlePlayerRank > place.place) {
-                                            singlePlayerRank = place.place;
-                                        }
-                                    }
-                                }
-
-                                // Check coop leaderboards
-                                for (Leaderboard.LeaderboardPlace place : coopAMCLeaderboard.runs) {
-                                    // Check that the run is verified
-                                    if (!place.run.status.status.equalsIgnoreCase("verified")) {
-                                        break;
-                                    }
-
-                                    boolean containsPlayer = false;
-                                    Run.Player coopPartner = null;
-
-                                    for (Run.Player player : place.run.players) {
-                                        if (player.id != null) {
-                                            if (player.id.equals(srcomId)) {
-                                                containsPlayer = true;
-                                            } else {
-                                                coopPartner = player;
-                                            }
-                                        }
-                                    }
-
-                                    if (containsPlayer) {
-                                        // Check if this run is the latest
-                                        if (place.run.submitted != null) {
-                                            if (latestRun == null) {
-                                                latestRun = place.run.submitted;
-                                            } else {
-                                                if (place.run.submitted.isAfter(latestRun)) {
-                                                    latestRun = place.run.submitted;
-                                                }
-                                            }
-                                        }
-
-                                        // Get the coop partner's highest rank
-                                        int partnerHighestRank = Integer.MAX_VALUE;
-
-                                        if (coopPartner != null) {
-                                            for (Leaderboard.LeaderboardPlace partnerPlace : coopAMCLeaderboard.runs) {
-                                                // Check that the run is verified
-                                                if (!partnerPlace.run.status.status.equalsIgnoreCase("verified")) {
-                                                    break;
-                                                }
-
-                                                boolean containsPartner = false;
-                                                for (Run.Player player : place.run.players) {
-                                                    if (player.id != null) {
-                                                        containsPartner = containsPartner || (player.id.equals(coopPartner.id));
-                                                    }
-                                                }
-
-                                                if (place.place > 0 && containsPartner && partnerHighestRank > partnerPlace.place) {
-                                                    partnerHighestRank = partnerPlace.place;
-                                                }
-                                            }
-                                        }
-
-                                        if (place.place > 0) {
-                                            if (place.place <= partnerHighestRank) {
-                                                // Partner is below current rank
-                                                if (amcTimePlayerBelowRank > place.run.times.primaryTime) {
-                                                    amcTimePlayerBelowRank = place.run.times.primaryTime;
-                                                }
-                                                if (amcRankPlayerBelow > place.place) {
-                                                    amcRankPlayerBelow = place.place;
-                                                }
-                                            } else {
-                                                // Partner is above current rank
-                                                if (amcTimePlayerAboveRank > place.run.times.primaryTime) {
-                                                    amcTimePlayerAboveRank = place.run.times.primaryTime;
-                                                }
-                                                if (amcRankPlayerAbove > place.place) {
-                                                    amcRankPlayerAbove = place.place;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                int singlePlayerRank = singlePlayerRankAtomic.get();
+                                int amcRankPlayerBelow = amcRankPlayerBelowAtomic.get();
+                                int amcRankPlayerAbove = amcRankPlayerAboveAtomic.get();
+                                int p2srmSpRank = p2srmSpRankAtomic.get();
+                                int melInboundsRank = melInboundsRankAtomic.get();
 
                                 //if (logger.isDebugEnabled()) {
                                     //logger.info(discordUser.getDiscriminatedName() + " - srcom - " + srcomId + " - sp=" + singlePlayerRank + " - amcAbove=" + amcRankPlayerAbove + " - amcBelow=" + amcRankPlayerBelow);
@@ -642,6 +581,12 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(professionals, amcTimePlayerBelowRank < (27 * 60) + 15)) { // Sub 27:15
                                     logger.debug("Giving Professionals due to a sub 27:15 AMC Time: " + amcTimePlayerBelowRank);
                                 }
+                                if (setIfTrue(professionals, p2srmSpTime < (30 * 60) + 30)) { // Sub 30:30
+                                    logger.debug("Giving Professionals due to a sub 30:30 P2SRM Time: " + p2srmSpTime);
+                                }
+                                if (setIfTrue(professionals, melInboundsTime < (30 * 60))) { // Sub 30:00
+                                    logger.debug("Giving Professionals due to a sub 30:00 Mel Time: " + melInboundsTime);
+                                }
 
                                 // Advanced Qualifications
                                 if (setIfTrue(advanced, singlePlayerRank <= 30)) { // Top 30
@@ -652,6 +597,12 @@ public class SkillRoleService implements Service {
                                 }
                                 if (setIfTrue(advanced, amcTimePlayerBelowRank < (29 * 60))) { // Sub 29:00
                                     logger.debug("Giving Advanced due to a sub 29:00 AMC Time w/ Below Rank: " + amcTimePlayerBelowRank);
+                                }
+                                if (setIfTrue(advanced, p2srmSpTime < (32 * 60))) { // Sub 32:00
+                                    logger.debug("Giving Advanced due to a sub 32:00 P2SRM Time: " + p2srmSpTime);
+                                }
+                                if (setIfTrue(advanced, melInboundsTime < (32 * 60))) { // Sub 32:00
+                                    logger.debug("Giving Advanced due to a sub 32:00 Mel Time: " + melInboundsTime);
                                 }
 
                                 // Intermediate Qualifications
@@ -664,6 +615,12 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(intermediate, amcTimePlayerBelowRank < (32 * 60))) { // Sub 32:00
                                     logger.debug("Giving Intermediate due to a sub 27:15 AMC Time: " + amcTimePlayerBelowRank);
                                 }
+                                if (setIfTrue(intermediate, p2srmSpTime < (34 * 60))) { // Sub 34:00
+                                    logger.debug("Giving Intermediate due to a sub 34:00 P2SRM Time: " + p2srmSpTime);
+                                }
+                                if (setIfTrue(intermediate, melInboundsTime < (34 * 60))) { // Sub 34:00
+                                    logger.debug("Giving Intermediate due to a sub 34:00 Mel Time: " + melInboundsTime);
+                                }
 
                                 // Mediocre Qualifications
                                 if (setIfTrue(mediocre, singlePlayerRank <= 130)) { // Top 130
@@ -675,12 +632,24 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(mediocre, amcTimePlayerBelowRank < (36 * 60))) { // Sub 36:00
                                     logger.debug("Giving Mediocre due to a sub 36:00 AMC Time: " + amcTimePlayerBelowRank);
                                 }
+                                if (setIfTrue(mediocre, p2srmSpTime < (37 * 60))) { // Sub 37:00
+                                    logger.debug("Giving Mediocre due to a sub 37:00 P2SRM Time: " + p2srmSpTime);
+                                }
+                                if (setIfTrue(mediocre, melInboundsTime < (37 * 60))) { // Sub 37:00
+                                    logger.debug("Giving mediocre due to a sub 37:00 Mel Time: " + melInboundsTime);
+                                }
 
                                 // Beginner Qualifications
                                 if(latestRun != null) {
                                     if(setIfTrue(beginner, latestRun.isAfter(OffsetDateTime.now().minus(6, ChronoUnit.MONTHS)) && discordUser.getId() != 103656524617900032L)) { // Run in the last 6 months
                                         logger.debug("Giving Beginner due to srcom activity in the last 6 months: " + latestRun.toString());
                                     }
+                                }
+                                if (setIfTrue(beginner, p2srmSpTime < (57 * 60) + 57)) { // Sub 57:57
+                                    logger.debug("Giving Beginner due to sub 57:57 P2SRM Time: " + p2srmSpTime);
+                                }
+                                if (setIfTrue(beginner, melInboundsTime < (45 * 60))) { // Sub 45:00
+                                    logger.debug("Giving Beginner due to a sub 45:00 Mel Time: " + melInboundsTime);
                                 }
                             }
                             break;
@@ -714,10 +683,130 @@ public class SkillRoleService implements Service {
                         () -> logger.error("Failed to find beginner role."));
     }
 
+    private void getSpLeaderboardRank(Leaderboard leaderboard, String srcomId, AtomicReference<OffsetDateTime> latestRun,
+                                      AtomicInteger rank, AtomicDouble time) {
+        for (Leaderboard.LeaderboardPlace place : leaderboard.runs) {
+            // Check that the run is verified
+            if (!place.run.status.status.equalsIgnoreCase("verified")) {
+                break;
+            }
+
+            boolean containsPlayer = false;
+            for (Run.Player player : place.run.players) {
+                if (player.id != null) {
+                    containsPlayer = containsPlayer || (player.id.equals(srcomId));
+                }
+            }
+
+            if (containsPlayer) {
+                // Check if this run is the latest
+                if (place.run.submitted != null) {
+                    assert latestRun != null;
+                    if (latestRun.get() == null) {
+                        latestRun.set(place.run.submitted);
+                    } else {
+                        if (place.run.submitted.isAfter(latestRun.get())) {
+                            latestRun.set(place.run.submitted);
+                        }
+                    }
+                }
+
+                if (time.get() > place.run.times.primaryTime) {
+                    time.set(place.run.times.primaryTime);
+                }
+
+                if (place.place > 0 && rank.get() > place.place) {
+                    rank.set(place.place);
+                }
+            }
+        }
+    }
+
+    private void getCoopLeaderboardRank(Leaderboard leaderboard, String srcomId, AtomicReference<OffsetDateTime> latestRun,
+                                        AtomicInteger aboveRank, AtomicInteger belowRank,
+                                        AtomicDouble aboveTime, AtomicDouble belowTime) {
+        for (Leaderboard.LeaderboardPlace place : leaderboard.runs) {
+            // Check that the run is verified
+            if (!place.run.status.status.equalsIgnoreCase("verified")) {
+                break;
+            }
+
+            boolean containsPlayer = false;
+            Run.Player coopPartner = null;
+
+            for (Run.Player player : place.run.players) {
+                if (player.id != null) {
+                    if (player.id.equals(srcomId)) {
+                        containsPlayer = true;
+                    } else {
+                        coopPartner = player;
+                    }
+                }
+            }
+
+            if (containsPlayer) {
+                // Check if this run is the latest
+                if (place.run.submitted != null) {
+                    assert latestRun != null;
+                    if (latestRun.get() == null) {
+                        latestRun.set(place.run.submitted);
+                    } else {
+                        if (place.run.submitted.isAfter(latestRun.get())) {
+                            latestRun.set(place.run.submitted);
+                        }
+                    }
+                }
+
+                // Get the coop partner's highest rank
+                int partnerHighestRank = Integer.MAX_VALUE;
+
+                if (coopPartner != null) {
+                    for (Leaderboard.LeaderboardPlace partnerPlace : leaderboard.runs) {
+                        // Check that the run is verified
+                        if (!partnerPlace.run.status.status.equalsIgnoreCase("verified")) {
+                            break;
+                        }
+
+                        boolean containsPartner = false;
+                        for (Run.Player player : place.run.players) {
+                            if (player.id != null) {
+                                containsPartner = containsPartner || (player.id.equals(coopPartner.id));
+                            }
+                        }
+
+                        if (place.place > 0 && containsPartner && partnerHighestRank > partnerPlace.place) {
+                            partnerHighestRank = partnerPlace.place;
+                        }
+                    }
+                }
+
+                if (place.place > 0) {
+                    if (place.place <= partnerHighestRank) {
+                        // Partner is below current rank
+                        if (belowTime.get() > place.run.times.primaryTime) {
+                            belowTime.set(place.run.times.primaryTime);
+                        }
+                        if (belowRank.get() > place.place) {
+                            belowRank.set(place.place);
+                        }
+                    } else {
+                        // Partner is above current rank
+                        if (aboveTime.get() > place.run.times.primaryTime) {
+                            aboveTime.set(place.run.times.primaryTime);
+                        }
+                        if (aboveRank.get() > place.place) {
+                            aboveRank.set(place.place);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private boolean setIfTrue(AtomicBoolean state, boolean predicate) {
         if(predicate && !state.get()) {
             state.set(true);
-            return false; // Return true to enable comprehensive logging
+            return true; // Return true to enable comprehensive logging
         } else {
             return false;
         }
