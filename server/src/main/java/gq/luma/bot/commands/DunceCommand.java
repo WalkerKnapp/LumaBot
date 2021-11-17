@@ -250,4 +250,107 @@ public class DunceCommand {
         }
     }
 
+    @Command(aliases = {"warn"}, description = "warn_description", usage = "", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296")
+    public EmbedBuilder onWarn(CommandEvent event) {
+        User targetUser = null;
+
+        if (event.getCommandArgs().length >= 1) {
+
+            // Interpret user reference
+            String userReference = event.getCommandArgs()[0];
+
+            Matcher mentionMatcher = DiscordRegexPattern.USER_MENTION.matcher(userReference);
+            String[] referenceSplitByHash = userReference.split("#");
+
+            if (mentionMatcher.matches()) {
+                // Reference is a mention, pull out the user id and get the user
+                String userId = mentionMatcher.group("id");
+                targetUser = event.getApi().getUserById(userId).exceptionally(t -> null).join();
+            } else if (GenericValidator.isLong(userReference)) {
+                // Reference is a user id
+                targetUser = event.getApi().getUserById(userReference).exceptionally(t -> null).join();
+            } else if (referenceSplitByHash.length > 1) {
+                // Reference could be a nick
+                targetUser = event.getServer().orElseThrow(AssertionError::new)
+                        .getMemberByDiscriminatedNameIgnoreCase(userReference)
+                        .orElse(null);
+            }
+        }
+
+        if (targetUser == null) {
+            return new EmbedBuilder()
+                    .setColor(Color.RED)
+                    .setTitle("Invalid Syntax")
+                    .setDescription("Syntax: ?L warn (user) [reason]");
+        }
+
+        String reason;
+        if (event.getCommandRemainder().length() > event.getCommandArgs()[0].length() + 1) {
+            reason = event.getCommandRemainder().substring(event.getCommandArgs()[0].length() + 1);
+        } else {
+            reason = "";
+        }
+
+        // Add warning to the database
+        Luma.database.warnUser(targetUser.getId(), event.getMessage().getCreationTimestamp(), event.getMessage().getLink().toString(), reason);
+        int warnings = Luma.database.countUserWarnings(targetUser.getId());
+
+        // Notify mod-actions
+        TextChannel modActions = event.getServer().orElseThrow(AssertionError::new)
+                .getTextChannelById(MOD_NOTIFICATIONS_CHANNEL_ID).orElseThrow(AssertionError::new);
+        modActions.sendMessage(new EmbedBuilder()
+                .setAuthor(event.getAuthor())
+                .setDescription("Warned " + targetUser.getMentionTag() + " (" + targetUser.getDiscriminatedName() + ").")
+                .addField("Reason", reason.isEmpty() ? "*No reason given*" : reason)
+                .setFooter("This is their " + warnings + (warnings == 1 ? "st" : warnings == 2 ? "nd" : warnings == 3 ? "rd" : "th") + " warning."));
+
+        // Send response
+        return new EmbedBuilder()
+                .setColor(BotReference.LUMA_COLOR)
+                .setDescription("Warned " + targetUser.getMentionTag() + " (" + targetUser.getDiscriminatedName() + ").")
+                .addField("Reason", reason.isEmpty() ? "*No reason given*" : reason);
+    }
+
+    @Command(aliases = {"warnings"}, description = "warnings_description", usage = "", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296")
+    public EmbedBuilder onWarnings(CommandEvent event) {
+        User targetUser = null;
+
+        if (event.getCommandArgs().length >= 1) {
+
+            // Interpret user reference
+            String userReference = event.getCommandArgs()[0];
+
+            Matcher mentionMatcher = DiscordRegexPattern.USER_MENTION.matcher(userReference);
+            String[] referenceSplitByHash = userReference.split("#");
+
+            if (mentionMatcher.matches()) {
+                // Reference is a mention, pull out the user id and get the user
+                String userId = mentionMatcher.group("id");
+                targetUser = event.getApi().getUserById(userId).exceptionally(t -> null).join();
+            } else if (GenericValidator.isLong(userReference)) {
+                // Reference is a user id
+                targetUser = event.getApi().getUserById(userReference).exceptionally(t -> null).join();
+            } else if (referenceSplitByHash.length > 1) {
+                // Reference could be a nick
+                targetUser = event.getServer().orElseThrow(AssertionError::new)
+                        .getMemberByDiscriminatedNameIgnoreCase(userReference)
+                        .orElse(null);
+            }
+        }
+
+        if (targetUser == null) {
+            return new EmbedBuilder()
+                    .setColor(Color.RED)
+                    .setTitle("Invalid Syntax")
+                    .setDescription("Syntax: ?L warnings (user)");
+        }
+
+        EmbedBuilder response = new EmbedBuilder()
+                .setColor(BotReference.LUMA_COLOR)
+                .setDescription(targetUser.getMentionTag() + " (" + targetUser.getDiscriminatedName() + ")'s previous warnings:");
+
+        Luma.database.enumerateWarnings(targetUser.getId(), response);
+
+        return response;
+    }
 }

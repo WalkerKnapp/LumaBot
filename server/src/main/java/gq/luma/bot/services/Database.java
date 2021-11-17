@@ -19,6 +19,7 @@ import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.emoji.CustomEmoji;
 import org.javacord.api.entity.emoji.Emoji;
 import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
@@ -28,6 +29,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.sql.*;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
@@ -141,6 +145,10 @@ public class Database implements Service {
     private PreparedStatement insertDunceStoredRole;
     private PreparedStatement removeDunceStoredRole;
 
+    private PreparedStatement getWarningsByUser;
+    private PreparedStatement getWarningsCountByUser;
+    private PreparedStatement insertWarning;
+
     @Override
     public void startService() throws SQLException, ClassNotFoundException {
         open();
@@ -251,6 +259,10 @@ public class Database implements Service {
         getDunceStoredRoleByUser = conn.prepareStatement("SELECT * FROM dunce_stored_roles WHERE user_id = ?");
         insertDunceStoredRole = conn.prepareStatement("INSERT INTO dunce_stored_roles (user_id, role_id) VALUES (?, ?)");
         removeDunceStoredRole = conn.prepareStatement("DELETE FROM dunce_stored_roles WHERE user_id = ?");
+
+        getWarningsByUser = conn.prepareStatement("SELECT * FROM warnings WHERE user_id = ?");
+        getWarningsCountByUser = conn.prepareStatement("SELECT COUNT(warning_instant) AS warning_count FROM warnings WHERE user_id = ?");
+        insertWarning = conn.prepareStatement("INSERT INTO warnings (user_id, warning_instant, reason, message_link) VALUES (?, ?, ?, ?)");
     }
 
     //Results
@@ -1483,6 +1495,56 @@ public class Database implements Service {
 
             removeDunceStoredRole.setLong(1, user.getId());
             removeDunceStoredRole.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void warnUser(long userId, Instant timestamp, String messageLink, String reason) {
+        try {
+            insertWarning.setLong(1, userId);
+            insertWarning.setTimestamp(2, Timestamp.from(timestamp));
+            insertWarning.setString(3, reason);
+            insertWarning.setString(4, messageLink);
+
+            insertWarning.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized int countUserWarnings(long userId) {
+        try {
+            getWarningsCountByUser.setLong(1, userId);
+
+            ResultSet rs = getWarningsCountByUser.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt("warning_count");
+            } else {
+                return 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    public synchronized void enumerateWarnings(long userId, EmbedBuilder response) {
+        try {
+            getWarningsByUser.setLong(1, userId);
+
+            ResultSet rs = getWarningsByUser.executeQuery();
+
+            while (rs.next()) {
+                String warningDate = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
+                        .withLocale(Locale.US)
+                        .withZone(ZoneId.systemDefault())
+                        .format(rs.getTimestamp("warning_instant").toInstant());
+                String messageLink = rs.getString("message_link");
+                String reason = rs.getString("reason");
+                response.addField(warningDate, "[" + (reason.isEmpty() ? "*No reason given*" : reason) + "](" + messageLink + ")");
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
