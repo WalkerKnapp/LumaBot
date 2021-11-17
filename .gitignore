@@ -40,3 +40,4 @@ build/
 *.json
 
 server/web/node_modules/
+/deploy_key.txt

@@ -1,3 +1,5 @@
+import java.nio.file.Files
+
 plugins {
     id 'application'
     id 'org.hidetake.ssh' version '2.9.0'
@@ -69,6 +71,35 @@ configurations.each {
             System.out.println(dependency.requested.getDisplayName())
             if (dependency.requested.getDisplayName().contains('com.square.okhttp3')) {
                 dependency.useTarget 'com.github.square:okhttp.okhttp:5224f3045b'
+            }
+        }
+    }
+}
+
+remotes {
+    s1 {
+        role 's1'
+        host = '10.9.8.1'
+        user = 'walker'
+        password = Files.readAllLines(file('../deploy_key.txt').toPath()).get(0)
+    }
+}
+
+task deploy {
+    dependsOn(distTar)
+    doLast {
+        ssh.run {
+            session(remotes.s1) {
+                System.out.println("Deploying " + distTar.outputs.getFiles().getSingleFile().toPath());
+                put from: distTar.outputs.getFiles().getSingleFile(), into: "/home/walker/Luma"
+                System.out.println("Finished file upload.")
+
+                execute 'tmux new -d -s luma', ignoreError: true
+                execute 'tmux send-keys -t luma C-c'
+                execute 'tmux send-keys -t luma "cd /home/walker/Luma" ENTER'
+                execute 'tmux send-keys -t luma "tar -xvf server.tar" ENTER'
+                execute 'tmux send-keys -t luma "cd server/bin" ENTER'
+                execute 'tmux send-keys -t luma "authbind --deep ./server" ENTER'
             }
         }
     }
