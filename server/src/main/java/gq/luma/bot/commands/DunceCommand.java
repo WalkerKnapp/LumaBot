@@ -304,6 +304,14 @@ public class DunceCommand {
                 .addField("Reason", reason.isEmpty() ? "*No reason given*" : reason)
                 .setFooter("This is their " + warnings + (warnings == 1 ? "st" : warnings == 2 ? "nd" : warnings == 3 ? "rd" : "th") + " warning."));
 
+        // DM User (if able)
+        targetUser.sendMessage(new EmbedBuilder()
+                .setColor(BotReference.LUMA_COLOR)
+                .setTitle("You have been warned by a moderator")
+                .addField("Reason", reason.isEmpty() ? "*No reason given*" : reason)
+                .setFooter("Portal 2 Speedrun Server")
+                .setTimestampToNow());
+
         // Send response
         return new EmbedBuilder()
                 .setColor(BotReference.LUMA_COLOR)
