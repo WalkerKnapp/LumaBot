@@ -37,7 +37,7 @@ node/src/main/resources/
 build/
 .idea/
 .gradle/
-*.json
 
 server/web/node_modules/
+server/web/dist
 /deploy_key.txt

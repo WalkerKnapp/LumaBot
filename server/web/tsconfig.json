@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "target": "ESNext",
+    "moduleResolution": "node"
+  },
+  "files": [
+    "src/iconset.ts",
+    "src/views/loginsrcom.ts",
+    "src/views/profile.ts",
+  ]
+}

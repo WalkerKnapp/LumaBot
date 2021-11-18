@@ -1,4 +1,4 @@
-import {customElement, html, LitElement, property} from 'lit-element';
+/*import {customElement, html, LitElement, property} from 'lit-element';
 import {Map} from 'ol';
 import TileLayer from 'ol/layer/Tile';
 import OSM from "ol/source/OSM";
@@ -27,7 +27,7 @@ export class MapDash extends LitElement {
     }
 
     handleCheck=(e: Event, stream: any)=>{
-        let element: Element | null = e.srcElement;
+        let element: Element | null = e.target;
         if(element != null && element instanceof HTMLInputElement) {
             let inputElement: HTMLInputElement = element;
             fetch('/user/' + stream.discordId + '/connections/twitch/' + stream.twitchId, {
@@ -78,4 +78,4 @@ export class MapDash extends LitElement {
     static get styles() {
         return [DashboardStyle];
     }
-}
+}*/

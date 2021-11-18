@@ -138,9 +138,8 @@ export class Profile extends LitElement {
     };
 
     handleCheck=(e: Event, account: any)=>{
-        let element: Element | null = e.srcElement;
-        if(element != null && element instanceof HTMLInputElement) {
-            let inputElement: HTMLInputElement = element;
+        if(e.target != null && e.target instanceof HTMLInputElement) {
+            let inputElement: HTMLInputElement = e.target;
             fetch('/user/' + Profile.discordIdS + '/connections/twitch/' + account.id, {
                 method: 'PATCH',
                 headers: {
@@ -171,7 +170,7 @@ export class Profile extends LitElement {
 
     removeAccount=(accountId: string)=>{
         //TODO: This is a mess
-        fetch('/user/' + Profile.discordIdS + '/connection/' + accountId, {
+        fetch('/user/' + Profile.discordIdS + '/connections/' + accountId, {
             method: 'DELETE',
             headers: {
                 'Accept': 'application/json',

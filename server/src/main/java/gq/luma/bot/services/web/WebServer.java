@@ -693,7 +693,7 @@ public class WebServer implements Service {
                                 exchange.setStatusCode(400);
                                 exchange.endExchange();
                             }
-                        } else if (discordId == Long.valueOf(discordProfile.getId())) {
+                        } else if (discordId == Long.parseLong(discordProfile.getId())) {
                             int notifyValue = extractTopLevelJsonInt(readRequestBody(exchange, 256), "notify");
                             if(notifyValue == 0 || notifyValue == 1) {
                                 Luma.database.setNotifyConnection(discordId, serverId, connId, notifyValue);
@@ -716,7 +716,7 @@ public class WebServer implements Service {
                         long discordId = Long.parseLong(pathMatch.getParameters().get("did"));
                         String connId = pathMatch.getParameters().get("connid");
 
-                        if (discordId == Long.valueOf(discordProfile.getId())) {
+                        if (discordId == Long.parseLong(discordProfile.getId())) {
                             Luma.database.setRemovedConnection(discordId, serverId, connId, 1);
                             exchange.setStatusCode(200);
                             exchange.endExchange();

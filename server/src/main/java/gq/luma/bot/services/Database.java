@@ -110,6 +110,7 @@ public class Database implements Service {
 
     private PreparedStatement getVerifiedConnectionsByUser;
     private PreparedStatement getVerifiedConnectionsByUserAndType;
+    private PreparedStatement getVerifiedConnectionsByUserAndTypeWithoutRemoved;
     private PreparedStatement getVerifiedConnectionsByType;
     private PreparedStatement getVerifiedConnectionsByTypeAndId;
     private PreparedStatement updateVerifiedConnectionRemovedByUserServerAndId;
@@ -227,6 +228,7 @@ public class Database implements Service {
 
         getVerifiedConnectionsByUser = conn.prepareStatement("SELECT * FROM verified_connections WHERE user_id = ? AND server_id = ?");
         getVerifiedConnectionsByUserAndType = conn.prepareStatement("SELECT * FROM verified_connections WHERE user_id = ? AND server_id = ? AND connection_type = ?");
+        getVerifiedConnectionsByUserAndTypeWithoutRemoved = conn.prepareStatement("SELECT * FROM verified_connections WHERE user_id = ? AND server_id = ? AND connection_type = ? AND removed = 0");
         getVerifiedConnectionsByType = conn.prepareStatement("SELECT * FROM verified_connections WHERE connection_type = ?");
         getVerifiedConnectionsByTypeAndId = conn.prepareStatement("SELECT * FROM verified_connections WHERE connection_type = ? AND id = ?");
         updateVerifiedConnectionRemovedByUserServerAndId = conn.prepareStatement("UPDATE verified_connections SET removed = ? WHERE user_id = ? AND server_id = ? AND id = ?");
@@ -944,10 +946,10 @@ public class Database implements Service {
 
     public synchronized void writeConnectionsJson(long discordId, long serverId, JsonGenerator jsonGenerator) {
         try {
-            getVerifiedConnectionsByUserAndType.setLong(1, discordId);
-            getVerifiedConnectionsByUserAndType.setLong(2, serverId);
-            getVerifiedConnectionsByUserAndType.setString(3, "steam");
-            ResultSet rs = getVerifiedConnectionsByUserAndType.executeQuery();
+            getVerifiedConnectionsByUserAndTypeWithoutRemoved.setLong(1, discordId);
+            getVerifiedConnectionsByUserAndTypeWithoutRemoved.setLong(2, serverId);
+            getVerifiedConnectionsByUserAndTypeWithoutRemoved.setString(3, "steam");
+            ResultSet rs = getVerifiedConnectionsByUserAndTypeWithoutRemoved.executeQuery();
             jsonGenerator.writeArrayFieldStart("steamAccounts");
             while (rs.next()) {
                 if(rs.getInt("removed") == 0) {
@@ -966,8 +968,8 @@ public class Database implements Service {
                 }
             }
             jsonGenerator.writeEndArray();
-            getVerifiedConnectionsByUserAndType.setString(3, "srcom");
-            rs = getVerifiedConnectionsByUserAndType.executeQuery();
+            getVerifiedConnectionsByUserAndTypeWithoutRemoved.setString(3, "srcom");
+            rs = getVerifiedConnectionsByUserAndTypeWithoutRemoved.executeQuery();
             jsonGenerator.writeArrayFieldStart("srcomAccounts");
             while (rs.next()) {
                 if(rs.getInt("removed") == 0) {
@@ -980,8 +982,8 @@ public class Database implements Service {
                 }
             }
             jsonGenerator.writeEndArray();
-            getVerifiedConnectionsByUserAndType.setString(3, "twitch");
-            rs = getVerifiedConnectionsByUserAndType.executeQuery();
+            getVerifiedConnectionsByUserAndTypeWithoutRemoved.setString(3, "twitch");
+            rs = getVerifiedConnectionsByUserAndTypeWithoutRemoved.executeQuery();
             jsonGenerator.writeArrayFieldStart("twitchAccounts");
             while (rs.next()) {
                 if(rs.getInt("removed") == 0) {

@@ -1,4 +1,4 @@
-import {customElement, html, LitElement, property} from 'lit-element';
+/*import {customElement, html, LitElement, property} from 'lit-element';
 
 import 'weightless/progress-spinner'
 
@@ -84,4 +84,4 @@ export class TwitchVerifyDash extends LitElement {
     static get styles() {
         return [DashboardStyle];
     }
-}
+}*/

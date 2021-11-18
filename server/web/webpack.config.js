@@ -44,7 +44,9 @@ module.exports = {
                     {
                         loader: 'sass-loader',
                         options: {
-                            includePaths: ['./node_modules']
+                            sassOptions: {
+                                includePaths: ['./node_modules']
+                            }
                         }
                     }
                 ]
@@ -107,7 +109,7 @@ module.exports = {
             filename: "[name].css",
             chunkFilename: "[id].css"
         }),
-        new webpack.IgnorePlugin(/vertx/),
+        new webpack.IgnorePlugin({ resourceRegExp: /vertx/ }),
         new CompressionPlugin({
             filename: '[path].gz[query]',
             algorithm: 'gzip',
