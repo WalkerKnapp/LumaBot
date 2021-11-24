@@ -312,6 +312,38 @@ public class DunceCommand {
                 .setFooter("Portal 2 Speedrun Server")
                 .setTimestampToNow());
 
+        // If necessary, dunce this user
+        if (warnings >= 2) {
+            String dunceUntilRaw = "24";
+            String dunceUntilRawUnit = "hours";
+            Instant dunceUntil = Instant.now().plus(24L, ChronoUnit.HOURS);
+
+            // Notify mod-actions
+            modActions.sendMessage(new EmbedBuilder()
+                    .setAuthor(event.getAuthor())
+                    .setTitle("Autodunced " + targetUser.getMentionTag() + " (" + targetUser.getDiscriminatedName() + ").")
+                    .setDescription("For " + dunceUntilRaw + " " + dunceUntilRawUnit + " (until " + DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
+                            .withLocale(Locale.US)
+                            .withZone(ZoneId.systemDefault())
+                            .format(dunceUntil) + " EST)."));
+
+            // Add this dunce's existing roles to the database
+            Luma.database.addDunceStoredRoles(targetUser, event.getServer().orElseThrow(AssertionError::new));
+
+            // Insert a new instant in the database
+            Luma.database.insertUndunceInstant(targetUser.getId(), dunceUntil);
+
+            // Remove user's existing roles
+            event.getServer().orElseThrow(AssertionError::new)
+                    .getRoles(targetUser)
+                    .stream().filter(r -> r.getId() != DUNCE_ROLE_ID)
+                    .forEach(targetUser::removeRole);
+
+            // Add dunce role
+            targetUser.addRole(event.getServer().orElseThrow(AssertionError::new)
+                    .getRoleById(DUNCE_ROLE_ID).orElseThrow(AssertionError::new)).join();
+        }
+
         // Send response
         return new EmbedBuilder()
                 .setColor(BotReference.LUMA_COLOR)
