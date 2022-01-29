@@ -584,8 +584,8 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(professionals, p2srmSpTime < (30 * 60) + 30)) { // Sub 30:30
                                     logger.debug("Giving Professionals due to a sub 30:30 P2SRM Time: " + p2srmSpTime);
                                 }
-                                if (setIfTrue(professionals, melInboundsTime < (30 * 60))) { // Sub 30:00
-                                    logger.debug("Giving Professionals due to a sub 30:00 Mel Time: " + melInboundsTime);
+                                if (setIfTrue(professionals, melInboundsTime < (29 * 60) + 30)) { // Sub 29:30
+                                    logger.debug("Giving Professionals due to a sub 29:30 Mel Time: " + melInboundsTime);
                                 }
 
                                 // Advanced Qualifications
@@ -601,8 +601,8 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(advanced, p2srmSpTime < (32 * 60))) { // Sub 32:00
                                     logger.debug("Giving Advanced due to a sub 32:00 P2SRM Time: " + p2srmSpTime);
                                 }
-                                if (setIfTrue(advanced, melInboundsTime < (32 * 60))) { // Sub 32:00
-                                    logger.debug("Giving Advanced due to a sub 32:00 Mel Time: " + melInboundsTime);
+                                if (setIfTrue(advanced, melInboundsTime < (31 * 60) + 30)) { // Sub 31:30
+                                    logger.debug("Giving Advanced due to a sub 31:30 Mel Time: " + melInboundsTime);
                                 }
 
                                 // Intermediate Qualifications
@@ -618,8 +618,8 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(intermediate, p2srmSpTime < (34 * 60))) { // Sub 34:00
                                     logger.debug("Giving Intermediate due to a sub 34:00 P2SRM Time: " + p2srmSpTime);
                                 }
-                                if (setIfTrue(intermediate, melInboundsTime < (34 * 60))) { // Sub 34:00
-                                    logger.debug("Giving Intermediate due to a sub 34:00 Mel Time: " + melInboundsTime);
+                                if (setIfTrue(intermediate, melInboundsTime < (33 * 60) + 30)) { // Sub 33:30
+                                    logger.debug("Giving Intermediate due to a sub 33:30 Mel Time: " + melInboundsTime);
                                 }
 
                                 // Mediocre Qualifications
@@ -635,8 +635,8 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(mediocre, p2srmSpTime < (37 * 60))) { // Sub 37:00
                                     logger.debug("Giving Mediocre due to a sub 37:00 P2SRM Time: " + p2srmSpTime);
                                 }
-                                if (setIfTrue(mediocre, melInboundsTime < (37 * 60))) { // Sub 37:00
-                                    logger.debug("Giving mediocre due to a sub 37:00 Mel Time: " + melInboundsTime);
+                                if (setIfTrue(mediocre, melInboundsTime < (36 * 60) + 30)) { // Sub 36:30
+                                    logger.debug("Giving mediocre due to a sub 36:30 Mel Time: " + melInboundsTime);
                                 }
 
                                 // Beginner Qualifications
@@ -649,8 +649,8 @@ public class SkillRoleService implements Service {
                                     if (setIfTrue(beginner, p2srmSpTime < (57 * 60) + 57)) { // Sub 57:57
                                         logger.debug("Giving Beginner due to sub 57:57 P2SRM Time: " + p2srmSpTime);
                                     }
-                                    if (setIfTrue(beginner, melInboundsTime < (45 * 60))) { // Sub 45:00
-                                        logger.debug("Giving Beginner due to a sub 45:00 Mel Time: " + melInboundsTime);
+                                    if (setIfTrue(beginner, melInboundsTime < (44 * 60))) { // Sub 44:30
+                                        logger.debug("Giving Beginner due to a sub 44:30 Mel Time: " + melInboundsTime);
                                     }
                                 }
                             }
