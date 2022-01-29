@@ -1357,13 +1357,36 @@ public class Database implements Service {
 
             StringBuilder sb = new StringBuilder();
 
-            for (int i = 1; i <= 5; i++) {
+            int i = 0;
+
+            int lastPing = Integer.MIN_VALUE;
+
+            do {
                 if (rs.next()) {
-                    sb.append(i).append(": <@").append(rs.getLong("user_id")).append("> - ")
-                            .append(rs.getInt("ping")).append(" ms\n");
+                    long userId = rs.getLong("user_id");
+                    int ping = rs.getInt("ping");
+
+                    if (ping != lastPing) {
+                        if (i != 0) {
+                            sb.append(" - ").append(lastPing).append(" ms\n");
+                        }
+
+                        lastPing = ping;
+
+                        i++;
+                        sb.append(i).append(": ");
+                    } else {
+                        sb.append(" & ");
+                    }
+
+                    sb.append("<@").append(userId).append(">");
                 } else {
                     break;
                 }
+            } while (i < 5);
+
+            if (i != 0) {
+                sb.append(" - ").append(lastPing).append(" ms");
             }
 
             return sb.toString();
