@@ -14,6 +14,7 @@ import gq.luma.bot.systems.filtering.filters.LinkFilter;
 import gq.luma.bot.systems.filtering.filters.SimpleFilter;
 import gq.luma.bot.systems.filtering.filters.VirusFilter;
 import gq.luma.bot.systems.filtering.filters.types.Filter;
+import org.apache.commons.csv.CSVPrinter;
 import org.javacord.api.entity.channel.ServerTextChannel;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.emoji.CustomEmoji;
@@ -136,6 +137,7 @@ public class Database implements Service {
     private PreparedStatement updatePingLeaderboardByUser;
     private PreparedStatement incrementPingCountByUser;
     private PreparedStatement getPingCountByUser;
+    private PreparedStatement getPingCountsDesc;
 
     private PreparedStatement getUndunceInstants;
     private PreparedStatement getUndunceInstantByUser;
@@ -251,6 +253,9 @@ public class Database implements Service {
 
         incrementPingCountByUser = conn.prepareStatement("INSERT INTO ping_counts (user_id, ping_count) VALUES (?, 1) ON DUPLICATE KEY UPDATE ping_count = ping_count + 1");
         getPingCountByUser = conn.prepareStatement("SELECT ping_count FROM ping_counts WHERE user_id = ?");
+        getPingCountsDesc = conn.prepareStatement("SELECT *" +
+                "      FROM Luma.ping_counts" +
+                "      ORDER BY ping_count DESC");
 
         getUndunceInstants = conn.prepareStatement("SELECT * FROM dunce_instants");
         getUndunceInstantByUser = conn.prepareStatement("SELECT undunce_instant FROM dunce_instants WHERE user_id = ?");
@@ -1491,6 +1496,26 @@ public class Database implements Service {
             removeUndunceInstantByUser.setLong(1, userId);
             removeUndunceInstantByUser.execute();
         } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized void writePingCounts(CSVPrinter printer) {
+        try {
+            ResultSet rs = getPingCountsDesc.executeQuery();
+
+            while (rs.next()) {
+                String username = Bot.api.getUserById(rs.getLong("user_id")).thenApply(u -> u.getDiscriminatedName()).exceptionally(t -> {
+                    try {
+                        return String.valueOf(rs.getLong("user_id"));
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                        return "";
+                    }
+                }).join();
+                printer.printRecord(username, rs.getInt("ping_count"));
+            }
+        } catch (SQLException | IOException e) {
             e.printStackTrace();
         }
     }

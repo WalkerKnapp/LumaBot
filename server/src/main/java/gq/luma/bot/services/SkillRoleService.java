@@ -10,12 +10,16 @@ import gq.luma.bot.services.apis.IVerbApi;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import okhttp3.OkHttpClient;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.checkerframework.checker.units.qual.A;
 import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.user.User;
 import org.javacord.api.util.logging.ExceptionLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -173,6 +177,8 @@ public class SkillRoleService implements Service {
     private static final String MEL_SRCOM_ID = "j1nz9l1p";
 
     private static final String PORTAL_2_SP_CATEGORY_SRCOM_ID = "jzd33ndn";
+    private static final String PORTAL_2_SP_SUBCATEGORY_VARIABLE_ID = "9l7x7xzn";
+    private static final String PORTAL_2_NO_SLA_VARIABLE_CHOICE = "z196dyy1";
     private static final String PORTAL_2_COOP_CATEGORY_SRCOM_ID = "l9kv40kg";
     private static final String PORTAL_2_COOP_SUBCATEGORY_VARIABLE_ID = "38dj54e8";
     private static final String PORTAL_2_AMC_VARIABLE_CHOICE_ID = "mln3x8nq";
@@ -201,6 +207,23 @@ public class SkillRoleService implements Service {
     private Leaderboard coopAMCLeaderboard;
     private Leaderboard p2srmLeaderboard;
     private Leaderboard melLeaderboard;
+
+    public static class SkillRoleStatistics {
+        public int beginnerCount = 0;
+        public int mediocreCount = 0;
+        public int intermediateCount = 0;
+        public int professionalsCount = 0;
+        public int advancedCount = 0;
+        public int eliteCount = 0;
+
+        // Beginner stats
+        public ArrayList<Double> noSlaBeginnerTimes = new ArrayList<>();
+        public ArrayList<Double> amcBeginnerTimes = new ArrayList<>();
+
+        // Add/remove
+        public int rolesAdded = 0;
+        public int rolesRemoved = 0;
+    }
 
     public SkillRoleService() {
         this.jSpeedrun = new JSpeedrun();
@@ -245,7 +268,7 @@ public class SkillRoleService implements Service {
                 .scheduleAtFixedRate(this::runChangelogFetch, milliRefreshTime, milliRefreshTime, TimeUnit.MILLISECONDS);
 
         CompletableFuture.allOf(
-                jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, PORTAL_2_SP_CATEGORY_SRCOM_ID).thenAccept(response -> {
+                jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, PORTAL_2_SP_CATEGORY_SRCOM_ID, Map.of(PORTAL_2_SP_SUBCATEGORY_VARIABLE_ID, PORTAL_2_NO_SLA_VARIABLE_CHOICE)).thenAccept(response -> {
                     spLeaderboard = response.getData().get(0);
                 }),
                 jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, PORTAL_2_COOP_CATEGORY_SRCOM_ID, Map.of(PORTAL_2_COOP_SUBCATEGORY_VARIABLE_ID, PORTAL_2_AMC_VARIABLE_CHOICE_ID)).thenAccept(response -> {
@@ -261,10 +284,103 @@ public class SkillRoleService implements Service {
         logger.info("Fetched leaderboards on srcom.");
 
         // Update all users on bot start.
+        SkillRoleStatistics stats = new SkillRoleStatistics();
         Bot.api.getServerById(146404426746167296L)
-                .ifPresent(server -> server.getMembers().forEach(this::onScoreUpdate));
+                .ifPresent(server -> server.getMembers().forEach(u -> this.onScoreUpdate(u, stats)));
+
+        stats.amcBeginnerTimes.sort(Comparator.naturalOrder());
+        stats.noSlaBeginnerTimes.sort(Comparator.naturalOrder());
+
+        FileWriter noslaOut = new FileWriter("nosla_beginner_times.csv");
+        try (CSVPrinter printer = new CSVPrinter(noslaOut, CSVFormat.DEFAULT
+                .withHeader("time"))) {
+            for (double d : stats.noSlaBeginnerTimes) {
+                printer.printRecord(d);
+            }
+        }
+
+        FileWriter amcOut = new FileWriter("amc_beginner_times.csv");
+        try (CSVPrinter printer = new CSVPrinter(amcOut, CSVFormat.DEFAULT
+                .withHeader("time"))) {
+            for (double d : stats.amcBeginnerTimes) {
+                printer.printRecord(d);
+            }
+        }
+
+        logger.info("Tried to add {} roles", stats.rolesAdded);
+        logger.info("Tried to remove {} roles", stats.rolesRemoved);
+
 
         logger.info("Updated all users");
+
+        /*logger.info("Generating role graph");
+
+        int eliteCount = 0;
+        int advancedCount = 0;
+        int prosCount = 0;
+        int intermediateCount = 0;
+        int mediocreCount = 0;
+        int beginnerCount = 0;
+        int unrankedCount = 0;
+
+        Server s = Bot.api.getServerById(146404426746167296L).orElseThrow();
+
+        Role elite = Bot.api.getRoleById(ELITE_ROLE).orElseThrow();
+        Role advanced = Bot.api.getRoleById(ADVANCED_ROLE).orElseThrow();
+        Role pros = Bot.api.getRoleById(PROFESSIONALS_ROLE).orElseThrow();
+        Role intermediate = Bot.api.getRoleById(INTERMEDIATE_ROLE).orElseThrow();
+        Role mediocre = Bot.api.getRoleById(MEDIOCRE_ROLE).orElseThrow();
+        Role beginner = Bot.api.getRoleById(BEGINNER_ROLE).orElseThrow();
+
+        for (User u : s.getMembers()) {
+            if (s.getRoles(u).contains(elite)) {
+                eliteCount++;
+            } else if (s.getRoles(u).contains(pros)) {
+                prosCount++;
+            } else if (s.getRoles(u).contains(advanced)) {
+                advancedCount++;
+            } else if (s.getRoles(u).contains(intermediate)) {
+                intermediateCount++;
+            } else if (s.getRoles(u).contains(mediocre)) {
+                mediocreCount++;
+            } else if (s.getRoles(u).contains(beginner)) {
+                beginnerCount++;
+            } else {
+                unrankedCount++;
+            }
+        }
+
+        logger.info("Elite: {}", eliteCount);
+        logger.info("Advanced: {}", advancedCount);
+        logger.info("Pros: {}", prosCount);
+        logger.info("Intermediate: {}", intermediateCount);
+        logger.info("Mediocre: {}", mediocreCount);
+        logger.info("Beginner: {}", beginnerCount);
+        logger.info("Unranked: {}", unrankedCount);
+
+        FileWriter out = new FileWriter("pingers.csv");
+        try (CSVPrinter printer = new CSVPrinter(out, CSVFormat.DEFAULT
+                .withHeader("user", "pings"))) {
+            Luma.database.writePingCounts(printer);
+        }
+
+
+        {
+            System.out.println("hi");
+            System.out.println("hi");
+            System.out.println("hi");
+            System.out.println("hi");
+            System.out.println("hi");
+            System.out.println("hi");
+            System.out.println("hi");
+
+            int x = 0;
+            boolean shouldRun = x == 0;
+
+            if (shouldRun) {
+                System.out.println("hi2");
+            }
+        }*/
     }
 
     private void runChangelogFetch() {
@@ -350,7 +466,7 @@ public class SkillRoleService implements Service {
             logger.debug("Fetching leaderboard from speedrun.com...");
 
             CompletableFuture.allOf(
-                    jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, PORTAL_2_SP_CATEGORY_SRCOM_ID).thenAccept(response -> {
+                    jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, PORTAL_2_SP_CATEGORY_SRCOM_ID, Map.of(PORTAL_2_SP_SUBCATEGORY_VARIABLE_ID, PORTAL_2_NO_SLA_VARIABLE_CHOICE)).thenAccept(response -> {
                         spLeaderboard = response.getData().get(0);
                     }),
                     jSpeedrun.getCategoryLeaderboard(PORTAL_2_SRCOM_ID, PORTAL_2_COOP_CATEGORY_SRCOM_ID, Map.of(PORTAL_2_COOP_SUBCATEGORY_VARIABLE_ID, PORTAL_2_AMC_VARIABLE_CHOICE_ID)).thenAccept(response -> {
@@ -365,8 +481,9 @@ public class SkillRoleService implements Service {
 
             // TODO: Only update users if they change on the srcom boards. For now, update everyone.
             //updatedSteamUsers.forEach(this::onScoreUpdate);
+            SkillRoleStatistics stats = new SkillRoleStatistics();
             Bot.api.getServerById(146404426746167296L)
-                    .ifPresent(server -> server.getMembers().forEach(this::onScoreUpdate));
+                    .ifPresent(server -> server.getMembers().forEach(u -> this.onScoreUpdate(u, stats)));
         } catch (Throwable t) {
             t.printStackTrace();
         }
@@ -422,15 +539,15 @@ public class SkillRoleService implements Service {
         return updatesNeeded;
     }
 
-    private void onScoreUpdate(long steamId) {
+    private void onScoreUpdate(long steamId, SkillRoleStatistics stats) {
         logger.debug("Score updated for steam account: " + steamId);
 
         for(User user : Luma.database.getVerifiedConnectionsById(String.valueOf(steamId), "steam")) {
-            onScoreUpdate(user);
+            onScoreUpdate(user, stats);
         }
     }
 
-    public void onScoreUpdate(User discordUser) {
+    public void onScoreUpdate(User discordUser, SkillRoleStatistics stats) {
 
         //logger.info("Updating discord user: " + discordUser.getDiscriminatedName());
 
@@ -461,6 +578,8 @@ public class SkillRoleService implements Service {
                                 float coopPoints = calculateCoopPoints(steamId);
                                 int totalPointsRounded = Math.round(spPoints) + Math.round(coopPoints);
                                 Instant latestScore = getLatestScore(steamId);
+                                Instant latestTop200 = getLatestTop200(steamId);
+                                int bestPlace = getBestPlace(steamId);
 
                                 if(logger.isDebugEnabled()) {
                                     //logger.debug(discordUser.getDiscriminatedName() + " - spPoints=" + spPoints + " - coopPoints=" + coopPoints + " - totalRounded=" + totalPointsRounded);
@@ -508,6 +627,12 @@ public class SkillRoleService implements Service {
                                 }
 
                                 // Beginner Qualifications
+                                /*if(setIfTrue(beginner, bestPlace <= 200) && discordUser.getId() != 103656524617900032L) {
+                                    logger.debug("Giving Beginner due to top 200 time: " + bestPlace);
+                                }*/
+                                /*if (setIfTrue(beginner, latestTop200.isAfter(sixMonthsAgo) && discordUser.getId() != 103656524617900032L)) {
+                                    logger.debug("Giving Beginner due to top 200 time in the last 6 months: " + latestTop200.toString());
+                                }*/
                                 if(setIfTrue(beginner, latestScore.isAfter(sixMonthsAgo) && discordUser.getId() != 103656524617900032L)) {
                                     logger.debug("Giving Beginner due to iVerb activity in the last 6 months: " + latestScore.toString());
                                 }
@@ -529,20 +654,29 @@ public class SkillRoleService implements Service {
                                 AtomicInteger p2srmSpRankAtomic = new AtomicInteger(Integer.MAX_VALUE);
                                 AtomicInteger melInboundsRankAtomic = new AtomicInteger(Integer.MAX_VALUE);
 
-                                AtomicReference<OffsetDateTime> latestRunAtomic = new AtomicReference<>();
+                                AtomicReference<OffsetDateTime> latestRunSp = new AtomicReference<>();
+                                AtomicReference<OffsetDateTime> latestRunAmc = new AtomicReference<>();
 
                                 // Check P2 SP leaderboards
-                                getSpLeaderboardRank(spLeaderboard, srcomId, latestRunAtomic, singlePlayerRankAtomic, singlePlayerTimeAtomic);
+                                getSpLeaderboardRank(spLeaderboard, srcomId, latestRunSp, singlePlayerRankAtomic, singlePlayerTimeAtomic);
                                 // Check P2 AMC leaderboards
-                                getCoopLeaderboardRank(coopAMCLeaderboard, srcomId, latestRunAtomic, amcRankPlayerAboveAtomic, amcRankPlayerBelowAtomic,
+                                getCoopLeaderboardRank(coopAMCLeaderboard, srcomId, latestRunAmc, amcRankPlayerAboveAtomic, amcRankPlayerBelowAtomic,
                                         amcTimePlayerAboveRankAtomic, amcTimePlayerBelowRankAtomic);
                                 // Check P2SRM SP leaderboards
-                                getSpLeaderboardRank(p2srmLeaderboard, srcomId, latestRunAtomic, p2srmSpRankAtomic, p2srmSpTimeAtomic);
+                                getSpLeaderboardRank(p2srmLeaderboard, srcomId, new AtomicReference<>(), p2srmSpRankAtomic, p2srmSpTimeAtomic);
                                 // Check Mel Inbounds leaderboards
-                                getSpLeaderboardRank(melLeaderboard, srcomId, latestRunAtomic, melInboundsRankAtomic, melInboundsTimeAtomic);
+                                getSpLeaderboardRank(melLeaderboard, srcomId, new AtomicReference<>(), melInboundsRankAtomic, melInboundsTimeAtomic);
 
                                 // Unwrap atomics
-                                OffsetDateTime latestRun = latestRunAtomic.get();
+                                OffsetDateTime latestRun = null;
+                                boolean beginnerFromCm = beginner.get();
+                                boolean latestRunFromSp = latestRunSp.get() != null && (latestRunAmc.get() == null || latestRunSp.get().isAfter(latestRunAmc.get()));
+                                boolean latestRunFromAmc = latestRunAmc.get() != null && (latestRunSp.get() == null || latestRunAmc.get().isAfter(latestRunSp.get()));
+                                if (latestRunFromSp) {
+                                    latestRun = latestRunSp.get();
+                                } else if (latestRunFromAmc) {
+                                    latestRun = latestRunAmc.get();
+                                }
 
                                 double singlePlayerTime = singlePlayerTimeAtomic.get();
                                 double amcTimePlayerBelowRank = amcTimePlayerBelowRankAtomic.get();
@@ -653,6 +787,17 @@ public class SkillRoleService implements Service {
                                         logger.debug("Giving Beginner due to a sub 44:30 Mel Time: " + melInboundsTime);
                                     }
                                 }
+
+                                if (beginner.get() && !(mediocre.get() || intermediate.get() || advanced.get() || professionals.get() || elite.get())) {
+                                    // Player is a pure beginner, record their times if they got them from nosla or amc
+                                    if (!beginnerFromCm && latestRun != null && latestRun.isAfter(OffsetDateTime.now().minus(6, ChronoUnit.MONTHS))) {
+                                        if (latestRunFromSp) {
+                                            stats.noSlaBeginnerTimes.add(singlePlayerTime);
+                                        } else if (latestRunFromAmc) {
+                                            stats.amcBeginnerTimes.add(Math.min(amcTimePlayerAboveRank, amcTimePlayerBelowRank));
+                                        }
+                                    }
+                                }
                             }
                             break;
                         default:
@@ -661,27 +806,27 @@ public class SkillRoleService implements Service {
                 });
 
         Bot.api.getRoleById(ELITE_ROLE)
-                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, elite, true),
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, elite, true, false, null),
                         () -> logger.error("Failed to find elite role."));
 
         Bot.api.getRoleById(PROFESSIONALS_ROLE)
-                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, professionals, true),
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, professionals, true, false, null),
                         () -> logger.error("Failed to find professionals role."));
 
         Bot.api.getRoleById(ADVANCED_ROLE)
-                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, advanced, true),
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, advanced, true, false, null),
                         () -> logger.error("Failed to find advanced role."));
 
         Bot.api.getRoleById(INTERMEDIATE_ROLE)
-                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, intermediate, true),
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, intermediate, true, false, null),
                         () -> logger.error("Failed to find intermediate role."));
 
         Bot.api.getRoleById(MEDIOCRE_ROLE)
-                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, mediocre, true),
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, mediocre, true, false, null),
                         () -> logger.error("Failed to find mediocre role."));
 
         Bot.api.getRoleById(BEGINNER_ROLE)
-                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, beginner, false),
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, beginner, false, false, stats),
                         () -> logger.error("Failed to find beginner role."));
     }
 
@@ -814,16 +959,22 @@ public class SkillRoleService implements Service {
         }
     }
 
-    private void giveOrTakeRole(Role role, User discordUser, AtomicBoolean state, boolean autoRemoveRole) {
+    private void giveOrTakeRole(Role role, User discordUser, AtomicBoolean state, boolean autoRemoveRole, boolean dryRun, SkillRoleStatistics stats) {
         if(!role.getUsers().contains(discordUser)) {
             if(state.get()) {
-                logger.info("Giving {} {} role", discordUser.getDiscriminatedName(), role.getName());
-                discordUser.addRole(role).exceptionally(ExceptionLogger.get());
+                if (stats != null) stats.rolesAdded++;
+                if (!dryRun) {
+                    logger.info("Giving {} {} role", discordUser.getDiscriminatedName(), role.getName());
+                    discordUser.addRole(role).exceptionally(ExceptionLogger.get());
+                }
             }
         } else if (autoRemoveRole) {
             if(!state.get()) {
-                logger.info("Removing {} {} role", discordUser.getDiscriminatedName(), role.getName());
-                discordUser.removeRole(role).exceptionally(ExceptionLogger.get());
+                if (stats != null) stats.rolesRemoved++;
+                if (!dryRun) {
+                    logger.info("Removing {} {} role", discordUser.getDiscriminatedName(), role.getName());
+                    discordUser.removeRole(role).exceptionally(ExceptionLogger.get());
+                }
             }
         }
     }
@@ -886,6 +1037,34 @@ public class SkillRoleService implements Service {
             }
         })));
         return latestScore.get();
+    }
+
+    private Instant getLatestTop200(long steamId) {
+        AtomicReference<Instant> latestScore = new AtomicReference<>(Instant.MIN);
+        this.scores.forEach((mapId, mapScores) ->
+                mapScores.forEach((rank, rankScores) ->
+                        rankScores.forEach(meta -> {
+                            if(meta.steamId == steamId && meta.timeGained != null && rank <= 200) {
+                                if(meta.timeGained.isAfter(latestScore.get())) {
+                                    latestScore.set(meta.timeGained);
+                                }
+                            }
+                        })));
+        return latestScore.get();
+    }
+
+    private int getBestPlace(long steamId) {
+        AtomicInteger bestPlace = new AtomicInteger(Integer.MAX_VALUE);
+        this.scores.forEach((mapId, mapScores) -> {
+            mapScores.forEach((rank, rankScores) -> {
+                rankScores.forEach(meta -> {
+                    if (meta.steamId == steamId && rank < bestPlace.get()) {
+                        bestPlace.set(rank);
+                    }
+                });
+            });
+        });
+        return bestPlace.get();
     }
 
     private float calculatePoints(int rank) {

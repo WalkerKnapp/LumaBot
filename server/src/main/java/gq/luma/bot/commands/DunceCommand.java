@@ -5,6 +5,7 @@ import gq.luma.bot.commands.params.ParamUtilities;
 import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
 import gq.luma.bot.reference.BotReference;
+import gq.luma.bot.services.Bot;
 import gq.luma.bot.services.Database;
 import org.apache.commons.validator.GenericValidator;
 import org.javacord.api.entity.channel.TextChannel;
@@ -248,6 +249,74 @@ public class DunceCommand {
                     .setColor(Color.RED)
                     .setTitle("User " + targetUser.getMentionTag() + " (" + targetUser.getDiscriminatedName() + ") is not dunced.");
         }
+    }
+
+    @Command(aliases = {"ban"}, description = "ban_description", usage = "", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296")
+    public EmbedBuilder onBan(CommandEvent event) {
+        User targetUser = null;
+
+        if (event.getCommandArgs().length >= 1) {
+
+            // Interpret user reference
+            String userReference = event.getCommandArgs()[0];
+
+            Matcher mentionMatcher = DiscordRegexPattern.USER_MENTION.matcher(userReference);
+            String[] referenceSplitByHash = userReference.split("#");
+
+            if (mentionMatcher.matches()) {
+                // Reference is a mention, pull out the user id and get the user
+                String userId = mentionMatcher.group("id");
+                targetUser = event.getApi().getUserById(userId).exceptionally(t -> null).join();
+            } else if (GenericValidator.isLong(userReference)) {
+                // Reference is a user id
+                targetUser = event.getApi().getUserById(userReference).exceptionally(t -> null).join();
+            } else if (referenceSplitByHash.length > 1) {
+                // Reference could be a nick
+                targetUser = event.getServer().orElseThrow(AssertionError::new)
+                        .getMemberByDiscriminatedNameIgnoreCase(userReference)
+                        .orElse(null);
+            }
+        }
+
+        if (targetUser == null) {
+            return new EmbedBuilder()
+                    .setColor(Color.RED)
+                    .setTitle("Invalid Syntax")
+                    .setDescription("Syntax: ?L ban (user) [reason]");
+        }
+
+        String reason;
+        if (event.getCommandRemainder().length() > event.getCommandArgs()[0].length() + 1) {
+            reason = event.getCommandRemainder().substring(event.getCommandArgs()[0].length() + 1);
+        } else {
+            reason = "";
+        }
+
+        // Ban the user
+        Bot.api.getServerById(146404426746167296L).orElseThrow(AssertionError::new)
+                .banUser(targetUser, 0, reason);
+
+        // Notify mod-actions
+        TextChannel modActions = event.getServer().orElseThrow(AssertionError::new)
+                .getTextChannelById(MOD_NOTIFICATIONS_CHANNEL_ID).orElseThrow(AssertionError::new);
+        modActions.sendMessage(new EmbedBuilder()
+                .setAuthor(event.getAuthor())
+                .setDescription("Banned " + targetUser.getMentionTag() + " (" + targetUser.getDiscriminatedName() + ").")
+                .addField("Reason", reason.isEmpty() ? "*No reason given*" : reason));
+
+        // DM User (if able)
+        targetUser.sendMessage(new EmbedBuilder()
+                .setColor(BotReference.LUMA_COLOR)
+                .setTitle("You have been banned by a moderator")
+                .addField("Reason", reason.isEmpty() ? "*No reason given*" : reason)
+                .setFooter("Portal 2 Speedrun Server")
+                .setTimestampToNow());
+
+        // Send response
+        return new EmbedBuilder()
+                .setColor(BotReference.LUMA_COLOR)
+                .setDescription("Banned " + targetUser.getMentionTag() + " (" + targetUser.getDiscriminatedName() + ").")
+                .addField("Reason", reason.isEmpty() ? "*No reason given*" : reason);
     }
 
     @Command(aliases = {"warn"}, description = "warn_description", usage = "", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296")
