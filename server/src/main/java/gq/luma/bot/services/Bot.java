@@ -17,6 +17,7 @@ import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.intent.Intent;
 import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.message.MessageAuthor;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
@@ -203,6 +204,14 @@ public class Bot implements Service {
                     }
                 })),
                 0, 15, TimeUnit.MINUTES);
+
+
+        api.addReactionAddListener(event -> event.getServer().ifPresent(server -> {
+            if (server.getId() == 942872856893751397L && event.getMessageId() == 942874482941517945L) {
+                server.getRoleById(943542972354543631L).ifPresent(role ->
+                        event.getMessageAuthor().flatMap(MessageAuthor::asUser).ifPresent(user -> user.addRole(role)));
+            }
+        }));
 
         DiscordLogger discordLogger = new DiscordLogger();
         api.addMessageDeleteListener(discordLogger);
