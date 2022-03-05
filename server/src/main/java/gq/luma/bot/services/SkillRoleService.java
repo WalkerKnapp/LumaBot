@@ -718,8 +718,8 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(professionals, p2srmSpTime < (30 * 60) + 30)) { // Sub 30:30
                                     logger.debug("Giving Professionals due to a sub 30:30 P2SRM Time: " + p2srmSpTime);
                                 }
-                                if (setIfTrue(professionals, melInboundsTime < (29 * 60) + 30)) { // Sub 29:30
-                                    logger.debug("Giving Professionals due to a sub 29:30 Mel Time: " + melInboundsTime);
+                                if (setIfTrue(professionals, melInboundsTime < (28 * 60) + 30)) { // Sub 29:30
+                                    logger.debug("Giving Professionals due to a sub 28:30 Mel Time: " + melInboundsTime);
                                 }
 
                                 // Advanced Qualifications
