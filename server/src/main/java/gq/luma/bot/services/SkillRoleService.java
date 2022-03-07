@@ -915,13 +915,13 @@ public class SkillRoleService implements Service {
                         }
 
                         boolean containsPartner = false;
-                        for (Run.Player player : place.run.players) {
+                        for (Run.Player player : partnerPlace.run.players) {
                             if (player.id != null) {
                                 containsPartner = containsPartner || (player.id.equals(coopPartner.id));
                             }
                         }
 
-                        if (place.place > 0 && containsPartner && partnerHighestRank > partnerPlace.place) {
+                        if (partnerPlace.place > 0 && containsPartner && partnerHighestRank > partnerPlace.place) {
                             partnerHighestRank = partnerPlace.place;
                         }
                     }
