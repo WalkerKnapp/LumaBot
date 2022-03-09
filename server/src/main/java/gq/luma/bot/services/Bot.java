@@ -75,6 +75,7 @@ public class Bot implements Service {
         executor.registerCommand(new RoleCommands());
         executor.registerCommand(new PinsCommands());
         executor.registerCommand(new DunceCommand());
+        executor.registerCommand(new ResourcesCommand());
 
         api.addMessageCreateListener(new SlowMode());
         api.addMessageCreateListener(Luma.filterManager);
@@ -205,13 +206,12 @@ public class Bot implements Service {
                 })),
                 0, 15, TimeUnit.MINUTES);
 
-
-        api.addReactionAddListener(event -> event.getServer().ifPresent(server -> {
+        /*api.addReactionAddListener(event -> event.getServer().ifPresent(server -> {
             if (server.getId() == 942872856893751397L && event.getMessageId() == 942874482941517945L) {
                 server.getRoleById(943542972354543631L).ifPresent(role ->
-                        event.getMessageAuthor().flatMap(MessageAuthor::asUser).ifPresent(user -> user.addRole(role)));
+                        event.requestUser().join().addRole(role));
             }
-        }));
+        }));*/
 
         DiscordLogger discordLogger = new DiscordLogger();
         api.addMessageDeleteListener(discordLogger);
