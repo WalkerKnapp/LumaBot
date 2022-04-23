@@ -68,7 +68,7 @@ public class WebSecConfigFactory implements ConfigFactory {
         }));
 
         final SteamAuthClient steamAuthClient = new SteamAuthClient();
-        steamAuthClient.setCallbackUrl("https://verify.luma.gq/callback");
+        steamAuthClient.setCallbackUrl("https://verify.walkerknapp.me/callback");
         steamAuthClient.setName("steam");
 
         OidcConfiguration twitchConfig = new OidcConfiguration();
@@ -195,7 +195,7 @@ public class WebSecConfigFactory implements ConfigFactory {
         });
         twitchClient.setName("twitch");
 
-        final Clients clients = new Clients("https://verify.luma.gq/callback", discordClient, steamAuthClient, twitchClient);
+        final Clients clients = new Clients("https://verify.walkerknapp.me/callback", discordClient, steamAuthClient, twitchClient);
         final Config config = new Config(clients);
 
         config.addAuthorizer("discord", new RequireAnyRoleAuthorizer("ROLE_DISCORD_USER"));

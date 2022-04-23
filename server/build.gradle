@@ -9,7 +9,7 @@ applicationDefaultJvmArgs = ['-agentlib:jdwp=transport=dt_socket,server=y,suspen
 
 mainClassName = "gq.luma.bot.Luma"
 
-sourceCompatibility = 10
+sourceCompatibility = 11
 
 repositories {
     mavenLocal()
@@ -105,3 +105,4 @@ task deploy {
         }
     }
 }
+targetCompatibility = JavaVersion.VERSION_11

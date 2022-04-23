@@ -336,7 +336,7 @@ public class WebServer implements Service {
         }
 
         private boolean lookupConnections(DiscordProfile discordProfile, SteamOpenIdProfile steamProfile, OidcProfile twitchProfile, long serverId) {
-            logger.trace("Discord user accessed verify.luma.gq:");
+            logger.trace("Discord user accessed verify.walkerknapp.me:");
             logger.trace("Id: "+ discordProfile.getId());
             logger.trace("Name: " + discordProfile.getUsername() + "#" + discordProfile.getDiscriminator());
             //logger.trace("IP: " + exchange.getRequestHeaders().get("CF-Connecting-IP").getFirst());
@@ -762,7 +762,7 @@ public class WebServer implements Service {
                         case "cdn.luma.gq":
                             cdnHandler.handleRequest(exchange);
                             break;
-                        case "verify.luma.gq":
+                        case "verify.walkerknapp.me":
                             verifyWebpageHandler.handleRequest(exchange);
                             break;
                         //case "api.luma.gq":
