@@ -13,6 +13,7 @@ import org.javacord.api.entity.channel.ServerTextChannel;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.MessageAttachment;
 import org.javacord.api.entity.message.MessageAuthor;
+import org.javacord.api.entity.message.MessageSet;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
@@ -78,7 +79,8 @@ public class ServerCommands {
     public void onCleanup(CommandEvent event){
         if(event.getCommandArgs().length >= 1){
             int messageCount = Math.max(Integer.valueOf(event.getCommandArgs()[0]), 0);
-            event.getChannel().getMessages(messageCount).join().deleteAll();
+            MessageSet messages = event.getChannel().getMessages(messageCount).join();
+            Message.delete(event.getApi(), messages.stream().filter(m -> !m.isPinned()).collect(Collectors.toList())).join();
         } else {
             event.getChannel().sendMessage("", EmbedUtilities.getErrorMessage(event.getLocalization().get("not_enough_arguments"), event.getLocalization()));
         }
