@@ -309,6 +309,14 @@ public class WebServer implements Service {
                         }
                     });
 
+                    List<String> evilMatches = Luma.evilsService.checkEvil(ip);
+                    if (!evilMatches.isEmpty()) {
+                        altNotice.set(true);
+                        altNoticeText.append("\t - IP Address marked as abusive in the following databases: `")
+                                .append(String.join("` , `", evilMatches))
+                                .append("`\n");
+                    }
+
                     if (altNotice.get()) {
                         Bot.api.getTextChannelById(VERIFICATION_LOG_CHANNEL).ifPresent(channel -> {
                             channel.sendMessage(altNoticeText.toString());

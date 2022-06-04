@@ -48,15 +48,17 @@ public class Luma {
     public static YoutubeApi youtubeApi;
     public static SteamApi steamApi;
     public static SkillRoleService skillRoleService;
+    public static EvilsService evilsService;
     public static Bot bot;
 
-    private static List<Service> services;
+    private static final List<Service> services;
 
     static {
         services = new ArrayList<>();
         services.add(new FileReference());
         services.add(new KeyReference());
         services.add(database = new Database());
+        services.add(evilsService = new EvilsService());
         //services.add(new WordEncoder());
         services.add(youtubeApi = new YoutubeApi());
         //services.add(nodeServer = new NodeServer());

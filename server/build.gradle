@@ -64,6 +64,9 @@ dependencies {
     implementation group: 'net.sourceforge.tess4j', name: 'tess4j', version: '3.4.4'
 
     implementation("it.unimi.dsi:fastutil:8.5.4")
+
+    implementation 'org.eclipse.jgit:org.eclipse.jgit:6.1.0.202203080745-r'
+    implementation 'com.github.seancfoley:ipaddress:5.3.4'
 }
 
 configurations.each {
