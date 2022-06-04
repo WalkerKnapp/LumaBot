@@ -19,6 +19,8 @@ import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
 import org.javacord.api.util.logging.ExceptionLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.io.BufferedReader;
@@ -33,6 +35,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class ServerCommands {
+    private Logger logger = LoggerFactory.getLogger(ServerCommands.class);
+
     @Command(aliases = {"slow"}, description = "slow_description", usage = "slow_usage", neededPerms = "SET_SLOW_MODE", whilelistedGuilds = "146404426746167296;425386024835874826")
     public EmbedBuilder onSlow(CommandEvent event){
         if(event.getCommandArgs().length >= 2){
@@ -73,6 +77,83 @@ public class ServerCommands {
                 event.getChannel().sendMessage(sb.toString());
             }
         }
+    }
+
+    @Command(aliases = {"ipcheck"}, description = "ipcheck_description", usage = "ipcheck_usage", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296")
+    public void onIpCheck(CommandEvent event) {
+        int ipCount = Luma.database.ipCount();
+
+        Message m = event.getChannel()
+                .sendMessage("Checking verified IPs for abuse: 0/" + ipCount + "...")
+                .join();
+
+        Luma.executorService.submit(() -> {
+            try {
+                AtomicInteger i = new AtomicInteger(1);
+                HashMap<Long, Set<String>> userEvils = new HashMap<>();
+                Luma.database.allIps((userId, ip) -> {
+                    if (i.get() % 50 == 0) {
+                        m.edit("Checking verified IPs for abuse: " + i.get() + "/" + ipCount + "...")
+                                .join();
+                    }
+
+                    List<String> evils = Luma.evilsService.checkEvil(ip);
+                    if (!evils.isEmpty()) {
+                        userEvils.computeIfAbsent(userId, id -> new HashSet<>())
+                                .addAll(evils);
+                    }
+
+                    i.getAndIncrement();
+                });
+
+                m.edit("Mapping IPs to users 0/" + userEvils.size())
+                        .join();
+
+                HashMap<User, Set<String>> evilsMapped = new HashMap<>();
+
+                int j = 1;
+                for (var entry : userEvils.entrySet()) {
+                    if (j % 50 == 0) {
+                        m.edit("Mapping IPs to users " + j + "/" + userEvils.size())
+                                .join();
+                    }
+
+                    evilsMapped.put(event.getApi().getUserById(entry.getKey()).join(), entry.getValue());
+
+                    j++;
+                }
+
+                m.edit("Buffering output...").join();
+
+                StringBuilder messageBuffer = new StringBuilder("The following users verified with IP addresses marked as abusive:\n");
+
+                List<Map.Entry<User, Set<String>>> sortedEvils = evilsMapped.entrySet().stream().sorted(Comparator.comparing(u -> u.getKey().getDiscriminatedName(), Comparator.naturalOrder()))
+                        .collect(Collectors.toList());
+
+                for (var entry : sortedEvils) {
+                    StringBuilder sb = new StringBuilder(entry.getKey().getMentionTag() + "(" + entry.getKey().getDiscriminatedName() + ")\n");
+
+                    for (var evil : entry.getValue()) {
+                        sb.append("\t- `").append(evil).append("`\n");
+                    }
+
+                    if (messageBuffer.length() + sb.length() > 2000) {
+                        event.getChannel().sendMessage(messageBuffer.toString()).join();
+                        messageBuffer = new StringBuilder();
+                    }
+
+                    messageBuffer.append(sb);
+                }
+
+                if (messageBuffer.length() > 0) {
+                    event.getChannel().sendMessage(messageBuffer.toString()).join();
+                }
+
+                m.delete().join();
+            } catch (Throwable t) {
+                logger.error("Failed to complete iplist", t);
+            }
+        });
     }
 
     @Command(aliases = {"cleanup"}, description = "cleanup_description", usage = "cleanup_usage", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296;425386024835874826;902666492817072158")

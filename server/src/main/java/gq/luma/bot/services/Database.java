@@ -107,6 +107,8 @@ public class Database implements Service {
 
     private PreparedStatement getUserConnectionAttemptsByID;
     private PreparedStatement getUserConnectionAttemptsByIP;
+    private PreparedStatement getUserConnectionAttempts;
+    private PreparedStatement getUserConnectionAttemptsCount;
     private PreparedStatement insertUserConnectionAttempt;
 
     private PreparedStatement getVerifiedConnectionsByUser;
@@ -226,6 +228,8 @@ public class Database implements Service {
 
         getUserConnectionAttemptsByID = conn.prepareStatement("SELECT * FROM user_connection_attempts WHERE user_id = ?");
         getUserConnectionAttemptsByIP = conn.prepareStatement("SELECT * FROM user_connection_attempts WHERE ip = ?");
+        getUserConnectionAttempts = conn.prepareStatement("SELECT * FROM user_connection_attempts");
+        getUserConnectionAttemptsCount = conn.prepareStatement("SELECT COUNT(*) FROM user_connection_attempts");
         insertUserConnectionAttempt = conn.prepareStatement("INSERT INTO user_connection_attempts (user_id, server_id, ip) VALUES (?,?,?)");
 
         getVerifiedConnectionsByUser = conn.prepareStatement("SELECT * FROM verified_connections WHERE user_id = ? AND server_id = ?");
@@ -1159,6 +1163,31 @@ public class Database implements Service {
             System.out.println("Updated " + updateVerifiedConnectionNotifyByUserServerAndId.executeUpdate() + " rows.");
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    public synchronized void allIps(BiConsumer<Long, String> ipConsumer) {
+        try {
+            ResultSet rs = getUserConnectionAttempts.executeQuery();
+
+            while (rs.next()) {
+                ipConsumer.accept(rs.getLong("user_id"), rs.getString("ip"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public synchronized int ipCount() {
+        try {
+            ResultSet rs = getUserConnectionAttemptsCount.executeQuery();
+
+            rs.next();
+
+            return rs.getInt(1);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return 0;
         }
     }
 
