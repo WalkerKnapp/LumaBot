@@ -767,7 +767,7 @@ public class WebServer implements Service {
                         case "www.luma.gq":
                             rootHandler.handleRequest(exchange);
                             break;
-                        case "cdn.luma.gq":
+                        case "cdn.walkerknapp.me":
                             cdnHandler.handleRequest(exchange);
                             break;
                         case "verify.walkerknapp.me":

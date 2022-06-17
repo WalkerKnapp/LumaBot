@@ -11,7 +11,7 @@ import java.nio.file.Paths;
 
 public class CdnDecoder extends WebsocketDecoder {
 
-    private static final String URL_STUB = "https://cdn.luma.gq/";
+    private static final String URL_STUB = "https://cdn.walkerknapp.me/";
 
     private FileOutputStream fos;
     private String fileName;

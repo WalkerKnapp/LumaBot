@@ -1049,7 +1049,7 @@ public class Database implements Service {
                 ResultSet rs = getVerifiedConnectionsByUser.executeQuery();
                 while (rs.next()) {
                     sb.append("<div class=\"connectionbox\">");
-                    sb.append("<img class=\"connection\" src=\"https://cdn.luma.gq/").append(rs.getString("connection_type"));
+                    sb.append("<img class=\"connection\" src=\"https://cdn.walkerknapp.me/").append(rs.getString("connection_type"));
                     sb.append(".png\" alt=\"").append(rs.getString("connection_type")).append("\"></img>");
                     sb.append(rs.getString("connection_name"));
                     sb.append("</div>");
