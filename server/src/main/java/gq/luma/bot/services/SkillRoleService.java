@@ -735,7 +735,7 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(advanced, p2srmSpTime < (32 * 60))) { // Sub 32:00
                                     logger.debug("Giving Advanced due to a sub 32:00 P2SRM Time: " + p2srmSpTime);
                                 }
-                                if (setIfTrue(advanced, melInboundsTime < (30 * 60) + 55)) { // Sub 31:50
+                                if (setIfTrue(advanced, melInboundsTime < (30 * 60) + 50)) { // Sub 30:50
                                     logger.debug("Giving Advanced due to a sub 30:50 Mel Time: " + melInboundsTime);
                                 }
 
