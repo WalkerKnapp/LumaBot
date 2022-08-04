@@ -188,11 +188,13 @@ public class SkillRoleService implements Service {
     private static final String MEL_INBOUNDS_VARIABLE_CHOICE_ID = "4lx8vp31";
 
     private static final long ELITE_ROLE = 574794615971119135L;
-    private static final long ADVANCED_ROLE = 608364011028742162L;
     private static final long PROFESSIONALS_ROLE = 313760989180985344L;
+    private static final long EXPERT_ROLE = 1004514190221918378L;
+    private static final long ADVANCED_ROLE = 608364011028742162L;
     private static final long INTERMEDIATE_ROLE = 574794742462677008L;
-    private static final long MEDIOCRE_ROLE = 832011322568081448L;
+    private static final long AMATEUR_ROLE = 832011322568081448L;
     private static final long BEGINNER_ROLE = 146432621071564800L;
+    private static final long RUNNER_ROLE = 1004514734877458482L;
 
     // This should be a full mirror of the Iverb scores database.
     // <Map id, <Rank, List<Scores>>>
@@ -209,11 +211,13 @@ public class SkillRoleService implements Service {
     private Leaderboard melLeaderboard;
 
     public static class SkillRoleStatistics {
+        public int runnerCount = 0;
         public int beginnerCount = 0;
-        public int mediocreCount = 0;
+        public int amateurCount = 0;
         public int intermediateCount = 0;
-        public int professionalsCount = 0;
         public int advancedCount = 0;
+        public int expertCount = 0;
+        public int professionalsCount = 0;
         public int eliteCount = 0;
 
         // Beginner stats
@@ -316,46 +320,55 @@ public class SkillRoleService implements Service {
         /*logger.info("Generating role graph");
 
         int eliteCount = 0;
-        int advancedCount = 0;
         int prosCount = 0;
+        int expertCount = 0;
+        int advancedCount = 0;
         int intermediateCount = 0;
         int mediocreCount = 0;
         int beginnerCount = 0;
+        int runnerCount = 0;
         int unrankedCount = 0;
 
         Server s = Bot.api.getServerById(146404426746167296L).orElseThrow();
 
         Role elite = Bot.api.getRoleById(ELITE_ROLE).orElseThrow();
-        Role advanced = Bot.api.getRoleById(ADVANCED_ROLE).orElseThrow();
         Role pros = Bot.api.getRoleById(PROFESSIONALS_ROLE).orElseThrow();
+        Role expert = Bot.api.getRoleById(EXPERT_ROLE).orElseThrow();
+        Role advanced = Bot.api.getRoleById(ADVANCED_ROLE).orElseThrow();
         Role intermediate = Bot.api.getRoleById(INTERMEDIATE_ROLE).orElseThrow();
-        Role mediocre = Bot.api.getRoleById(MEDIOCRE_ROLE).orElseThrow();
+        Role amateur = Bot.api.getRoleById(AMATEUR_ROLE).orElseThrow();
         Role beginner = Bot.api.getRoleById(BEGINNER_ROLE).orElseThrow();
+        Role runner = Bot.api.getRoleById(RUNNER_ROLE).orElseThrow();
 
         for (User u : s.getMembers()) {
             if (s.getRoles(u).contains(elite)) {
                 eliteCount++;
             } else if (s.getRoles(u).contains(pros)) {
                 prosCount++;
+            } else if (s.getRoles(u).contains(expert)) {
+                expertCount++;
             } else if (s.getRoles(u).contains(advanced)) {
                 advancedCount++;
             } else if (s.getRoles(u).contains(intermediate)) {
                 intermediateCount++;
-            } else if (s.getRoles(u).contains(mediocre)) {
-                mediocreCount++;
+            } else if (s.getRoles(u).contains(amateur)) {
+                amateurCount++;
             } else if (s.getRoles(u).contains(beginner)) {
                 beginnerCount++;
+            } else if (s.getRoles(u).contains(runner)) {
+                runnerCount++;
             } else {
                 unrankedCount++;
             }
         }
 
         logger.info("Elite: {}", eliteCount);
-        logger.info("Advanced: {}", advancedCount);
         logger.info("Pros: {}", prosCount);
+        logger.info("Advanced: {}", advancedCount);
         logger.info("Intermediate: {}", intermediateCount);
         logger.info("Mediocre: {}", mediocreCount);
         logger.info("Beginner: {}", beginnerCount);
+        logger.info("Runner: {}", runnerCount);
         logger.info("Unranked: {}", unrankedCount);
 
         FileWriter out = new FileWriter("pingers.csv");
@@ -560,10 +573,12 @@ public class SkillRoleService implements Service {
 
         AtomicBoolean elite = new AtomicBoolean(assignedRoles.contains(ELITE_ROLE));
         AtomicBoolean professionals = new AtomicBoolean(assignedRoles.contains(PROFESSIONALS_ROLE));
+        AtomicBoolean expert = new AtomicBoolean(assignedRoles.contains(EXPERT_ROLE));
         AtomicBoolean advanced = new AtomicBoolean(assignedRoles.contains(ADVANCED_ROLE));
         AtomicBoolean intermediate = new AtomicBoolean(assignedRoles.contains(INTERMEDIATE_ROLE));
+        AtomicBoolean amateur = new AtomicBoolean(assignedRoles.contains(AMATEUR_ROLE));
         AtomicBoolean beginner = new AtomicBoolean(assignedRoles.contains(BEGINNER_ROLE));
-        AtomicBoolean mediocre = new AtomicBoolean(assignedRoles.contains(MEDIOCRE_ROLE));
+        AtomicBoolean runner = new AtomicBoolean(assignedRoles.contains(RUNNER_ROLE));
 
         final Instant sixMonthsAgo = Instant.now().minus(6 * 30, ChronoUnit.DAYS);
 
@@ -592,49 +607,62 @@ public class SkillRoleService implements Service {
                                 //elite.compareAndSet(false, top3Users.contains(steamId));
 
                                 // Professionals Qualifications
-                                if(setIfTrue(professionals, totalPointsRounded >= 17500)) {
-                                    logger.debug("Giving Professionals due to having >= 17,500 total points: " + totalPointsRounded);
+                                if(setIfTrue(professionals, totalPointsRounded >= 17250)) {
+                                    logger.debug("Giving Professionals due to having >= 17,250 total points: " + totalPointsRounded);
                                 }
-                                if(setIfTrue(professionals, spPoints >= 10300)) {
-                                    logger.debug("Giving Professionals due to having >= 10,300 sp points: " + spPoints);
+                                if(setIfTrue(professionals, spPoints >= 10000)) {
+                                    logger.debug("Giving Professionals due to having >= 10,000 sp points: " + spPoints);
                                 }
                                 if(setIfTrue(professionals, coopPoints >= 8000)) {
                                     logger.debug("Giving Professionals due to having >= 8,000 coop points: " + coopPoints);
                                 }
 
-                                // Advanced Qualifications
-                                if(setIfTrue(advanced, spPoints >= 7000)) {
-                                    logger.debug("Giving Advanced due to having >= 7,000 sp points: " + spPoints);
+                                // Expert Qualifications
+                                if(setIfTrue(expert, totalPointsRounded >= 12500)) {
+                                    logger.debug("Giving Expert due to having >= 12,500 total points: " + totalPointsRounded);
                                 }
-                                if(setIfTrue(advanced, coopPoints >= 6000)) {
-                                    logger.debug("Giving Advanced due to having >= 6,000 sp points: " + coopPoints);
+                                if(setIfTrue(expert, spPoints >= 7000)) {
+                                    logger.debug("Giving Expert due to having >= 7,000 sp points: " + spPoints);
+                                }
+                                if(setIfTrue(expert, coopPoints >= 6000)) {
+                                    logger.debug("Giving Expert due to having >= 6,000 coop points: " + coopPoints);
+                                }
+
+                                // Advanced Qualifications
+                                if(setIfTrue(advanced, spPoints >= 5000)) {
+                                    logger.debug("Giving Advanced due to having >= 5,000 sp points: " + spPoints);
+                                }
+                                if(setIfTrue(advanced, coopPoints >= 4500)) {
+                                    logger.debug("Giving Advanced due to having >= 4,500 coop points: " + coopPoints);
                                 }
 
                                 // Intermediate Qualifications
-                                if(setIfTrue(intermediate, spPoints >= 4000)) {
-                                    logger.debug("Giving Intermediate due to having >= 4,000 sp points: " + spPoints);
+                                if(setIfTrue(intermediate, spPoints >= 3000)) {
+                                    logger.debug("Giving Intermediate due to having >= 3,000 sp points: " + spPoints);
                                 }
-                                if(setIfTrue(intermediate, coopPoints >= 3500)) {
-                                    logger.debug("Giving Intermediate due to having >= 3,500 sp points: " + coopPoints);
-                                }
-
-                                // Mediocre Qualifications
-                                if(setIfTrue(mediocre, spPoints >= 1500)) {
-                                    logger.debug("Giving Mediocre due to having >= 1500 sp points: " + spPoints);
-                                }
-                                if(setIfTrue(mediocre, coopPoints >= 2000)) {
-                                    logger.debug("Giving Mediocre due to having >= 2000 coop points: " + coopPoints);
+                                if(setIfTrue(intermediate, coopPoints >= 3000)) {
+                                    logger.debug("Giving Intermediate due to having >= 3,000 coop points: " + coopPoints);
                                 }
 
-                                // Beginner Qualifications
-                                /*if(setIfTrue(beginner, bestPlace <= 200) && discordUser.getId() != 103656524617900032L) {
-                                    logger.debug("Giving Beginner due to top 200 time: " + bestPlace);
-                                }*/
-                                /*if (setIfTrue(beginner, latestTop200.isAfter(sixMonthsAgo) && discordUser.getId() != 103656524617900032L)) {
-                                    logger.debug("Giving Beginner due to top 200 time in the last 6 months: " + latestTop200.toString());
-                                }*/
-                                if(setIfTrue(beginner, latestScore.isAfter(sixMonthsAgo) && discordUser.getId() != 103656524617900032L)) {
-                                    logger.debug("Giving Beginner due to iVerb activity in the last 6 months: " + latestScore.toString());
+                                // Amateur Qualifications
+                                if(setIfTrue(amateur, spPoints >= 1500)) {
+                                    logger.debug("Giving Amateur due to having >= 1,500 sp points: " + spPoints);
+                                }
+                                if(setIfTrue(amateur, coopPoints >= 2000)) {
+                                    logger.debug("Giving Amateur due to having >= 2,000 coop points: " + coopPoints);
+                                }
+
+                                // Beginner Qualifications Qualifications
+                                if(setIfTrue(amateur, spPoints >= 250)) {
+                                    logger.debug("Giving Amateur due to having >= 250 sp points: " + spPoints);
+                                }
+                                if(setIfTrue(amateur, coopPoints >= 1000)) {
+                                    logger.debug("Giving Amateur due to having >= 1,000 coop points: " + coopPoints);
+                                }
+
+                                // Runner Qualifications
+                                if(setIfTrue(runner, latestScore.isAfter(sixMonthsAgo) && discordUser.getId() != 103656524617900032L)) {
+                                    logger.debug("Giving Runner due to iVerb activity in the last 6 months: " + latestScore.toString());
                                 }
                             }
                             break;
@@ -698,97 +726,131 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(elite, singlePlayerRank <= 3)) { // Top 3
                                     logger.debug("Giving Elite due to Top 3 Single Player Time: " + singlePlayerRank);
                                 }
-                                if (setIfTrue(elite, amcTimePlayerAboveRank < (26 * 60) + 30)) { // Sub 26:30
-                                    logger.debug("Giving Elite due to a sub 26:30 AMC Time: " + amcTimePlayerAboveRank);
+                                if (setIfTrue(elite, amcTimePlayerAboveRank < (26 * 60) + 15)) { // Sub 26:15
+                                    logger.debug("Giving Elite due to a sub 26:15 AMC Time: " + amcTimePlayerAboveRank);
                                 }
-                                if (setIfTrue(elite, amcTimePlayerBelowRank < (26 * 60) + 30)) { // Sub 26:30
-                                    logger.debug("Giving Elite due to a sub 26:30 AMC Time: " + amcTimePlayerBelowRank);
+                                if (setIfTrue(elite, amcTimePlayerBelowRank < (26 * 60) + 15)) { // Sub 26:15
+                                    logger.debug("Giving Elite due to a sub 26:15 AMC Time: " + amcTimePlayerBelowRank);
                                 }
 
                                 // Professionals Qualifications
-                                if (setIfTrue(professionals, singlePlayerRank <= 10)) { // Top 10
+                                if (setIfTrue(professionals, singlePlayerRank <= 12)) { // Top 12
                                     logger.debug("Giving Professionals due to Top 10 Single Player Time: " + singlePlayerTime);
                                 }
-                                if (setIfTrue(professionals, amcTimePlayerAboveRank < (27 * 60) + 15)) { // Sub 27:15
-                                    logger.debug("Giving Professionals due to a sub 27:15 AMC Time: " + amcTimePlayerAboveRank);
+                                if (setIfTrue(professionals, amcTimePlayerAboveRank < (24 * 60) + 45)) { // Sub 26:45
+                                    logger.debug("Giving Professionals due to a sub 26:45 AMC Time: " + amcTimePlayerAboveRank);
                                 }
-                                if (setIfTrue(professionals, amcTimePlayerBelowRank < (27 * 60) + 15)) { // Sub 27:15
+                                if (setIfTrue(professionals, amcTimePlayerBelowRank < (27 * 60))) { // Sub 27:00
                                     logger.debug("Giving Professionals due to a sub 27:15 AMC Time: " + amcTimePlayerBelowRank);
                                 }
-                                if (setIfTrue(professionals, p2srmSpTime < (30 * 60) + 30)) { // Sub 30:30
-                                    logger.debug("Giving Professionals due to a sub 30:30 P2SRM Time: " + p2srmSpTime);
+                                if (setIfTrue(professionals, p2srmSpTime < (30 * 60))) { // Sub 30:00
+                                    logger.debug("Giving Professionals due to a sub 30:00 P2SRM Time: " + p2srmSpTime);
                                 }
-                                if (setIfTrue(professionals, melInboundsTime < (28 * 60) + 30)) { // Sub 29:30
-                                    logger.debug("Giving Professionals due to a sub 28:30 Mel Time: " + melInboundsTime);
+                                if (setIfTrue(professionals, melInboundsTime < (27 * 60) + 30)) { // Sub 27:15
+                                    logger.debug("Giving Professionals due to a sub 27:15 Mel Time: " + melInboundsTime);
+                                }
+
+                                // Expert Qualifications
+                                if (setIfTrue(expert, singlePlayerRank <= 35)) { // Top 35
+                                    logger.debug("Giving Expert due to Top 35 Single Player Time: " + singlePlayerTime);
+                                }
+                                if (setIfTrue(expert, amcTimePlayerAboveRank < (27 * 60) + 45)) { // Sub 27:45
+                                    logger.debug("Giving Expert due to a sub 27:45 AMC Time: " + amcTimePlayerAboveRank);
+                                }
+                                if (setIfTrue(expert, amcTimePlayerBelowRank < (28 * 60) + 30)) { // Sub 28:30
+                                    logger.debug("Giving Expert due to a sub 28:30 AMC Time: " + amcTimePlayerBelowRank);
+                                }
+                                if (setIfTrue(expert, p2srmSpTime < (32 * 60))) { // Sub 32:00
+                                    logger.debug("Giving Expert due to a sub 32:00 P2SRM Time: " + p2srmSpTime);
+                                }
+                                if (setIfTrue(expert, melInboundsTime < (29 * 60))) { // Sub 29:00
+                                    logger.debug("Giving Expert due to a sub 29:00 Mel Time: " + melInboundsTime);
                                 }
 
                                 // Advanced Qualifications
-                                if (setIfTrue(advanced, singlePlayerRank <= 30)) { // Top 30
-                                    logger.debug("Giving Advanced due to Top 30 Single Player Time: " + singlePlayerRank);
+                                if (setIfTrue(advanced, singlePlayerRank <= 80)) { // Top 80
+                                    logger.debug("Giving Advanced due to Top 80 Single Player Time: " + singlePlayerRank);
                                 }
-                                if (setIfTrue(advanced, amcTimePlayerAboveRank < (28 * 60) + 15)) { // Sub 28:15
-                                    logger.debug("Giving Advanced due to a sub 28:15 AMC Time w/ Above Rank: " + amcTimePlayerAboveRank);
+                                if (setIfTrue(advanced, amcTimePlayerAboveRank < (29 * 60) + 30)) { // Sub 29:30
+                                    logger.debug("Giving Advanced due to a sub 29:30 AMC Time w/ Above Rank: " + amcTimePlayerAboveRank);
                                 }
-                                if (setIfTrue(advanced, amcTimePlayerBelowRank < (29 * 60))) { // Sub 29:00
-                                    logger.debug("Giving Advanced due to a sub 29:00 AMC Time w/ Below Rank: " + amcTimePlayerBelowRank);
+                                if (setIfTrue(advanced, amcTimePlayerBelowRank < (30 * 60) + 30)) { // Sub 30:30
+                                    logger.debug("Giving Advanced due to a sub 30:30 AMC Time w/ Below Rank: " + amcTimePlayerBelowRank);
                                 }
-                                if (setIfTrue(advanced, p2srmSpTime < (32 * 60))) { // Sub 32:00
-                                    logger.debug("Giving Advanced due to a sub 32:00 P2SRM Time: " + p2srmSpTime);
+                                if (setIfTrue(advanced, p2srmSpTime < (34 * 60))) { // Sub 34:00
+                                    logger.debug("Giving Advanced due to a sub 34:00 P2SRM Time: " + p2srmSpTime);
                                 }
-                                if (setIfTrue(advanced, melInboundsTime < (30 * 60) + 50)) { // Sub 30:50
-                                    logger.debug("Giving Advanced due to a sub 30:50 Mel Time: " + melInboundsTime);
+                                if (setIfTrue(advanced, melInboundsTime < (31 * 60))) { // Sub 31:00
+                                    logger.debug("Giving Advanced due to a sub 31:00 Mel Time: " + melInboundsTime);
                                 }
 
                                 // Intermediate Qualifications
-                                if (setIfTrue(intermediate, singlePlayerRank <= 65)) { // Top 65
-                                    logger.debug("Giving Intermediate due to Top 65 Single Player Time: " + singlePlayerRank);
+                                if (setIfTrue(intermediate, singlePlayerRank <= 130)) { // Top 130
+                                    logger.debug("Giving Intermediate due to Top 130 Single Player Time: " + singlePlayerRank);
                                 }
-                                if (setIfTrue(intermediate, amcTimePlayerAboveRank < (32 * 60))) { // Sub 32:00
-                                    logger.debug("Giving Intermediate due to a sub 27:15 AMC Time: " + amcTimePlayerAboveRank);
+                                if (setIfTrue(intermediate, amcTimePlayerAboveRank < (31 * 60))) { // Sub 31:00
+                                    logger.debug("Giving Intermediate due to a sub 31:00 AMC Time: " + amcTimePlayerAboveRank);
                                 }
                                 if (setIfTrue(intermediate, amcTimePlayerBelowRank < (32 * 60))) { // Sub 32:00
-                                    logger.debug("Giving Intermediate due to a sub 27:15 AMC Time: " + amcTimePlayerBelowRank);
+                                    logger.debug("Giving Intermediate due to a sub 32:00 AMC Time: " + amcTimePlayerBelowRank);
                                 }
-                                if (setIfTrue(intermediate, p2srmSpTime < (34 * 60))) { // Sub 34:00
-                                    logger.debug("Giving Intermediate due to a sub 34:00 P2SRM Time: " + p2srmSpTime);
+                                if (setIfTrue(intermediate, p2srmSpTime < (36 * 60))) { // Sub 36:00
+                                    logger.debug("Giving Intermediate due to a sub 36:00 P2SRM Time: " + p2srmSpTime);
                                 }
-                                if (setIfTrue(intermediate, melInboundsTime < (32 * 60) + 40)) { // Sub 32:40
-                                    logger.debug("Giving Intermediate due to a sub 32:40 Mel Time: " + melInboundsTime);
+                                if (setIfTrue(intermediate, melInboundsTime < (32 * 60) + 30)) { // Sub 32:30
+                                    logger.debug("Giving Intermediate due to a sub 32:30 Mel Time: " + melInboundsTime);
                                 }
 
-                                // Mediocre Qualifications
-                                if (setIfTrue(mediocre, singlePlayerRank <= 130)) { // Top 130
-                                    logger.debug("Giving Mediocre due to Top 130 Single Player Time: " + singlePlayerRank);
+                                // Amateur Qualifications
+                                if (setIfTrue(amateur, singlePlayerRank <= 200)) { // Top 200
+                                    logger.debug("Giving Amateur due to Top 200 Single Player Time: " + singlePlayerRank);
                                 }
-                                if (setIfTrue(mediocre, amcTimePlayerAboveRank < (36 * 60))) { // Sub 36:00
-                                    logger.debug("Giving Mediocre due to a sub 36:00 AMC Time: " + amcTimePlayerAboveRank);
+                                if (setIfTrue(amateur, amcTimePlayerAboveRank < (32 * 60) + 30)) { // Sub 32:30
+                                    logger.debug("Giving Amateur due to a sub 32:30 AMC Time: " + amcTimePlayerAboveRank);
                                 }
-                                if (setIfTrue(mediocre, amcTimePlayerBelowRank < (36 * 60))) { // Sub 36:00
-                                    logger.debug("Giving Mediocre due to a sub 36:00 AMC Time: " + amcTimePlayerBelowRank);
+                                if (setIfTrue(amateur, amcTimePlayerBelowRank < (34 * 60))) { // Sub 34:00
+                                    logger.debug("Giving Amateur due to a sub 34:00 AMC Time: " + amcTimePlayerBelowRank);
                                 }
-                                if (setIfTrue(mediocre, p2srmSpTime < (37 * 60))) { // Sub 37:00
-                                    logger.debug("Giving Mediocre due to a sub 37:00 P2SRM Time: " + p2srmSpTime);
+                                if (setIfTrue(amateur, p2srmSpTime < (40 * 60))) { // Sub 40:00
+                                    logger.debug("Giving Amateur due to a sub 40:00 P2SRM Time: " + p2srmSpTime);
                                 }
-                                if (setIfTrue(mediocre, melInboundsTime < (35 * 60) + 50)) { // Sub 35:50
-                                    logger.debug("Giving mediocre due to a sub 35:50 Mel Time: " + melInboundsTime);
+                                if (setIfTrue(amateur, melInboundsTime < (35 * 60))) { // Sub 35:00
+                                    logger.debug("Giving Amateur due to a sub 35:00 Mel Time: " + melInboundsTime);
                                 }
 
                                 // Beginner Qualifications
+                                if (setIfTrue(beginner, singlePlayerRank <= 300)) { // Top 300
+                                    logger.debug("Giving Beginner due to Top 300 Single Player Time: " + singlePlayerRank);
+                                }
+                                if (setIfTrue(beginner, amcTimePlayerAboveRank < (35 * 60) + 30)) { // Sub 35:30
+                                    logger.debug("Giving Beginner due to a sub 35:30 AMC Time: " + amcTimePlayerAboveRank);
+                                }
+                                if (setIfTrue(beginner, amcTimePlayerBelowRank < (37 * 60))) { // Sub 37:00
+                                    logger.debug("Giving Beginner due to a sub 37:00 AMC Time: " + amcTimePlayerBelowRank);
+                                }
+                                if (setIfTrue(beginner, p2srmSpTime < (45 * 60))) { // Sub 45:00
+                                    logger.debug("Giving Beginner due to a sub 45:00 P2SRM Time: " + p2srmSpTime);
+                                }
+                                if (setIfTrue(beginner, melInboundsTime < (40 * 60))) { // Sub 40:00
+                                    logger.debug("Giving Beginner due to a sub 40:00 Mel Time: " + melInboundsTime);
+                                }
+
+                                // Runner Qualifications
                                 if (discordUser.getId() != 103656524617900032L) { // User is not spidda
                                     if (latestRun != null) {
-                                        if (setIfTrue(beginner, latestRun.isAfter(OffsetDateTime.now().minus(6, ChronoUnit.MONTHS)))) { // Run in the last 6 months
-                                            logger.debug("Giving Beginner due to srcom activity in the last 6 months: " + latestRun.toString());
+                                        if (setIfTrue(runner, latestRun.isAfter(OffsetDateTime.now().minus(6, ChronoUnit.MONTHS)))) { // Run in the last 6 months
+                                            logger.debug("Giving Runner due to srcom activity in the last 6 months: " + latestRun.toString());
                                         }
                                     }
-                                    if (setIfTrue(beginner, p2srmSpTime < (57 * 60) + 57)) { // Sub 57:57
-                                        logger.debug("Giving Beginner due to sub 57:57 P2SRM Time: " + p2srmSpTime);
+                                    if (setIfTrue(runner, p2srmSpTime < (60 * 60))) { // Sub 1:00:00
+                                        logger.debug("Giving Runner due to sub 1:00:00 P2SRM Time: " + p2srmSpTime);
                                     }
-                                    if (setIfTrue(beginner, melInboundsTime < (44 * 60))) { // Sub 44:30
-                                        logger.debug("Giving Beginner due to a sub 44:30 Mel Time: " + melInboundsTime);
+                                    if (setIfTrue(runner, melInboundsTime < (45 * 60))) { // Sub 44:30
+                                        logger.debug("Giving Runner due to a sub 45:00 Mel Time: " + melInboundsTime);
                                     }
                                 }
 
-                                if (beginner.get() && !(mediocre.get() || intermediate.get() || advanced.get() || professionals.get() || elite.get())) {
+                                if (runner.get() && !(beginner.get() || amateur.get() || intermediate.get() || advanced.get() || expert.get() || professionals.get() || elite.get())) {
                                     // Player is a pure beginner, record their times if they got them from nosla or amc
                                     if (!beginnerFromCm && latestRun != null && latestRun.isAfter(OffsetDateTime.now().minus(6, ChronoUnit.MONTHS))) {
                                         if (latestRunFromSp) {
@@ -813,6 +875,10 @@ public class SkillRoleService implements Service {
                 .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, professionals, true, false, null),
                         () -> logger.error("Failed to find professionals role."));
 
+        Bot.api.getRoleById(EXPERT_ROLE)
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, expert, true, false, null),
+                        () -> logger.error("Failed to find expert role."));
+
         Bot.api.getRoleById(ADVANCED_ROLE)
                 .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, advanced, true, false, null),
                         () -> logger.error("Failed to find advanced role."));
@@ -821,13 +887,17 @@ public class SkillRoleService implements Service {
                 .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, intermediate, true, false, null),
                         () -> logger.error("Failed to find intermediate role."));
 
-        Bot.api.getRoleById(MEDIOCRE_ROLE)
-                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, mediocre, true, false, null),
-                        () -> logger.error("Failed to find mediocre role."));
+        Bot.api.getRoleById(AMATEUR_ROLE)
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, amateur, true, false, null),
+                        () -> logger.error("Failed to find amateur role."));
 
         Bot.api.getRoleById(BEGINNER_ROLE)
                 .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, beginner, false, false, stats),
                         () -> logger.error("Failed to find beginner role."));
+
+        Bot.api.getRoleById(RUNNER_ROLE)
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, runner, false, false, stats),
+                        () -> logger.error("Failed to find runner role."));
     }
 
     private void getSpLeaderboardRank(Leaderboard leaderboard, String srcomId, AtomicReference<OffsetDateTime> latestRun,
