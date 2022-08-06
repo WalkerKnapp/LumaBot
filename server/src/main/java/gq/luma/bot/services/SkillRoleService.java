@@ -653,10 +653,10 @@ public class SkillRoleService implements Service {
                                 }
 
                                 // Beginner Qualifications Qualifications
-                                if(setIfTrue(amateur, spPoints >= 250)) {
+                                if(setIfTrue(beginner, spPoints >= 250)) {
                                     logger.debug("Giving Amateur due to having >= 250 sp points: " + spPoints);
                                 }
-                                if(setIfTrue(amateur, coopPoints >= 1000)) {
+                                if(setIfTrue(beginner, coopPoints >= 1000)) {
                                     logger.debug("Giving Amateur due to having >= 1,000 coop points: " + coopPoints);
                                 }
 
@@ -892,11 +892,11 @@ public class SkillRoleService implements Service {
                         () -> logger.error("Failed to find amateur role."));
 
         Bot.api.getRoleById(BEGINNER_ROLE)
-                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, beginner, false, false, stats),
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, beginner, true, false, stats),
                         () -> logger.error("Failed to find beginner role."));
 
         Bot.api.getRoleById(RUNNER_ROLE)
-                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, runner, false, false, stats),
+                .ifPresentOrElse(role -> giveOrTakeRole(role, discordUser, runner, true, false, stats),
                         () -> logger.error("Failed to find runner role."));
     }
 
