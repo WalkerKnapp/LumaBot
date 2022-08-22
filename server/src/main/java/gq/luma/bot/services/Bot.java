@@ -76,6 +76,7 @@ public class Bot implements Service {
         executor.registerCommand(new PinsCommands());
         executor.registerCommand(new DunceCommand());
         executor.registerCommand(new ResourcesCommand());
+        executor.registerCommand(new VidCommand());
 
         api.addMessageCreateListener(new SlowMode());
         api.addMessageCreateListener(Luma.filterManager);
