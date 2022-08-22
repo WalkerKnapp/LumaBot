@@ -33,10 +33,6 @@ public class EvilsService implements Service {
 
     private static final Path evilsRoot = Path.of("evils");
 
-    private Git ejrvRepo;
-    private IPv4AddressTrie ejrvIpv4s;
-    private IPv6AddressTrie ejrvIpv6s;
-
     private Git fireholRepo;
     private final HashMap<String, IPv4AddressTrie> fireholIpv4s = new HashMap<>();
     private final HashMap<String, IPv6AddressTrie> fireholIpv6s = new HashMap<>();
@@ -52,7 +48,6 @@ public class EvilsService implements Service {
 
     @Override
     public void startService() throws Exception {
-        this.ejrvRepo = openOrClone("https://github.com/ejrv/VPNs.git", "ejrv");
         this.fireholRepo = openOrClone("https://github.com/firehol/blocklist-ipsets.git", "firehol");
         this.x4bNetRepo = openOrClone("https://github.com/X4BNet/lists_vpn.git", "x4bnet");
         this.jhassineRepo = openOrClone("https://github.com/jhassine/server-ip-addresses.git", "jhassine");
@@ -76,14 +71,6 @@ public class EvilsService implements Service {
 
     private void update() {
         try {
-            // Update ejrv lists
-            this.ejrvRepo.fetch().call();
-            this.ejrvRepo.pull().call();
-            Path ejrvRoot = this.ejrvRepo.getRepository().getDirectory().toPath().getParent();
-
-            this.ejrvIpv4s = this.readV4Tree(Files.lines(ejrvRoot.resolve("vpn-ipv4.txt")).iterator());
-            this.ejrvIpv6s = this.readV6Tree(Files.lines(ejrvRoot.resolve("vpn-ipv6.txt")).iterator());
-
             // Update firehol lists
             this.fireholRepo.fetch().call();
             this.fireholRepo.pull().call();
@@ -181,14 +168,6 @@ public class EvilsService implements Service {
         ArrayList<String> evilSources = new ArrayList<>();
 
         if (address.isIPv4()) {
-            // Check ejrv
-            try {
-                if (ejrvIpv4s.elementContains(address.toIPv4())) {
-                    evilSources.add("ejrv - IPv4 VPNs and Datacenters");
-                }
-            } catch (Throwable t) {
-                logger.error("Couldn't check ip against ejrv ipv4", t);
-            }
             // Check firehol
             try {
                 for (var entry : this.fireholIpv4s.entrySet()) {
@@ -216,14 +195,6 @@ public class EvilsService implements Service {
                 logger.error("Couldn't check ip against jhassine", t);
             }
         } else if (address.isIPv6()) {
-            // Check ejrv
-            try {
-                if (ejrvIpv6s.elementContains(address.toIPv6())) {
-                    evilSources.add("ejrv - IPv6 VPNs and Datacenters");
-                }
-            } catch (Throwable t) {
-                logger.error("Couldn't check ip against ejrv ipv6", t);
-            }
             // Check firehol
             try {
                 for (var entry : this.fireholIpv6s.entrySet()) {
