@@ -13,10 +13,13 @@ import gq.luma.bot.Luma;
 import gq.luma.bot.reference.KeyReference;
 import gq.luma.bot.services.Bot;
 import gq.luma.bot.services.Service;
+import org.javacord.api.entity.Mentionable;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.message.Message;
+import org.javacord.api.entity.message.MessageBuilder;
 import org.javacord.api.entity.message.MessageSet;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
+import org.javacord.api.entity.message.mention.AllowedMentionsBuilder;
 import org.javacord.api.util.logging.ExceptionLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -67,6 +71,17 @@ public class TwitchApi implements Service {
         Bot.api.getTextChannelById(STREAMS_CHANNEL).ifPresent(channel -> channel.getMessagesAfter(Integer.MAX_VALUE, START_MESSAGE).thenAccept(MessageSet::deleteAll).exceptionally(ExceptionLogger.get()));
 
         Luma.schedulerService.scheduleWithFixedDelay(this::updateStreams, 0, 1, TimeUnit.MINUTES);
+    }
+
+    private boolean isMemberPresent(long memberId) {
+        // TODO: This is kind of awful
+        try {
+            Bot.api.getServerById(146404426746167296L).orElseThrow(AssertionError::new)
+                    .requestMember(memberId).join();
+        } catch (CompletionException e) {
+            return false;
+        }
+        return true;
     }
 
     public void updateStreams() {
@@ -115,7 +130,7 @@ public class TwitchApi implements Service {
                         discordUser.getRoleColor(Bot.api.getServerById(146404426746167296L).orElseThrow(AssertionError::new))
                                 .ifPresent(embedColor::set);
 
-                        if (Bot.api.getServerById(146404426746167296L).orElseThrow(AssertionError::new).getMembers().contains(discordUser)) {
+                        if (isMemberPresent(discordUser.getId())) {
                             presentInServer.set(true);
                         }
 
@@ -131,16 +146,24 @@ public class TwitchApi implements Service {
                             .execute()
                             .getUsers().stream()
                             .findFirst().ifPresent(twitchUser -> {
-                        Message message = streamsChannel.sendMessage(new EmbedBuilder()
-                                .setTimestamp(stream.getStartedAt().toInstant())
-                                .setTitle(stream.getUserName() + " is live!")
-                                .addField(stream.getTitle(), "https://twitch.tv/" + stream.getUserName())
-                                .setColor(embedColor.get())
-                                .setAuthor(userTag.get(), "https://twitch.tv/" + stream.getUserName(), profileUrl.get())
-                                .setImage(stream.getThumbnailUrl() == null ? twitchUser.getProfileImageUrl() : stream.getThumbnailUrl())).join();
+                                EmbedBuilder embed = new EmbedBuilder()
+                                        .setTimestamp(stream.getStartedAt().toInstant())
+                                        .setTitle(stream.getUserName() + " is live!")
+                                        .addField(stream.getTitle(), "https://twitch.tv/" + stream.getUserName())
+                                        .setColor(embedColor.get())
+                                        .setAuthor(userTag.get(), "https://twitch.tv/" + stream.getUserName(), profileUrl.get())
+                                        .setImage(stream.getThumbnailUrl() == null ? twitchUser.getProfileImageUrl() : stream.getThumbnailUrl());
+                                MessageBuilder mb = new MessageBuilder()
+                                        .setEmbed(embed);
+                                if (stream.getUserName().equals("Portal2Speedruns")) {
+                                    mb = mb.setContent(Bot.api.getRoleById(1014944720016920619L).map(Mentionable::getMentionTag).orElse("> Ping failed :("))
+                                            .setAllowedMentions(new AllowedMentionsBuilder().addRole(1014944720016920619L).build());
+                                }
 
-                        currentAnnouncements.put(stream.getUserId(), message.getId());
-                    });
+                                Message message = mb.send(streamsChannel).join();
+
+                                currentAnnouncements.put(stream.getUserId(), message.getId());
+                            });
                 }
             });
         } catch (Throwable t) {

@@ -27,20 +27,20 @@ import org.pac4j.core.config.Config;
 import org.pac4j.core.config.ConfigFactory;
 import org.pac4j.core.context.WebContext;
 import org.pac4j.core.exception.TechnicalException;
-import org.pac4j.core.redirect.RedirectAction;
-import org.pac4j.core.redirect.RedirectActionBuilder;
 import org.pac4j.oauth.client.OAuth20Client;
 import org.pac4j.oauth.config.OAuth20Configuration;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
 import org.pac4j.oidc.credentials.OidcCredentials;
 import org.pac4j.oidc.credentials.authenticator.OidcAuthenticator;
+import org.pac4j.undertow.context.UndertowSessionStore;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public class WebSecConfigFactory implements ConfigFactory {
     @Override
@@ -54,22 +54,28 @@ public class WebSecConfigFactory implements ConfigFactory {
         oauthConfig.setSecret(KeyReference.discordClientSecret);
         oauthConfig.setTokenAsHeader(true);
 
-        final OAuth20Client<DiscordProfile> discordClient = new OAuth20Client<>();
+        final OAuth20Client discordClient = new OAuth20Client();
+        discordClient.setMultiProfile(true);
         discordClient.setConfiguration(oauthConfig);
         discordClient.setName("discord");
-        discordClient.setAuthorizationGenerator(((context, profile) -> {
+        discordClient.setAuthorizationGenerator((((context, sessionStore, profile) -> {
             profile.addRole("ROLE_DISCORD_USER");
+
             Bot.api.getServerById(146404426746167296L).ifPresent(server -> Bot.api.getUserById(profile.getId()).thenAccept(user -> {
-                if(server.getRoles(user).stream().anyMatch(role -> role.getId() == 147134984484945921L)) {
+                if (server.getRoles(user).stream().anyMatch(role -> role.getId() == 147134984484945921L)) {
                     profile.addRole("ROLE_DISCORD_ADMIN");
                 }
             }));
-            return profile;
-        }));
+
+            return Optional.of(profile);
+        })));
 
         final SteamAuthClient steamAuthClient = new SteamAuthClient();
+        steamAuthClient.setMultiProfile(true);
         steamAuthClient.setCallbackUrl("https://verify.walkerknapp.me/callback");
         steamAuthClient.setName("steam");
+
+        System.out.println("STEAM MULTI PROFILE: " + steamAuthClient.isMultiProfile(null, null));
 
         OidcConfiguration twitchConfig = new OidcConfiguration();
         twitchConfig.setClientId(KeyReference.twitchClientId);
@@ -77,122 +83,9 @@ public class WebSecConfigFactory implements ConfigFactory {
         twitchConfig.setSecret(KeyReference.twitchClientSecret);
         twitchConfig.setScope("openid");
         final OidcClient twitchClient = new OidcClient(twitchConfig);
+        twitchClient.setMultiProfile(true);
         //twitchClient.setRedirectActionBuilder(new TwitchRedirectActionBuilder(twitchConfig, twitchClient));
-        twitchClient.setAuthenticator(new OidcAuthenticator(twitchConfig, twitchClient) {
-            @Override
-            public void validate(final OidcCredentials credentials, final WebContext context) {
-                final AuthorizationCode code = credentials.getCode();
-                // if we have a code
-                if (code != null) {
-                    try {
-                        final String computedCallbackUrl = client.computeFinalCallbackUrl(context);
-                        // Token request
-                        final TokenRequest request = new TokenRequest(configuration.findProviderMetadata().getTokenEndpointURI(),
-                                this.getClientAuthentication(), new AuthorizationCodeGrant(code, new URI(computedCallbackUrl)));
-                        HTTPRequest tokenHttpRequest = request.toHTTPRequest();
-                        tokenHttpRequest.setConnectTimeout(configuration.getConnectTimeout());
-                        tokenHttpRequest.setReadTimeout(configuration.getReadTimeout());
-
-                        final HTTPResponse httpResponse = tokenHttpRequest.send();
-
-                        final TokenResponse response;
-                        /* Here's the hard part. */
-
-                        if (httpResponse.getStatusCode() == HTTPResponse.SC_OK) {
-                            httpResponse.ensureStatusCode(HTTPResponse.SC_OK);
-                            JSONObject jsonObject = httpResponse.getContentAsJSONObject();
-
-                            OIDCTokens tokens;
-
-                            JWT idToken;
-
-                            try {
-                                idToken = JWTParser.parse(JSONObjectUtils.getString(jsonObject, "id_token"));
-
-                            } catch (java.text.ParseException e) {
-
-                                throw new ParseException("Couldn't parse ID token: " + e.getMessage(), e);
-                            }
-
-                            // Parse and verify type
-                            AccessTokenType tokenType = new AccessTokenType(JSONObjectUtils.getString(jsonObject, "token_type"));
-
-                            if (! tokenType.equals(AccessTokenType.BEARER))
-                                throw new ParseException("Token type must be \"Bearer\"");
-
-
-                            // Parse value
-                            String accessTokenValue = JSONObjectUtils.getString(jsonObject, "access_token");
-
-
-                            // Parse lifetime
-                            long lifetime = 0;
-
-                            if (jsonObject.containsKey("expires_in")) {
-
-                                // Lifetime can be a JSON number or string
-
-                                if (jsonObject.get("expires_in") instanceof Number) {
-
-                                    lifetime = JSONObjectUtils.getLong(jsonObject, "expires_in");
-                                }
-                                else {
-                                    String lifetimeStr = JSONObjectUtils.getString(jsonObject, "expires_in");
-
-                                    try {
-                                        lifetime = Long.valueOf(lifetimeStr);
-
-                                    } catch (NumberFormatException e) {
-
-                                        throw new ParseException("Invalid \"expires_in\" parameter, must be integer");
-                                    }
-                                }
-                            }
-
-
-                            // Parse scope
-                            Scope scope = Scope.parse("");
-
-                            //if (jsonObject.containsKey("scope"))
-                            //    scope = Scope.parse(JSONObjectUtils.getString(jsonObject, "scope"));
-
-                            tokens = new OIDCTokens(idToken, new BearerAccessToken(accessTokenValue, lifetime, scope), RefreshToken.parse(jsonObject));
-
-                            // Parse the custom parameters
-                            Map<String,Object> customParams = new HashMap<>();
-                            customParams.putAll(jsonObject);
-                            for (String tokenParam: tokens.getParameterNames()) {
-                                customParams.remove(tokenParam);
-                            }
-
-                            if (customParams.isEmpty()) {
-                                response = new OIDCTokenResponse(tokens);
-                            } else {
-                                response = new OIDCTokenResponse(tokens, customParams);
-                            }
-
-                        } else {
-                            response = TokenErrorResponse.parse(httpResponse);
-                        }
-
-                        /* The end of the hard part */
-                        if (response instanceof TokenErrorResponse) {
-                            throw new TechnicalException("Bad token response, error=" + ((TokenErrorResponse) response).getErrorObject());
-                        }
-                        final OIDCTokenResponse tokenSuccessResponse = (OIDCTokenResponse) response;
-
-                        // save tokens in credentials
-                        final OIDCTokens oidcTokens = tokenSuccessResponse.getOIDCTokens();
-                        credentials.setAccessToken(oidcTokens.getAccessToken());
-                        credentials.setRefreshToken(oidcTokens.getRefreshToken());
-                        credentials.setIdToken(oidcTokens.getIDToken());
-
-                    } catch (final URISyntaxException | IOException | ParseException e) {
-                        throw new TechnicalException(e);
-                    }
-                }
-            }
-        });
+        twitchClient.setAuthenticator(new OidcAuthenticator(twitchConfig, twitchClient));
         twitchClient.setName("twitch");
 
         final Clients clients = new Clients("https://verify.walkerknapp.me/callback", discordClient, steamAuthClient, twitchClient);

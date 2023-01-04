@@ -38,13 +38,19 @@ import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
 import org.pac4j.core.config.Config;
+import org.pac4j.core.context.session.SessionStore;
+import org.pac4j.core.context.session.SessionStoreFactory;
+import org.pac4j.core.exception.http.FoundAction;
 import org.pac4j.core.profile.CommonProfile;
 import org.pac4j.core.profile.ProfileManager;
+import org.pac4j.core.profile.UserProfile;
 import org.pac4j.oidc.profile.OidcProfile;
+import org.pac4j.undertow.context.UndertowSessionStore;
 import org.pac4j.undertow.context.UndertowWebContext;
 import org.pac4j.undertow.handler.CallbackHandler;
 import org.pac4j.undertow.handler.LogoutHandler;
 import org.pac4j.undertow.handler.SecurityHandler;
+import org.pac4j.undertow.http.UndertowHttpActionAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnio.channels.StreamSinkChannel;
@@ -100,9 +106,9 @@ public class WebServer implements Service {
                     .add(new HttpString("Pragma"), "no-cache")
                     .add(new HttpString("Expires"), "0");
 
-            UndertowWebContext context = new UndertowWebContext(exchange, securityConfig.getSessionStore());
-            ProfileManager profileManager = new ProfileManager(context);
-            List<? extends CommonProfile> profiles = profileManager.getAll(true);
+            UndertowWebContext context = new UndertowWebContext(exchange);
+            ProfileManager profileManager = new ProfileManager(context, securityConfig.getSessionStoreFactory().newSessionStore(exchange));
+            List<UserProfile> profiles = profileManager.getProfiles();
 
             //TODO: Make this configurable
             long serverId = 146404426746167296L;
@@ -535,6 +541,9 @@ public class WebServer implements Service {
         final InMemorySessionManager sessionManager = new InMemorySessionManager("SessionManager");
         final SessionCookieConfig cookieConfig = new SessionCookieConfig();
 
+        securityConfig.setSessionStoreFactory(parameters -> new UndertowSessionStore((HttpServerExchange) parameters[0]));
+        securityConfig.setHttpActionAdapter(UndertowHttpActionAdapter.INSTANCE);
+
         long serverId = 146404426746167296L;
 
         HttpHandler rootHandler = Handlers.path().addExactPath("/", new FileServeHandler("index.html"));
@@ -573,15 +582,24 @@ public class WebServer implements Service {
                 .get("/login/srcom", ProfileRestrictedHandler.build(srcomLoginPage, securityConfig, true))
                 .get("/loginsrcom/bundle.js", new FileServeHandler("loginsrcom", "bundle.js"))
                 .get("/login/discord", exchange -> {
-                    securityConfig.getClients().findClient("discord").redirect(new UndertowWebContext(exchange));
+                    securityConfig.getHttpActionAdapter()
+                            .adapt(securityConfig.getClients().findClient("discord").orElseThrow()
+                                    .getRedirectionAction(new UndertowWebContext(exchange), securityConfig.getSessionStoreFactory().newSessionStore(exchange)).orElseThrow(),
+                                    new UndertowWebContext(exchange));
                     exchange.endExchange();
                 })
                 .get("/login/steam", SecurityHandler.build(exchange -> {
-                    securityConfig.getClients().findClient("steam").redirect(new UndertowWebContext(exchange));
+                    securityConfig.getHttpActionAdapter()
+                            .adapt(securityConfig.getClients().findClient("steam").orElseThrow()
+                                            .getRedirectionAction(new UndertowWebContext(exchange), securityConfig.getSessionStoreFactory().newSessionStore(exchange)).orElseThrow(),
+                                    new UndertowWebContext(exchange));
                     exchange.endExchange();
                 }, securityConfig, "discord"))
                 .get("/login/twitch", SecurityHandler.build(exchange -> {
-                    securityConfig.getClients().findClient("twitch").redirect(new UndertowWebContext(exchange));
+                    securityConfig.getHttpActionAdapter()
+                            .adapt(securityConfig.getClients().findClient("discord").orElseThrow()
+                                            .getRedirectionAction(new UndertowWebContext(exchange), securityConfig.getSessionStoreFactory().newSessionStore(exchange)).orElseThrow(),
+                                    new UndertowWebContext(exchange));
                     exchange.endExchange();
                 }, securityConfig, "discord"))
                 .get("/dashboard", SecurityHandler.build(exchange -> {
@@ -589,7 +607,7 @@ public class WebServer implements Service {
                 }, securityConfig, "discord", "discord_admin"))
                 .get("/dashboard/twitch", SecurityHandler.build(new FileServeHandler("twitchverifydash", "twitchverifydash.html"), securityConfig, "discord", "discord_admin"))
                 .get("/twitchverifydash/bundle.js", SecurityHandler.build(new FileServeHandler("twitchverifydash", "bundle.js"), securityConfig, "discord", "discord_admin"))
-                .get("/callback", CallbackHandler.build(securityConfig, null, true))
+                .get("/callback", CallbackHandler.build(securityConfig, null, null))
                 .get("/logout", new LogoutHandler(securityConfig, "/"))
                 .get("/user/{did}", //new ProfileRestrictedHandler(null, securityConfig, false) {
                         //@Override

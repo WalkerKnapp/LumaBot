@@ -1,6 +1,7 @@
 package gq.luma.bot.systems;
 
 import gq.luma.bot.Luma;
+import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.MessageAuthor;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.permission.Role;
@@ -46,20 +47,13 @@ public class DiscordLogger implements MessageEditListener, MessageDeleteListener
                 .ifPresent(server -> Luma.database.getServerLog(server)
                         .ifPresent(id -> server.getTextChannelById(id)
                                 .ifPresentOrElse(serverLog -> event.getChannel().asServerChannel()
-                                        .ifPresent(channel -> event.getMessage().ifPresentOrElse(message -> serverLog.sendMessage(new EmbedBuilder()
-                                                        .setTitle("Message from " + message.getAuthor().getDiscriminatedName() + " edited")
-                                                        .addField("Old Content", event.getOldContent().orElse("*Failed to query content*"), false)
-                                                        .addField("New Content", event.getNewContent(),false)
+                                        .ifPresent(channel -> serverLog.sendMessage(new EmbedBuilder()
+                                                        .setTitle("Message from " + event.getMessage().getAuthor().getDiscriminatedName() + " edited")
+                                                        .addField("Old Content", event.getOldMessage().map(Message::getContent).orElse("*Failed to query content*"), false)
+                                                        .addField("New Content", event.getMessageContent(),false)
                                                         .setTimestamp(Instant.now())
                                                         .setFooter("#" + channel.getName())
-                                                        .setColor(getTopRoleColor(message.getAuthor(), server))),
-                                                () -> serverLog.sendMessage(new EmbedBuilder()
-                                                        .setTitle("Message edited")
-                                                        .addField("__Unable to query message information__", "_ _", false)
-                                                        .addField("Old Content", event.getOldContent().orElse("*Failed to query content*"), false)
-                                                        .addField("New Content", event.getNewContent(),false)
-                                                        .setTimestamp(Instant.now())
-                                                        .setFooter("#" + channel.getName())))),
+                                                        .setColor(getTopRoleColor(event.getMessage().getAuthor(), server)))),
                                         () -> logger.error("Couldn't find channel with id: " + id))));
     }
 

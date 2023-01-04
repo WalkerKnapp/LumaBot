@@ -121,9 +121,9 @@ public class PinsService implements Service {
                 .setColor(Color.RED)
                 .setDescription(serverPinEmojiMention + " " + count + " - [Jump!](" + pinnedMessage.getLink().toString() + ")");
 
-        Bot.api.getUncachedMessageUtil().edit(pinWebhook.getId(), pinWebhook.getToken(),
-                pinNotification.getId(), pinNotification.getContent(), true,
-                pinBox, true).exceptionally(ExceptionLogger.get());
+        // Bot.api.getUncachedMessageUtil().edit(pinWebhook.getId(), pinWebhook.getToken(),
+        //        pinNotification.getId(), pinNotification.getContent(), true,
+        //        pinBox, true).exceptionally(ExceptionLogger.get());
     }
 
     private Optional<IncomingWebhook> createPinWebhook(ServerTextChannel textChannel) {

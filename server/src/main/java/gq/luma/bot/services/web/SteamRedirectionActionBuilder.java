@@ -6,15 +6,18 @@ import org.openid4java.discovery.DiscoveryInformation;
 import org.openid4java.message.AuthRequest;
 import org.openid4java.message.MessageException;
 import org.pac4j.core.context.WebContext;
+import org.pac4j.core.context.session.SessionStore;
 import org.pac4j.core.exception.TechnicalException;
-import org.pac4j.core.redirect.RedirectAction;
-import org.pac4j.core.redirect.RedirectActionBuilder;
+import org.pac4j.core.exception.http.FoundAction;
+import org.pac4j.core.exception.http.RedirectionAction;
+import org.pac4j.core.redirect.RedirectionActionBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Optional;
 
-public class SteamRedirectionActionBuilder implements RedirectActionBuilder {
+public class SteamRedirectionActionBuilder implements RedirectionActionBuilder {
 
     private static final Logger logger = LoggerFactory.getLogger(SteamRedirectionActionBuilder.class);
 
@@ -27,20 +30,20 @@ public class SteamRedirectionActionBuilder implements RedirectActionBuilder {
     }
 
     @Override
-    public RedirectAction redirect(WebContext context) {
+    public Optional<RedirectionAction> getRedirectionAction(WebContext context, SessionStore sessionStore) {
         try {
             final List discoveries = this.steamClient.getConsumerManager().discover(STEAM_USER_IDENT);
 
             final DiscoveryInformation discoveryInformation = this.steamClient.getConsumerManager().associate(discoveries);
 
-            context.getSessionStore().set(context, this.steamClient.getDiscoveryInformationSessionAttributeName(), discoveryInformation);
+            sessionStore.set(context, this.steamClient.getDiscoveryInformationSessionAttributeName(), discoveryInformation);
 
             final AuthRequest authRequest = this.steamClient.getConsumerManager().authenticate(discoveryInformation,
                     this.steamClient.computeFinalCallbackUrl(context));
 
             final String redirectionUrl = authRequest.getDestinationUrl(true);
             logger.debug("redirectionUrl: {}", redirectionUrl);
-            return RedirectAction.redirect(redirectionUrl);
+            return Optional.of(new FoundAction(redirectionUrl));
         } catch (DiscoveryException | ConsumerException | MessageException e) {
             throw new TechnicalException("OpenID exception", e);
         }

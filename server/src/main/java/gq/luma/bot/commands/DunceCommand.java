@@ -22,6 +22,7 @@ import java.time.format.FormatStyle;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 
 public class DunceCommand {
@@ -294,7 +295,7 @@ public class DunceCommand {
 
         // Ban the user
         Bot.api.getServerById(146404426746167296L).orElseThrow(AssertionError::new)
-                .banUser(targetUser, 0, reason);
+                .banUser(targetUser, 0, TimeUnit.SECONDS, reason);
 
         // Notify mod-actions
         TextChannel modActions = event.getServer().orElseThrow(AssertionError::new)

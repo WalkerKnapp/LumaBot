@@ -2,12 +2,14 @@ package gq.luma.bot.services.web;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.scribejava.core.model.OAuth2AccessToken;
-import org.pac4j.core.context.Pac4jConstants;
+import com.github.scribejava.core.model.Token;
 import org.pac4j.core.profile.converter.Converters;
 import org.pac4j.core.profile.definition.CommonProfileDefinition;
+import org.pac4j.core.util.Pac4jConstants;
 import org.pac4j.oauth.config.OAuth20Configuration;
+import org.pac4j.oauth.config.OAuthConfiguration;
 import org.pac4j.oauth.profile.JsonHelper;
-import org.pac4j.oauth.profile.definition.OAuth20ProfileDefinition;
+import org.pac4j.oauth.profile.generic.GenericOAuth20ProfileDefinition;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -19,7 +21,7 @@ import java.util.Map;
  * @see <a href="https://discord.com/developers/docs/resources/user#user-object">Discord user object</a>
  */
 @SuppressWarnings("WeakerAccess")
-public class DiscordProfileDefinition extends OAuth20ProfileDefinition<DiscordProfile, OAuth20Configuration> {
+public class DiscordProfileDefinition extends GenericOAuth20ProfileDefinition {
 
     public static final String DISCRIMINATOR = "discriminator";
     public static final String AVATAR = "avatar";
@@ -32,7 +34,8 @@ public class DiscordProfileDefinition extends OAuth20ProfileDefinition<DiscordPr
     protected static final long DISCORD_EPOCH_MILLIS = 1420070400000L;
 
     public DiscordProfileDefinition() {
-        super(x -> new DiscordProfile());
+        super();
+        setProfileFactory(x -> new DiscordProfile());
         Arrays.asList(new String[] {
             Pac4jConstants.USERNAME, DISCRIMINATOR, AVATAR
         }).forEach(a -> primary(a, Converters.STRING));
@@ -42,13 +45,13 @@ public class DiscordProfileDefinition extends OAuth20ProfileDefinition<DiscordPr
     }
 
     @Override
-    public String getProfileUrl(OAuth2AccessToken accessToken, OAuth20Configuration configuration) {
+    public String getProfileUrl(final Token accessToken, final OAuthConfiguration configuration) {
         return "https://discord.com/api/users/@me";
     }
 
     @Override
     public DiscordProfile extractUserProfile(String body) {
-        final DiscordProfile profile = newProfile();
+        final DiscordProfile profile = (DiscordProfile) newProfile();
         final JsonNode json = JsonHelper.getFirstNode(body);
         if (json != null) {
             String id = (String) JsonHelper.getElement(json, "id");

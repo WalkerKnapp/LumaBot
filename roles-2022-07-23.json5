@@ -1,0 +1,273 @@
+{
+    "badges": [
+        {
+            "name": "Legends",
+            "requirements": [ {
+                "type": "manual"
+            }]
+        },
+        {
+            "name": "Elite",
+            "requirements": [
+                {
+                    "type": "rank",
+                    "platform": "srcom",
+                    "game": "om1mw4d2", // Portal 2
+                    "category": "jzd33ndn", // Single Player
+                    "variables": [ { "variable": "9l7x7xzn", "choice": "z196dyy1" } ], // SP Category = No SLA
+                    "top": 3
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "om1mw4d2", // Portal 2
+                    "category": "l9kv40kg", // Cooperative Game
+                    "variables": [ { "variable": "38dj54e8", "choice": "mln3x8nq" }], // Coop Category = All Main Courses
+                    "time": "00:26:30"
+                },
+                {
+                    "type": "points",
+                    "leaderboard": "aggregated/overall",
+                    "points": 20300
+                }
+            ]
+        },
+        {
+            "name": "Professionals",
+            "requirements": [
+                {
+                    "type": "rank",
+                    "platform": "srcom",
+                    "game": "om1mw4d2", // Portal 2
+                    "category": "jzd33ndn", // Single Player
+                    "variables": [ { "variable": "9l7x7xzn", "choice": "z196dyy1" } ], // SP Category = No SLA
+                    "top": 10
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "om1mw4d2", // Portal 2
+                    "category": "l9kv40kg", // Cooperative Game
+                    "variables": [ { "variable": "38dj54e8", "choice": "mln3x8nq" } ], // Coop Category = All Main Courses
+                    "time": "00:27:15"
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "lde3eme6", // Portal 2 Speedrun Mod
+                    "category": "ndx940vd", // Single Player
+                    "time": "00:30:30"
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "j1nz9l1p", // Portal Stories: Mel
+                    "category": "q25oowgk", // Story Mode
+                    "variables": [ { "variable": "wl333p9l", "choice":  "4lx8vp31" } ], // Story Mode Category = Inbounds
+                    "time": "00:28:30"
+                },
+                {
+                    "type": "points",
+                    "leaderboard": "aggregated/sp",
+                    "points": 10300
+                },
+                {
+                    "type": "points",
+                    "leaderboard": "aggregated/coop",
+                    "points": 8000
+                },
+                {
+                    "type": "points",
+                    "leaderboard": "aggregated/overall",
+                    "points": 17500
+                }
+            ]
+        },
+        {
+            "name": "Advanced",
+            "requirements": [
+                {
+                    "type": "rank",
+                    "platform": "srcom",
+                    "game": "om1mw4d2", // Portal 2
+                    "category": "jzd33ndn", // Single Player
+                    "variables": [ { "variable": "9l7x7xzn", "choice": "z196dyy1" } ], // SP Category = No SLA
+                    "top": 30
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "om1mw4d2", // Portal 2
+                    "category": "l9kv40kg", // Cooperative Game
+                    "variables": [ { "variable": "38dj54e8", "choice": "mln3x8nq" } ], // Coop Category = All Main Courses
+                    "time": "00:29:00",
+                    "partner": "rank>=" // To qualify for this requirement, the partner rank must be >= the target user's rank
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "om1mw4d2", // Portal 2
+                    "category": "l9kv40kg", // Cooperative Game
+                    "variables": [ { "variable": "38dj54e8", "choice": "mln3x8nq" } ], // Coop Category = All Main Courses
+                    "time": "00:28:15"
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "lde3eme6", // Portal 2 Speedrun Mod
+                    "category": "ndx940vd", // Single Player
+                    "time": "00:32:00"
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "j1nz9l1p", // Portal Stories: Mel
+                    "category": "q25oowgk", // Story Mode
+                    "variables": [ { "variable": "wl333p9l", "choice":  "4lx8vp31" } ], // Story Mode Category = Inbounds
+                    "time": "00:30:50"
+                },
+                {
+                    "type": "points",
+                    "leaderboard": "aggregated/sp",
+                    "points": 7000
+                },
+                {
+                    "type": "points",
+                    "leaderboard": "aggregated/coop",
+                    "points": 6000
+                }
+            ]
+        },
+        {
+            "name": "Intermediate",
+            "requirements": [
+                {
+                    "type": "rank",
+                    "platform": "srcom",
+                    "game": "om1mw4d2", // Portal 2
+                    "category": "jzd33ndn", // Single Player
+                    "variables": [ { "variable": "9l7x7xzn", "choice": "z196dyy1" } ], // SP Category = No SLA
+                    "top": 65
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "om1mw4d2", // Portal 2
+                    "category": "l9kv40kg", // Cooperative Game
+                    "variables": [ { "variable": "38dj54e8", "choice": "mln3x8nq" } ], // Coop Category = All Main Courses
+                    "time": "00:32:00"
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "lde3eme6", // Portal 2 Speedrun Mod
+                    "category": "ndx940vd", // Single Player
+                    "time": "00:34:00"
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "j1nz9l1p", // Portal Stories: Mel
+                    "category": "q25oowgk", // Story Mode
+                    "variables": [ { "variable": "wl333p9l", "choice":  "4lx8vp31" } ], // Story Mode Category = Inbounds
+                    "time": "00:32:40"
+                },
+                {
+                    "type": "points",
+                    "leaderboard": "aggregated/sp",
+                    "points": 4000
+                },
+                {
+                    "type": "points",
+                    "leaderboard": "aggregated/coop",
+                    "points": 3500
+                }
+            ]
+        },
+        {
+            "name": "Mediocre",
+            "requirements": [
+                {
+                    "type": "rank",
+                    "platform": "srcom",
+                    "game": "om1mw4d2", // Portal 2
+                    "category": "jzd33ndn", // Single Player
+                    "variables": [ { "variable": "9l7x7xzn", "choice": "z196dyy1" } ], // SP Category = No SLA
+                    "top": 130
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "om1mw4d2", // Portal 2
+                    "category": "l9kv40kg", // Cooperative Game
+                    "variables": [ { "variable": "38dj54e8", "choice": "mln3x8nq" } ], // Coop Category = All Main Courses
+                    "time": "00:36:00"
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "lde3eme6", // Portal 2 Speedrun Mod
+                    "category": "ndx940vd", // Single Player
+                    "time": "00:37:00"
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "j1nz9l1p", // Portal Stories: Mel
+                    "category": "q25oowgk", // Story Mode
+                    "variables": [ { "variable": "wl333p9l", "choice":  "4lx8vp31" } ], // Story Mode Category = Inbounds
+                    "time": "00:35:50"
+                },
+                {
+                    "type": "points",
+                    "leaderboard": "aggregated/sp",
+                    "points": 1500
+                },
+                {
+                    "type": "points",
+                    "leaderboard": "aggregated/coop",
+                    "points": 2000
+                }
+            ]
+        },
+        {
+            "name": "Beginner",
+            "requirements": [
+                {
+                    "type": "recent",
+                    "platform": "srcom",
+                    "game": "om1mw4d2", // Portal 2
+                    "category": "jzd33ndn", // Single Player
+                    "months": 6 // 6 Months ago
+                },
+                {
+                    "type": "recent",
+                    "platform": "srcom",
+                    "game": "om1mw4d2", // Portal 2
+                    "category": "l9kv40kg", // Cooperative Game
+                    "months": 6
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "lde3eme6", // Portal 2 Speedrun Mod
+                    "category": "ndx940vd", // Single Player
+                    "time": "00:58:00"
+                },
+                {
+                    "type": "time",
+                    "platform": "srcom",
+                    "game": "j1nz9l1p", // Portal Stories: Mel
+                    "category": "q25oowgk", // Story Mode
+                    "variables": [ { "variable": "wl333p9l", "choice":  "4lx8vp31" } ], // Story Mode Category = Inbounds
+                    "time": "00:43:50"
+                },
+                {
+                    "type": "recent",
+                    "platform": "cm",
+                    "months": 6
+                }
+            ]
+        }
+    ]
+}

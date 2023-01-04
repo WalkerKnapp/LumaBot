@@ -57,7 +57,7 @@ public class PinsCommands {
 
             // Try to parse as a mention
             if (event.getMessage().getMentionedChannels().size() > 0) {
-                pinsChannel = event.getMessage().getMentionedChannels().get(0);
+                pinsChannel = event.getMessage().getMentionedChannels().get(0).asServerTextChannel().orElse(null);
             } else if (event.getCommandArgs().length > 0) {
                 String arg = event.getCommandArgs()[0];
 
@@ -122,7 +122,7 @@ public class PinsCommands {
 
             // Try to parse as a mention
             if (event.getMessage().getMentionedChannels().size() > 0) {
-                blacklistChannel = event.getMessage().getMentionedChannels().get(0);
+                blacklistChannel = event.getMessage().getMentionedChannels().get(0).asServerTextChannel().orElse(null);
             } else if (event.getCommandArgs().length > 0) {
                 String arg = event.getCommandArgs()[0];
 

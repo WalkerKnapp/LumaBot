@@ -2,6 +2,7 @@ package gq.luma.bot.systems;
 
 import gq.luma.bot.Luma;
 import org.javacord.api.entity.channel.TextChannel;
+import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
@@ -78,7 +79,9 @@ public class AutoDunceListener implements MessageCreateListener, MessageEditList
             return;
         }
 
-        Luma.executorService.submit(() -> event.requestMessage().thenAccept(message ->
+        Message message = event.getMessage();
+
+        Luma.executorService.submit(() ->
                         message.getAuthor().asUser().ifPresent(user -> {
                             // Check if message content contains a slur
                             if (containsSlur(message.getContent())) {
@@ -86,7 +89,7 @@ public class AutoDunceListener implements MessageCreateListener, MessageEditList
                                         event.getChannel().asServerTextChannel().orElseThrow(AssertionError::new).getMentionTag());
                                 event.deleteMessage("Slur");
                             }
-                        })).exceptionally(ExceptionLogger.get()));
+                        }));
     }
 
 

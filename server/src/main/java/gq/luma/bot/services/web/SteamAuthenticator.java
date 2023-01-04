@@ -7,6 +7,8 @@ import org.openid4java.discovery.Identifier;
 import org.openid4java.message.AuthSuccess;
 import org.openid4java.message.ParameterList;
 import org.pac4j.core.context.WebContext;
+import org.pac4j.core.context.session.SessionStore;
+import org.pac4j.core.credentials.Credentials;
 import org.pac4j.core.credentials.authenticator.Authenticator;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.openid.credentials.OpenIdCredentials;
@@ -16,7 +18,7 @@ import org.slf4j.LoggerFactory;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class SteamAuthenticator implements Authenticator<OpenIdCredentials> {
+public class SteamAuthenticator implements Authenticator {
     private static final Logger logger = LoggerFactory.getLogger(SteamAuthenticator.class);
 
     private final Pattern STEAM_REGEX = Pattern.compile("(\\d+)");
@@ -28,9 +30,11 @@ public class SteamAuthenticator implements Authenticator<OpenIdCredentials> {
     }
 
     @Override
-    public void validate(OpenIdCredentials credentials, WebContext context) {
-        final ParameterList parameterList = credentials.getParameterList();
-        final DiscoveryInformation discoveryInformation = credentials.getDiscoveryInformation();
+    public void validate(Credentials credentials, WebContext context, SessionStore sessionStore) {
+        OpenIdCredentials oidCredentials = (OpenIdCredentials) credentials;
+
+        final ParameterList parameterList = oidCredentials.getParameterList();
+        final DiscoveryInformation discoveryInformation = oidCredentials.getDiscoveryInformation();
         logger.debug("parameterList: {}", parameterList);
         logger.debug("discoveryInformation: {}", discoveryInformation);
 

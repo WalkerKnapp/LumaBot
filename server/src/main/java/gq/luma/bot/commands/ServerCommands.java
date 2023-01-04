@@ -249,7 +249,7 @@ public class ServerCommands {
 
             for(MessageAttachment attachment : event.getMessage().getAttachments()) {
                 try {
-                    new BufferedReader(new InputStreamReader(attachment.downloadAsInputStream())).lines().forEach(str -> {
+                    new BufferedReader(new InputStreamReader(attachment.asInputStream())).lines().forEach(str -> {
                         Luma.database.insertVotingKey(str, serverId);
                         added.getAndIncrement();
                     });
@@ -282,7 +282,7 @@ public class ServerCommands {
 
             for(MessageAttachment attachment : event.getMessage().getAttachments()) {
                 try {
-                    new BufferedReader(new InputStreamReader(attachment.downloadAsInputStream())).lines().forEach(str -> {
+                    new BufferedReader(new InputStreamReader(attachment.asInputStream())).lines().forEach(str -> {
                         Luma.database.removeVotingKey(str, serverId);
                         removed.getAndIncrement();
                     });
@@ -328,7 +328,7 @@ public class ServerCommands {
             Server server = event.getServer().get();
             ServerTextChannel textChannel;
             if(event.getMessage().getMentionedChannels().size() > 0) {
-                textChannel = event.getMessage().getMentionedChannels().get(0);
+                textChannel = event.getMessage().getMentionedChannels().get(0).asServerTextChannel().orElseThrow();
             } else {
                 textChannel = event.getChannel().asServerTextChannel().orElseThrow();
             }
@@ -376,7 +376,7 @@ public class ServerCommands {
         if(event.getServer().isPresent()){
             ServerTextChannel textChannel;
             if(event.getMessage().getMentionedChannels().size() > 0) {
-                textChannel = event.getMessage().getMentionedChannels().get(0);
+                textChannel = event.getMessage().getMentionedChannels().get(0).asServerTextChannel().orElseThrow();
             } else {
                 textChannel = event.getChannel().asServerTextChannel().orElseThrow();
             }

@@ -5,17 +5,9 @@ import org.pac4j.core.client.IndirectClient;
 import org.pac4j.openid.credentials.OpenIdCredentials;
 import org.pac4j.openid.profile.OpenIdProfile;
 
-public class SteamAuthClient extends IndirectClient<OpenIdCredentials, OpenIdProfile> {
+public class SteamAuthClient extends IndirectClient {
 
     private ConsumerManager consumerManager;
-
-    @Override
-    protected void clientInit() {
-        this.consumerManager = new ConsumerManager();
-        defaultRedirectActionBuilder(new SteamRedirectionActionBuilder(this));
-        defaultCredentialsExtractor(new SteamCredentialsExtractor(this));
-        defaultAuthenticator(new SteamAuthenticator(this));
-    }
 
     public String getDiscoveryInformationSessionAttributeName() {
         return getName() + "#discoveryInformation";
@@ -23,5 +15,13 @@ public class SteamAuthClient extends IndirectClient<OpenIdCredentials, OpenIdPro
 
     public ConsumerManager getConsumerManager() {
         return consumerManager;
+    }
+
+    @Override
+    protected void internalInit(boolean forceReinit) {
+        this.consumerManager = new ConsumerManager();
+        setRedirectionActionBuilder(new SteamRedirectionActionBuilder(this));
+        defaultCredentialsExtractor(new SteamCredentialsExtractor(this));
+        defaultAuthenticator(new SteamAuthenticator(this));
     }
 }
