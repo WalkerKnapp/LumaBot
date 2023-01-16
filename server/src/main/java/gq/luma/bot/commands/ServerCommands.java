@@ -5,6 +5,7 @@ import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
 import gq.luma.bot.services.SkillRoleService;
+import gq.luma.bot.services.apis.GithubApi;
 import gq.luma.bot.services.apis.IVerbApi;
 import gq.luma.bot.systems.watchers.SlowMode;
 import gq.luma.bot.utils.embeds.EmbedUtilities;
@@ -28,6 +29,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.SQLException;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -76,6 +80,34 @@ public class ServerCommands {
                 sb.append('\n');
                 event.getChannel().sendMessage(sb.toString());
             }
+        }
+    }
+
+    @Command(aliases = {"sarbug"}, description = "sarbug_description", usage = "sarbug_usage", whilelistedGuilds = "146404426746167296")
+    public void onSarBug(CommandEvent event) {
+        String issueTitle = event.getCommandRemainder().trim();
+        if (issueTitle.length() > 0) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-uuuu HH:mm:ss z");
+            ZonedDateTime zonedDateTime = event.getMessage().getCreationTimestamp().atZone(ZoneId.of("UTC"));
+
+            String issueBody = event.getMessage().getLink().toString() + "\n\n" +
+                    "-----------------\n" +
+                    "> This action was performed automatically, triggered by a report by discord user " +
+                    event.getAuthor().getDiscriminatedName() +
+                    " at " +
+                    zonedDateTime.format(formatter) + '.';
+
+            GithubApi.get().createSarIssue(issueTitle, issueBody)
+                    .thenAccept(issueLink -> event.getChannel().sendMessage(new EmbedBuilder()
+                            .setDescription("Successfully created issue " + issueLink)
+                            .setAuthor(event.getAuthor())
+                            .setTimestampToNow()).join())
+                    .exceptionally(t -> {
+                        logger.error("Create issue failed", t);
+                        return null;
+                    });
+        } else {
+            event.getChannel().sendMessage(EmbedUtilities.getErrorMessage("Please specify a title to create the issue.", event.getLocalization()));
         }
     }
 
