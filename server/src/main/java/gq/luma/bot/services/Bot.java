@@ -8,32 +8,41 @@ import gq.luma.bot.reference.BotReference;
 import gq.luma.bot.reference.DefaultReference;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.reference.KeyReference;
+import gq.luma.bot.services.apis.GithubApi;
 import gq.luma.bot.systems.AutoDunceListener;
 import gq.luma.bot.systems.DiscordLogger;
 import gq.luma.bot.systems.watchers.SlowMode;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.DiscordApiBuilder;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.intent.Intent;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.MessageAuthor;
+import org.javacord.api.entity.message.MessageBuilder;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.permission.Role;
 import org.javacord.api.entity.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Bot implements Service {
 
@@ -213,6 +222,71 @@ public class Bot implements Service {
                         event.requestUser().join().addRole(role));
             }
         }));*/
+
+        Pattern p2IssuePattern = Pattern.compile("(?<repo>\\w*)#(?<issue>\\d+)");
+        HashMap<String, String> p2RepoShorthand = new HashMap<>();
+        p2RepoShorthand.put("sar", "SourceAutoRecord");
+        p2RepoShorthand.put("conf", "srconfigs");
+        p2RepoShorthand.put("wh", "wormhole");
+        p2RepoShorthand.put("sm", "Portal2SpeedrunMod");
+
+        api.addMessageCreateListener(event -> {
+            if (event.getServer().map(s -> s.getId() == 146404426746167296L).orElse(false)) {
+                String content = event.getMessageContent();
+
+                Matcher m = p2IssuePattern.matcher(content);
+
+                ArrayList<CompletableFuture<Void>> embedsFutures = new ArrayList<>();
+                ArrayList<EmbedBuilder> embeds = new ArrayList<>();
+
+                while (m.find()) {
+                    String repo = null;
+                    if (m.group("repo") == null || m.group("repo").isEmpty()) {
+                        repo = "SourceAutoRecord";
+                    } else {
+                        if (p2RepoShorthand.containsKey(m.group("repo"))) {
+                            repo = p2RepoShorthand.get(m.group("repo"));
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    String issueNumber = m.group("issue");
+
+                    embedsFutures.add(GithubApi.get().fetchIssue(repo, m.group("issue"))
+                            .thenApply(issue -> {
+                                //logger.info("Reached block on issue {}", issue.getId());
+                                try {
+                                    return new EmbedBuilder()
+                                            .setTitle(issue.getRepository().getOwnerName() + "/" + issue.getRepository().getName() + " - Issue #" + issueNumber)
+                                            .setUrl(issue.getHtmlUrl().toString())
+                                            .setAuthor(issue.getUser().getLogin(), issue.getUser().getHtmlUrl().toString(), issue.getUser().getAvatarUrl())
+                                            .setColor(new Color(0, 255, 242))
+                                            .addField(issue.getTitle(), StringUtils.substring(issue.getBody(), 0, 250) + "...");
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            })
+                            .thenAccept(embeds::add)
+                            .exceptionally(t -> {
+                                //t.printStackTrace();
+                                return null;
+                            }));
+                }
+
+                CompletableFuture.allOf(embedsFutures.toArray(new CompletableFuture[0])).join();
+
+                if (!embeds.isEmpty()) {
+                    MessageBuilder builder = new MessageBuilder();
+
+                    for (EmbedBuilder embed : embeds) {
+                        builder.addEmbed(embed);
+                    }
+
+                    builder.replyTo(event.getMessage()).send(event.getChannel()).join();
+                }
+            }
+        });
 
         DiscordLogger discordLogger = new DiscordLogger();
         api.addMessageDeleteListener(discordLogger);

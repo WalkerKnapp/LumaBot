@@ -96,6 +96,17 @@ public class GithubApi {
         return builder.compact();
     }
 
+    public CompletableFuture<GHIssue> fetchIssue(String repo, String issueId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return this.gitHub.getRepository("p2sr/" + repo)
+                        .getIssue(Integer.parseInt(issueId));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public CompletableFuture<String> createSarIssue(String title, String body) {
         return CompletableFuture.supplyAsync(() -> {
             try {
