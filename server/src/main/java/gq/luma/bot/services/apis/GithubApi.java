@@ -41,6 +41,10 @@ public class GithubApi {
 
     private static GithubApi INSTANCE;
 
+    static {
+        Security.addProvider(new BouncyCastleProvider());
+    }
+
     public static GithubApi get() {
         // TODO: Cache the github api for up to 10 minutes (the max lifetime of a github jwt)
         INSTANCE = new GithubApi();
@@ -51,8 +55,8 @@ public class GithubApi {
 
     private GithubApi() {
         try {
-            GitHub preempriveGithub = new GitHubBuilder().withJwtToken(createJwt()).build();
-            GHAppInstallation appInstallation = preempriveGithub.getApp().getInstallationById(githubAppInstallationId);
+            GitHub preemptiveGithub = new GitHubBuilder().withJwtToken(createJwt()).build();
+            GHAppInstallation appInstallation = preemptiveGithub.getApp().getInstallationById(githubAppInstallationId);
 
             GHAppInstallationToken appInstallationToken = appInstallation.createToken().create();
             this.gitHub = new GitHubBuilder().withAppInstallationToken(appInstallationToken.getToken()).build();
@@ -67,8 +71,6 @@ public class GithubApi {
 
         long nowMillis = System.currentTimeMillis();
         Date now = new Date(nowMillis - (60 * 1000)); // Github docs specify a 60 second offset to allow for clock drift
-
-        Security.addProvider(new BouncyCastleProvider());
 
         PrivateKey signingKey;
 

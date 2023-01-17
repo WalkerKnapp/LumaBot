@@ -239,6 +239,8 @@ public class Bot implements Service {
                 ArrayList<CompletableFuture<Void>> embedsFutures = new ArrayList<>();
                 ArrayList<EmbedBuilder> embeds = new ArrayList<>();
 
+                GithubApi githubApi = GithubApi.get();
+
                 while (m.find()) {
                     String repo = null;
                     if (m.group("repo") == null || m.group("repo").isEmpty()) {
@@ -253,7 +255,7 @@ public class Bot implements Service {
 
                     String issueNumber = m.group("issue");
 
-                    embedsFutures.add(GithubApi.get().fetchIssue(repo, m.group("issue"))
+                    embedsFutures.add(githubApi.fetchIssue(repo, m.group("issue"))
                             .thenApply(issue -> {
                                 //logger.info("Reached block on issue {}", issue.getId());
                                 try {
