@@ -244,7 +244,8 @@ public class Bot implements Service {
                 while (m.find()) {
                     String repo = null;
                     if (m.group("repo") == null || m.group("repo").isEmpty()) {
-                        repo = "SourceAutoRecord";
+                        //repo = "SourceAutoRecord";
+                        continue;
                     } else {
                         if (p2RepoShorthand.containsKey(m.group("repo"))) {
                             repo = p2RepoShorthand.get(m.group("repo"));
