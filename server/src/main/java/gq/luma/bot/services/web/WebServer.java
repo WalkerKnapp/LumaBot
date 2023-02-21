@@ -128,7 +128,7 @@ public class WebServer implements Service {
 
             if(latestDiscordProfile != null) {
                 Luma.database.addUserRecord(Long.parseLong(latestDiscordProfile.getId()), serverId, latestDiscordProfile.getAccessToken());
-                String ip = exchange.getRequestHeaders().get("CF-Connecting-IP").getFirst();
+                String ip = exchange.getRequestHeaders().get("X-Forwarded-For").getFirst();
 
                 boolean lookupConnectionsSucceeded = lookupConnections(latestDiscordProfile, latestSteamProfile, latestTwitchProfile, serverId);
 
@@ -353,7 +353,7 @@ public class WebServer implements Service {
             logger.trace("Discord user accessed verify.walkerknapp.me:");
             logger.trace("Id: "+ discordProfile.getId());
             logger.trace("Name: " + discordProfile.getUsername() + "#" + discordProfile.getDiscriminator());
-            //logger.trace("IP: " + exchange.getRequestHeaders().get("CF-Connecting-IP").getFirst());
+            //logger.trace("IP: " + exchange.getRequestHeaders().get("X-Forwarded-For").getFirst());
             try {
                 String jsonConnections = Objects.requireNonNull(Luma.okHttpClient.newCall(new Request.Builder()
                         .url("https://discord.com/api/v6/users/@me/connections")
