@@ -72,7 +72,7 @@ public class WebSecConfigFactory implements ConfigFactory {
 
         final SteamAuthClient steamAuthClient = new SteamAuthClient();
         steamAuthClient.setMultiProfile(true);
-        steamAuthClient.setCallbackUrl("https://verify.walkerknapp.me/callback");
+        steamAuthClient.setCallbackUrl("https://luma.portal2.sr/callback");
         steamAuthClient.setName("steam");
 
         System.out.println("STEAM MULTI PROFILE: " + steamAuthClient.isMultiProfile(null, null));
@@ -88,7 +88,7 @@ public class WebSecConfigFactory implements ConfigFactory {
         twitchClient.setAuthenticator(new OidcAuthenticator(twitchConfig, twitchClient));
         twitchClient.setName("twitch");
 
-        final Clients clients = new Clients("https://verify.walkerknapp.me/callback", discordClient, steamAuthClient, twitchClient);
+        final Clients clients = new Clients("https://luma.portal2.sr/callback", discordClient, steamAuthClient, twitchClient);
         final Config config = new Config(clients);
 
         config.addAuthorizer("discord", new RequireAnyRoleAuthorizer("ROLE_DISCORD_USER"));

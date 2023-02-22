@@ -164,7 +164,7 @@ public class Database implements Service {
 
         //Class.forName("com.mysql.jdbc.Driver");
 
-        conn = DriverManager.getConnection("jdbc:mysql://" + FileReference.mySQLLocation + "/Luma?user=" + KeyReference.sqlUser + "&password=" + KeyReference.sqlPass + "&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=EST&autoReconnect=true");
+        conn = DriverManager.getConnection("jdbc:mysql://" + FileReference.mySQLLocation + "/luma?user=" + KeyReference.sqlUser + "&password=" + KeyReference.sqlPass + "&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=EST&autoReconnect=true");
 
         getChannel = conn.prepareStatement("SELECT * FROM channels WHERE id = ?");
         updateChannelPrefix = conn.prepareStatement("UPDATE channels SET prefix = ? WHERE id = ?");

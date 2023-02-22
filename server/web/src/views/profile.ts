@@ -38,7 +38,7 @@ export class Profile extends LitElement {
                     <div class="c-tableCell c-tableHeader c-center">Remove</div>
                 </div>
                 ${this.userInfo.steamAccounts.map(this.generateSteamTableRow)}
-                <a href="https://verify.walkerknapp.me/login/steam" class="c-addButton c-flexcenter c-gray mdc-button--raised"><span class="mdc-button__label">Add Steam Account</span></a>
+                <a href="https://luma.portal2.sr/login/steam" class="c-addButton c-flexcenter c-gray mdc-button--raised"><span class="mdc-button__label">Add Steam Account</span></a>
                 <h2 class="c-flexcenter">Speedrun.com</h2>
                 <div class="c-tableRow">
                     <div class="c-tableCell c-tableHeader">Name</div>
@@ -48,7 +48,7 @@ export class Profile extends LitElement {
                     <div class="c-tableCell c-tableHeader c-center">Remove</div>
                 </div>
                 ${this.userInfo.srcomAccounts.map(this.generateSrcomTableRow)}
-                <a href="https://verify.walkerknapp.me/login/srcom" class="c-addButton c-flexcenter c-gold mdc-button--raised"><span class="mdc-button__label">Add Speedrun.com Account</span></a>
+                <a href="https://luma.portal2.sr/login/srcom" class="c-addButton c-flexcenter c-gold mdc-button--raised"><span class="mdc-button__label">Add Speedrun.com Account</span></a>
                 <h2 class="c-flexcenter">Twitch</h2>
                 <div class="c-tableRow">
                     <div class="c-tableCell c-tableHeader">Name</div>
@@ -58,7 +58,7 @@ export class Profile extends LitElement {
                     <div class="c-tableCell c-tableHeader c-center">Remove</div>
                 </div>
                 ${this.userInfo.twitchAccounts.map(this.generateTwitchTableRow)}
-                <a href="https://verify.walkerknapp.me/login/twitch" class="c-addButton c-flexcenter c-purple mdc-button--raised"><span class="mdc-button__label">Add Twitch Account</span></a>
+                <a href="https://luma.portal2.sr/login/twitch" class="c-addButton c-flexcenter c-purple mdc-button--raised"><span class="mdc-button__label">Add Twitch Account</span></a>
             </div>
         </div>
     </div>

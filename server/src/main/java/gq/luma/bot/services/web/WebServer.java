@@ -128,7 +128,7 @@ public class WebServer implements Service {
 
             if(latestDiscordProfile != null) {
                 Luma.database.addUserRecord(Long.parseLong(latestDiscordProfile.getId()), serverId, latestDiscordProfile.getAccessToken());
-                String ip = exchange.getRequestHeaders().get("CF-Connecting-IP").getFirst();
+                String ip = exchange.getRequestHeaders().get("X-Forwarded-For").getFirst();
 
                 boolean lookupConnectionsSucceeded = lookupConnections(latestDiscordProfile, latestSteamProfile, latestTwitchProfile, serverId);
 
@@ -350,10 +350,10 @@ public class WebServer implements Service {
         }
 
         private boolean lookupConnections(DiscordProfile discordProfile, SteamOpenIdProfile steamProfile, OidcProfile twitchProfile, long serverId) {
-            logger.trace("Discord user accessed verify.walkerknapp.me:");
+            logger.trace("Discord user accessed luma.portal2.sr:");
             logger.trace("Id: "+ discordProfile.getId());
             logger.trace("Name: " + discordProfile.getUsername() + "#" + discordProfile.getDiscriminator());
-            //logger.trace("IP: " + exchange.getRequestHeaders().get("CF-Connecting-IP").getFirst());
+            //logger.trace("IP: " + exchange.getRequestHeaders().get("X-Forwarded-For").getFirst());
             try {
                 String jsonConnections = Objects.requireNonNull(Luma.okHttpClient.newCall(new Request.Builder()
                         .url("https://discord.com/api/v6/users/@me/connections")
@@ -777,7 +777,7 @@ public class WebServer implements Service {
 
         webpageServer = Undertow.builder()
                 .setServerOption(UndertowOptions.ENABLE_HTTP2, true)
-                .addHttpListener(80, "0.0.0.0")
+                .addHttpListener(8000, "0.0.0.0")
                 .setHandler(new SessionAttachmentHandler(exchange -> {
                     logger.trace("Call to host name: " + exchange.getHostName());
                     switch (exchange.getHostName()) {
@@ -788,7 +788,7 @@ public class WebServer implements Service {
                         case "cdn.walkerknapp.me":
                             cdnHandler.handleRequest(exchange);
                             break;
-                        case "verify.walkerknapp.me":
+                        case "luma.portal2.sr":
                             verifyWebpageHandler.handleRequest(exchange);
                             break;
                         //case "api.luma.gq":

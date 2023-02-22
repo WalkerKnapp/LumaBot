@@ -50,7 +50,7 @@ public class TwitchApi implements Service {
     public void startService() throws Exception {
         credentialManager = CredentialManagerBuilder.builder()
                 .build();
-        credentialManager.registerIdentityProvider(new TwitchIdentityProvider(KeyReference.twitchClientId, KeyReference.twitchClientSecret, "https://verify.walkerknapp.me/"));
+        credentialManager.registerIdentityProvider(new TwitchIdentityProvider(KeyReference.twitchClientId, KeyReference.twitchClientSecret, "https://luma.portal2.sr/"));
 
         OAuth2Credential token = credentialManager.getOAuth2IdentityProviderByName("twitch")
                 .orElseThrow(AssertionError::new).getAppAccessToken();
