@@ -77,8 +77,6 @@ public class Bot implements Service {
         executor.registerCommand(new InfoCommand());
         executor.registerCommand(new BotCommands());
         executor.registerCommand(new AttributeCommands());
-        executor.registerCommand(new MemeCommands());
-        executor.registerCommand(new AnalyzeCommand());
         executor.registerCommand(new IdentifyCommand());
         executor.registerCommand(new ServerCommands());
         executor.registerCommand(new RoleCommands());
