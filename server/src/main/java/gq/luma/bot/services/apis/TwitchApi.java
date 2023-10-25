@@ -125,17 +125,26 @@ public class TwitchApi implements Service {
                     AtomicBoolean presentInServer = new AtomicBoolean(false);
 
                     Luma.database.getVerifiedConnectionsById(stream.getUserId(), "twitch")
-                            .stream()
-                            .findFirst().ifPresent(discordUser -> {
+                            .forEach(discordUser -> {
                         discordUser.getRoleColor(Bot.api.getServerById(146404426746167296L).orElseThrow(AssertionError::new))
                                 .ifPresent(embedColor::set);
 
-                        if (isMemberPresent(discordUser.getId())) {
-                            presentInServer.set(true);
+                        try {
+                            if (isMemberPresent(discordUser.getId())) {
+                                presentInServer.set(true);
+                                userTag.set(discordUser.getDiscriminatedName());
+                                profileUrl.set(discordUser.getAvatar().getUrl().toString());
+                            } else {
+                                if (userTag.get() == null) {
+                                    userTag.set(discordUser.getDiscriminatedName());
+                                }
+                                if (profileUrl.get() == null) {
+                                    profileUrl.set(discordUser.getAvatar().getUrl().toString());
+                                }
+                            }
+                        } catch (Throwable t) {
+                            //ignore
                         }
-
-                        userTag.set(discordUser.getDiscriminatedName());
-                        profileUrl.set(discordUser.getAvatar().getUrl().toString());
                     });
 
                     if (!presentInServer.get()) {
