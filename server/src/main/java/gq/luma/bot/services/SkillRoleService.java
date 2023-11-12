@@ -749,8 +749,8 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(professionals, amcTimePlayerBelowRank < (27 * 60))) { // Sub 27:00
                                     logger.debug("Giving Professionals due to a sub 27:15 AMC Time: " + amcTimePlayerBelowRank);
                                 }
-                                if (setIfTrue(professionals, p2srmSpTime < (30 * 60))) { // Sub 30:00
-                                    logger.debug("Giving Professionals due to a sub 30:00 P2SRM Time: " + p2srmSpTime);
+                                if (setIfTrue(professionals, p2srmSpTime < (29 * 60))) { // Sub 30:00
+                                    logger.debug("Giving Professionals due to a sub 29:00 P2SRM Time: " + p2srmSpTime);
                                 }
                                 if (setIfTrue(professionals, melInboundsTime < (27 * 60))) { // Sub 27:00
                                     logger.debug("Giving Professionals due to a sub 27:00 Mel Time: " + melInboundsTime);
@@ -766,8 +766,8 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(expert, amcTimePlayerBelowRank < (28 * 60) + 30)) { // Sub 28:30
                                     logger.debug("Giving Expert due to a sub 28:30 AMC Time: " + amcTimePlayerBelowRank);
                                 }
-                                if (setIfTrue(expert, p2srmSpTime < (32 * 60))) { // Sub 32:00
-                                    logger.debug("Giving Expert due to a sub 32:00 P2SRM Time: " + p2srmSpTime);
+                                if (setIfTrue(expert, p2srmSpTime < (30 * 60) + 45)) { // Sub 32:00
+                                    logger.debug("Giving Expert due to a sub 30:45 P2SRM Time: " + p2srmSpTime);
                                 }
                                 if (setIfTrue(expert, melInboundsTime < (28 * 60))) { // Sub 28:00
                                     logger.debug("Giving Expert due to a sub 28:00 Mel Time: " + melInboundsTime);
@@ -783,8 +783,8 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(advanced, amcTimePlayerBelowRank < (30 * 60) + 30)) { // Sub 30:30
                                     logger.debug("Giving Advanced due to a sub 30:30 AMC Time w/ Below Rank: " + amcTimePlayerBelowRank);
                                 }
-                                if (setIfTrue(advanced, p2srmSpTime < (34 * 60))) { // Sub 34:00
-                                    logger.debug("Giving Advanced due to a sub 34:00 P2SRM Time: " + p2srmSpTime);
+                                if (setIfTrue(advanced, p2srmSpTime < (32 * 60) + 15)) { // Sub 34:00
+                                    logger.debug("Giving Advanced due to a sub 32:15 P2SRM Time: " + p2srmSpTime);
                                 }
                                 if (setIfTrue(advanced, melInboundsTime < (29 * 60) + 30)) { // Sub 29:30
                                     logger.debug("Giving Advanced due to a sub 29:30 Mel Time: " + melInboundsTime);
@@ -800,8 +800,8 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(intermediate, amcTimePlayerBelowRank < (32 * 60))) { // Sub 32:00
                                     logger.debug("Giving Intermediate due to a sub 32:00 AMC Time: " + amcTimePlayerBelowRank);
                                 }
-                                if (setIfTrue(intermediate, p2srmSpTime < (36 * 60))) { // Sub 36:00
-                                    logger.debug("Giving Intermediate due to a sub 36:00 P2SRM Time: " + p2srmSpTime);
+                                if (setIfTrue(intermediate, p2srmSpTime < (33 * 60) + 45)) { // Sub 36:00
+                                    logger.debug("Giving Intermediate due to a sub 33:45 P2SRM Time: " + p2srmSpTime);
                                 }
                                 if (setIfTrue(intermediate, melInboundsTime < (31 * 60))) { // Sub 31:00
                                     logger.debug("Giving Intermediate due to a sub 31:00 Mel Time: " + melInboundsTime);
@@ -817,8 +817,8 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(amateur, amcTimePlayerBelowRank < (34 * 60))) { // Sub 34:00
                                     logger.debug("Giving Amateur due to a sub 34:00 AMC Time: " + amcTimePlayerBelowRank);
                                 }
-                                if (setIfTrue(amateur, p2srmSpTime < (40 * 60))) { // Sub 40:00
-                                    logger.debug("Giving Amateur due to a sub 40:00 P2SRM Time: " + p2srmSpTime);
+                                if (setIfTrue(amateur, p2srmSpTime < (37 * 60))) { // Sub 40:00
+                                    logger.debug("Giving Amateur due to a sub 37:00 P2SRM Time: " + p2srmSpTime);
                                 }
                                 if (setIfTrue(amateur, melInboundsTime < (33 * 60) + 30)) { // Sub 33:30
                                     logger.debug("Giving Amateur due to a sub 33:30 Mel Time: " + melInboundsTime);
