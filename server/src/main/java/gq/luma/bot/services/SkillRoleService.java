@@ -743,7 +743,7 @@ public class SkillRoleService implements Service {
                                 if (setIfTrue(professionals, singlePlayerRank <= 12)) { // Top 12
                                     logger.debug("Giving Professionals due to Top 10 Single Player Time: " + singlePlayerTime);
                                 }
-                                if (setIfTrue(professionals, amcTimePlayerAboveRank < (24 * 60) + 45)) { // Sub 26:45
+                                if (setIfTrue(professionals, amcTimePlayerAboveRank < (26 * 60) + 45)) { // Sub 26:45
                                     logger.debug("Giving Professionals due to a sub 26:45 AMC Time: " + amcTimePlayerAboveRank);
                                 }
                                 if (setIfTrue(professionals, amcTimePlayerBelowRank < (27 * 60))) { // Sub 27:00
