@@ -252,7 +252,7 @@ public class DunceCommand {
         }
     }
 
-    @Command(aliases = {"ban"}, description = "ban_description", usage = "", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296")
+    /*@Command(aliases = {"ban"}, description = "ban_description", usage = "", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296")
     public EmbedBuilder onBan(CommandEvent event) {
         User targetUser = null;
 
@@ -318,7 +318,7 @@ public class DunceCommand {
                 .setColor(BotReference.LUMA_COLOR)
                 .setDescription("Banned " + targetUser.getMentionTag() + " (" + targetUser.getDiscriminatedName() + ").")
                 .addField("Reason", reason.isEmpty() ? "*No reason given*" : reason);
-    }
+    }*/
 
     @Command(aliases = {"warn"}, description = "warn_description", usage = "", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296")
     public EmbedBuilder onWarn(CommandEvent event) {
