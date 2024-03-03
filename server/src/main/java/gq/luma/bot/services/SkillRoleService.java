@@ -440,10 +440,10 @@ public class SkillRoleService implements Service {
                             // Add new score
                             mapScores.computeIfAbsent(scoreUpdate.score, s -> new ArrayList<>()).add(scoreUpdate.metadata);
 
-                            // Clean out other scores that are now not top 200 or otherwise need to be updated
+                            // Clean out other scores that are now not top 500 or otherwise need to be updated
                             AtomicInteger rank = new AtomicInteger(1);
                             mapScores.forEach((score, metadatas) -> {
-                                if (rank.get() <= 200) {
+                                if (rank.get() <= 500) {
                                     // If the rank is below (greater than) the new score, it was likely updated
                                     if (rank.get() > scoreUpdate.postRank) {
                                         metadatas.forEach(m -> updatedSteamUsers.add(m.steamId));
