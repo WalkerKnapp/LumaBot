@@ -39,13 +39,13 @@ public class Luma {
 
 
     public static Database database;
-    public static NodeServer nodeServer;
+    //public static NodeServer nodeServer;
     public static TwitchApi twitchApi;
     public static Clarifai clarifai;
-    public static ClamAV clamAV;
+    //public static ClamAV clamAV;
     public static FilterManager filterManager;
     public static GDrive gDrive;
-    public static YoutubeApi youtubeApi;
+    //public static YoutubeApi youtubeApi;
     public static SteamApi steamApi;
     public static SkillRoleService skillRoleService;
     public static EvilsService evilsService;
@@ -60,21 +60,20 @@ public class Luma {
         services.add(database = new Database());
         services.add(evilsService = new EvilsService());
         //services.add(new WordEncoder());
-        services.add(youtubeApi = new YoutubeApi());
+        //services.add(youtubeApi = new YoutubeApi());
         //services.add(nodeServer = new NodeServer());
-        //services.add(twitchApi = new TwitchApi());
-        services.add(new TaskScheduler());
+        //services.add(new TaskScheduler());
         services.add(new WebServer());
-        services.add(clarifai = new Clarifai());
-        services.add(clamAV = new ClamAV());
-        services.add(new TesseractApi());
-        services.add(filterManager = new FilterManager());
-        services.add(gDrive = new GDrive());
-        services.add(steamApi = new SteamApi());
+        //services.add(clarifai = new Clarifai());
+        //services.add(clamAV = new ClamAV());
+        //services.add(new TesseractApi());
+        //services.add(filterManager = new FilterManager());
+        //services.add(gDrive = new GDrive());
+        //services.add(steamApi = new SteamApi());
         services.add(bot = new Bot());
         services.add(new PinsService());
         services.add(new UndunceService());
-        services.add(skillRoleService = new SkillRoleService());
+        //services.add(skillRoleService = new SkillRoleService());
         services.add(twitchApi = new TwitchApi());
         //services.add(new TwitchNotifier());
     }

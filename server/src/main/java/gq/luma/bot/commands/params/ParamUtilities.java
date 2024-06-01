@@ -83,12 +83,6 @@ public class ParamUtilities {
             if(StringUtilities.equalsAny(StringUtilities.getExtension(url), extensions)){
                 return new RawUrlInput(new URL(url));
             }
-            else if(url.contains("youtu") && Arrays.asList(types).contains(InputType.VIDEO)){
-                try{
-                    return new YoutubeInput(url);
-                }
-                catch (MalformedURLException ignored){ }
-            }
             else{
                 try {
                     URL javaUrl = new URL(url);

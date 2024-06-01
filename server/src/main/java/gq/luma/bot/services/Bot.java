@@ -75,18 +75,18 @@ public class Bot implements Service {
         CommandExecutor executor = new CommandExecutor(api);
         locales.forEach(executor::setLocalization);
         executor.registerCommand(new InfoCommand());
-        executor.registerCommand(new BotCommands());
-        executor.registerCommand(new AttributeCommands());
-        executor.registerCommand(new IdentifyCommand());
+        //executor.registerCommand(new BotCommands());
+        //executor.registerCommand(new AttributeCommands());
+        //executor.registerCommand(new IdentifyCommand());
         executor.registerCommand(new ServerCommands());
         executor.registerCommand(new RoleCommands());
         executor.registerCommand(new PinsCommands());
         executor.registerCommand(new DunceCommand());
-        executor.registerCommand(new ResourcesCommand());
+        //executor.registerCommand(new ResourcesCommand());
         executor.registerCommand(new VidCommand());
 
-        api.addMessageCreateListener(new SlowMode());
-        api.addMessageCreateListener(Luma.filterManager);
+        //api.addMessageCreateListener(new SlowMode());
+        //api.addMessageCreateListener(Luma.filterManager);
 
         api.getServers().forEach(server -> {
             try {

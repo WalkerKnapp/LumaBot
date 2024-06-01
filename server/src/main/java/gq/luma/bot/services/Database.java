@@ -1077,10 +1077,10 @@ public class Database implements Service {
                         jsonGenerator.writeStringField("steamLink", "https://steamcommunity.com/profiles/" + steamId);
                         String iverbLink = "https://board.portal2.sr/profile/" + steamId;
                         jsonGenerator.writeStringField("iverbLink", iverbLink);
-                        int rank = Luma.skillRoleService.calculateRoundedTotalPoints(Long.parseLong(steamId));
-                        if (rank != -1) {
-                            jsonGenerator.writeNumberField("iverbRank", rank);
-                        }
+                        //int rank = Luma.skillRoleService.calculateRoundedTotalPoints(Long.parseLong(steamId));
+                        //if (rank != -1) {
+                        //    jsonGenerator.writeNumberField("iverbRank", rank);
+                        //}
                         jsonGenerator.writeEndObject();
                     }
                 }

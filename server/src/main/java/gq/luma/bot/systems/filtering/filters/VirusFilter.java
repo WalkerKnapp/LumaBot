@@ -32,8 +32,9 @@ public class VirusFilter extends FileFilter {
     @Override
     public FilteringResult checkInputStream(InputStream is) throws IOException {
         logger.debug("Scanning potential virus...");
-        ClamAV.ClamAVResult result = Luma.clamAV.scan(is);
-        logger.debug("Got result: " + result.isOkay() + " " + result.getMessage());
-        return new FilteringResult(result.isOkay(), result.getMessage());
+        //ClamAV.ClamAVResult result = Luma.clamAV.scan(is);
+        //logger.debug("Got result: " + result.isOkay() + " " + result.getMessage());
+        //return new FilteringResult(result.isOkay(), result.getMessage());
+        return null;
     }
 }

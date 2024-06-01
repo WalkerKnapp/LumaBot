@@ -1,5 +1,6 @@
 package gq.luma.bot.services.web;
 
+import com.github.scribejava.apis.DiscordApi;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.oauth2.sdk.*;
@@ -46,7 +47,7 @@ public class WebSecConfigFactory implements ConfigFactory {
     @Override
     public Config build(Object... parameters) {
         final OAuth20Configuration oauthConfig = new OAuth20Configuration();
-        oauthConfig.setApi(new DiscordAuthApi());
+        oauthConfig.setApi(DiscordApi.instance());
         oauthConfig.setProfileDefinition(new DiscordProfileDefinition());
         oauthConfig.setWithState(false);
         oauthConfig.setScope("identify connections");
