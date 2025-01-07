@@ -439,10 +439,14 @@ public class IVerbApi {
                                     if(currentScoreMetadata == null) {
                                         throw new IllegalStateException("Encountered \"score\" parameter at an unexpected point.");
                                     }
-                                    if(jsonParser.nextToken() != JsonToken.VALUE_STRING) {
-                                        throw new IllegalStateException("\"score\" param is not a String, instead is a " + jsonParser.currentToken().name());
+                                    jsonParser.nextToken();
+                                    if (jsonParser.currentToken() == JsonToken.VALUE_STRING) {
+                                        currentScore = Integer.parseInt(jsonParser.getValueAsString());
+                                    } else if (jsonParser.currentToken() == JsonToken.VALUE_NUMBER_INT) {
+                                        currentScore = jsonParser.getValueAsInt();
+                                    } else {
+                                        throw new IllegalStateException("\"score\" param is not a String or int, instead is a " + jsonParser.currentToken().name());
                                     }
-                                    currentScore = Integer.parseInt(jsonParser.getValueAsString());
                                     break;
                                 case "date":
                                     if(currentScoreMetadata == null) {
