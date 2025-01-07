@@ -69,7 +69,7 @@ public class Luma {
         //services.add(new TesseractApi());
         //services.add(filterManager = new FilterManager());
         //services.add(gDrive = new GDrive());
-        //services.add(steamApi = new SteamApi());
+        services.add(steamApi = new SteamApi());
         services.add(bot = new Bot());
         services.add(new PinsService());
         services.add(new UndunceService());
