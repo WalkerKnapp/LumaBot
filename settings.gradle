@@ -18,3 +18,8 @@ include 'common'
 //include ':javacord-core'
 //project(':javacord-core').projectDir = new File("../javacord/javacord-core")
 
+includeBuild("external/connect2id-oauth-for-twitch") {
+    dependencySubstitution {
+        substitute module('com.nimbusds:oauth2-oidc-sdk')
+    }
+}

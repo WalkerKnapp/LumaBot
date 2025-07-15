@@ -597,7 +597,7 @@ public class WebServer implements Service {
                 }, securityConfig, "discord"))
                 .get("/login/twitch", SecurityHandler.build(exchange -> {
                     securityConfig.getHttpActionAdapter()
-                            .adapt(securityConfig.getClients().findClient("discord").orElseThrow()
+                            .adapt(securityConfig.getClients().findClient("twitch").orElseThrow()
                                             .getRedirectionAction(new UndertowWebContext(exchange), securityConfig.getSessionStoreFactory().newSessionStore(exchange)).orElseThrow(),
                                     new UndertowWebContext(exchange));
                     exchange.endExchange();
