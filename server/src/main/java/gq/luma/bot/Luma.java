@@ -78,5 +78,7 @@ public class Luma {
         }
 
         logger.info("Finished loading services!");
+
+        System.out.println("Completed Luma init!");
     }
 }

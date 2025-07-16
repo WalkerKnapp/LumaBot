@@ -41,3 +41,5 @@ build/
 server/web/node_modules/
 server/web/dist
 /deploy_key.txt
+/web/node_modules/
+/web/dist/

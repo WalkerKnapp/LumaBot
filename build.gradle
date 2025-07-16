@@ -4,10 +4,7 @@ subprojects {
 
     repositories {
         mavenCentral()
-        jcenter()
-        maven { url 'https://jitpack.io' }
         maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
-        maven { url "https://repository.apache.org/snapshots" }
     }
 
     dependencies {
@@ -16,12 +13,5 @@ subprojects {
         implementation group: 'org.apache.logging.log4j', name: 'log4j-slf4j2-impl', version: '2.19.0'
         implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.19.0'
         implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.19.0'
-
-
-        implementation files(rootDir.getAbsolutePath() + "/libs/minimal-json-0.9.6-SNAPSHOT.jar")
-        implementation group: 'commons-io', name: 'commons-io', version: '2.6'
-        implementation group: 'com.squareup.okhttp3', name: 'okhttp', version: '3.9.1'
-
-        implementation 'com.google.apis:google-api-services-drive:v3-rev103-1.23.0'
     }
 }
