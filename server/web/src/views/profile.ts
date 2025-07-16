@@ -53,8 +53,8 @@ export class Profile extends LitElement {
                 <div class="c-tableRow">
                     <div class="c-tableCell c-tableHeader">Name</div>
                     <div class="c-tableCell c-tableHeader">Twitch Link</div>
-                    <div class="c-tableCell c-tableHeader">Announce Stream?</div>
-                    <div class="c-tableCell c-tableHeader c-center"></div>
+                    <div class="c-tableCell c-tableHeader"></div>
+                    <div class="c-tableCell c-tableHeader"></div>
                     <div class="c-tableCell c-tableHeader c-center">Remove</div>
                 </div>
                 ${this.userInfo.twitchAccounts.map(this.generateTwitchTableRow)}
@@ -100,72 +100,13 @@ export class Profile extends LitElement {
 
         console.log(account);
 
-        switch (account.notify) {
-            case 0:
-                account.notifyString = "Not Announced";
-                break;
-            case 1:
-                account.notifyString = "Under Mod Review";
-                break;
-            case 2:
-                account.notifyString = "Announced";
-                break;
-
-        }
-
-        let checked: boolean = account.notify > 0;
-
         return html`<div class="c-tableRow">
                     <div class="c-tableCell">${account.name}</div>
                     <div class="c-tableCell">${account.link != undefined ? html`<a href="${account.link}" target="_blank">Twitch  ${feather.externalLink}</a>` : ''}</div>
-                    <div class="c-tableCell"><p class="c-notifytext" account="${account.id}">${account.notifyString}</p>
-                        <div class="mdc-checkbox c-purplecheck" id="check">
-                            <input type="checkbox" class="mdc-checkbox__native-control" id="checkbox-1" @change=${(e: Event) => {this.handleCheck(e, account)}} ?checked=${checked}>
-                            <div class="mdc-checkbox__background">
-                                <svg class="mdc-checkbox__checkmark"
-                                    viewBox="0 0 24 24">
-                                    <path class="mdc-checkbox__checkmark-path"
-                                        fill="none"
-                                         d="M1.73,12.91 8.1,19.28 22.79,4.59"/>
-                                </svg>
-                                <div class="mdc-checkbox__mixedmark"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="c-tableCell c-center"></div>
+                    <div class="c-tableCell"></div>
+                    <div class="c-tableCell"></div>
                     <div class="c-tableCell c-center"><button class="mdc-button--raised c-red" @click=${() => { this.removeAccount(account.id)}}><span class="mdc-button__label">X</span></button></div>
                 </div>`
-    };
-
-    handleCheck=(e: Event, account: any)=>{
-        if(e.target != null && e.target instanceof HTMLInputElement) {
-            let inputElement: HTMLInputElement = e.target;
-            fetch('/user/' + Profile.discordIdS + '/connections/twitch/' + account.id, {
-                method: 'PATCH',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'text/plain'
-                },
-                body: JSON.stringify({notify: inputElement.checked ? 1 : 0})
-            });
-
-            if (inputElement.checked) {
-                account.notify = 1;
-                account.notifyString = "Under Mod Review";
-            } else {
-                account.notify = 0;
-                account.notifyString = "Not Announced";
-            }
-
-            // @ts-ignore
-            this.shadowRoot.querySelectorAll(".c-notifytext").forEach(value => {
-                console.log(value.getAttribute("account") + " vs " + account.id);
-                if (value.getAttribute("account") == account.id) {
-                    value.textContent = account.notifyString;
-                    console.log(account.notifyString);
-                }
-            })
-        }
     };
 
     removeAccount=(accountId: string)=>{

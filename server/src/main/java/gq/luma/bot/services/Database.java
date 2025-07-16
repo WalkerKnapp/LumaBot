@@ -72,7 +72,6 @@ public class Database implements Service {
     private PreparedStatement getVerifiedConnectionsByType;
     private PreparedStatement getVerifiedConnectionsByTypeAndId;
     private PreparedStatement updateVerifiedConnectionRemovedByUserServerAndId;
-    private PreparedStatement updateVerifiedConnectionNotifyByUserServerAndId;
     private PreparedStatement insertVerifiedConnection;
 
     private PreparedStatement getPingLeaderboard;
@@ -143,7 +142,6 @@ public class Database implements Service {
         getVerifiedConnectionsByType = conn.prepareStatement("SELECT * FROM verified_connections WHERE connection_type = ?");
         getVerifiedConnectionsByTypeAndId = conn.prepareStatement("SELECT * FROM verified_connections WHERE connection_type = ? AND id = ?");
         updateVerifiedConnectionRemovedByUserServerAndId = conn.prepareStatement("UPDATE verified_connections SET removed = ? WHERE user_id = ? AND server_id = ? AND id = ?");
-        updateVerifiedConnectionNotifyByUserServerAndId = conn.prepareStatement("UPDATE verified_connections SET notify = ? WHERE user_id = ? AND server_id = ? AND id = ?");
         insertVerifiedConnection = conn.prepareStatement("INSERT INTO verified_connections (user_id, server_id, id, connection_type, connection_name, token) VALUES (?,?,?,?,?,?)");
 
         getPingLeaderboard = conn.prepareStatement("SELECT * FROM ping_leaderboard ORDER BY `ping`");
@@ -804,22 +802,6 @@ public class Database implements Service {
             e.printStackTrace();
         }
     }
-
-    public void setNotifyConnection(long discordId, long serverId, String id, int notify) {
-        try {
-            synchronized (updateVerifiedConnectionNotifyByUserServerAndId) {
-                System.out.println("Setting notifyconnection for user " + discordId + " conid" + id + " to " + notify);
-                updateVerifiedConnectionNotifyByUserServerAndId.setInt(1, notify);
-                updateVerifiedConnectionNotifyByUserServerAndId.setLong(2, discordId);
-                updateVerifiedConnectionNotifyByUserServerAndId.setLong(3, serverId);
-                updateVerifiedConnectionNotifyByUserServerAndId.setString(4, id);
-                System.out.println("Updated " + updateVerifiedConnectionNotifyByUserServerAndId.executeUpdate() + " rows.");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
 
     public void addUserRecord(long userId, long serverId, String accessToken) {
         try {

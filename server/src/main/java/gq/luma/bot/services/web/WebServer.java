@@ -4,8 +4,6 @@ import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonObject;
 import com.eclipsesource.json.JsonValue;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
 import com.lukaspradel.steamapi.core.exception.SteamApiException;
 import com.lukaspradel.steamapi.data.json.playersummaries.GetPlayerSummaries;
 import com.lukaspradel.steamapi.webapi.request.GetPlayerSummariesRequest;
@@ -28,7 +26,6 @@ import io.undertow.server.session.SessionAttachmentHandler;
 import io.undertow.server.session.SessionCookieConfig;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
-import io.undertow.util.Methods;
 import io.undertow.util.PathTemplateMatch;
 import okhttp3.Request;
 import org.javacord.api.entity.message.MessageBuilder;
@@ -495,39 +492,6 @@ public class WebServer implements Service {
                         });
                     }
                 })
-                .add(Methods.PATCH, "/user/{did}/connections/twitch/{connid}", new ProfileRestrictedHandler(null, securityConfig, false) {
-                    @Override
-                    public void servePage(HttpServerExchange exchange, DiscordProfile discordProfile, SteamOpenIdProfile steamProfile, OidcProfile twitchProfile) {
-                        PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
-                        long discordId = Long.parseLong(pathMatch.getParameters().get("did"));
-                        String connId = pathMatch.getParameters().get("connid");
-
-                        if (discordProfile.getRoles().contains("ROLE_DISCORD_ADMIN")) {
-                            int notifyValue = extractTopLevelJsonInt(readRequestBody(exchange, 256), "notify");
-                            if(notifyValue >= 0 && notifyValue <= 2) {
-                                Luma.database.setNotifyConnection(discordId, serverId, connId, notifyValue);
-                                exchange.setStatusCode(200);
-                                exchange.endExchange();
-                            } else {
-                                exchange.setStatusCode(400);
-                                exchange.endExchange();
-                            }
-                        } else if (discordId == Long.parseLong(discordProfile.getId())) {
-                            int notifyValue = extractTopLevelJsonInt(readRequestBody(exchange, 256), "notify");
-                            if(notifyValue == 0 || notifyValue == 1) {
-                                Luma.database.setNotifyConnection(discordId, serverId, connId, notifyValue);
-                                exchange.setStatusCode(200);
-                                exchange.endExchange();
-                            } else {
-                                exchange.setStatusCode(400);
-                                exchange.endExchange();
-                            }
-                        } else {
-                            exchange.setStatusCode(403);
-                            exchange.endExchange();
-                        }
-                    }
-                })
                 .delete("/user/{did}/connections/{connid}", new ProfileRestrictedHandler(null, securityConfig, false) {
                     @Override
                     public void servePage(HttpServerExchange exchange, DiscordProfile discordProfile, SteamOpenIdProfile steamProfile, OidcProfile twitchProfile) {
@@ -553,48 +517,5 @@ public class WebServer implements Service {
                 .build();
 
         webpageServer.start();
-    }
-
-    private byte[] readRequestBody(HttpServerExchange exchange, int size) {
-        if (exchange.isRequestChannelAvailable()) {
-            try(StreamSourceChannel channel = exchange.getRequestChannel()) {
-                byte[] patchData = new byte[size];
-                ByteBuffer buffer = ByteBuffer.wrap(patchData);
-                channel.read(buffer);
-                return patchData;
-            } catch (IOException e) {
-                e.printStackTrace();
-                exchange.setStatusCode(403);
-                exchange.endExchange();
-                return null;
-            }
-        } else {
-            exchange.setStatusCode(403);
-            logger.debug("Channel is not available for PATCH request");
-            exchange.endExchange();
-            return null;
-        }
-    }
-
-    private int extractTopLevelJsonInt(byte[] json, String key) {
-        if(json == null) {
-            return -1;
-        }
-        try(JsonParser parser = Luma.jsonFactory.createParser(json)) {
-            while(!parser.isClosed()) {
-                if (parser.nextToken() == JsonToken.FIELD_NAME) {
-                    if (key.equals(parser.currentName())) {
-                        if (parser.nextToken() != JsonToken.VALUE_NUMBER_INT) {
-                            logger.debug(key + " is not a string for inputted data");
-                            return -1;
-                        }
-                        return parser.getValueAsInt();
-                    }
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return -1;
     }
 }
