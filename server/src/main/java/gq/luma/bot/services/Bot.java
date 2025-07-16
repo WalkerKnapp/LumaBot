@@ -56,7 +56,7 @@ public class Bot implements Service {
                 .setWaitForServersOnStartup(true).setWaitForUsersOnStartup(true)
                 .setAllIntents().login().join();
 
-        api.updateActivity("?L help");
+        api.updateActivity("i'm hopping");
         CommandExecutor executor = new CommandExecutor(api);
         locales.forEach(executor::setLocalization);
         executor.registerCommand(new InfoCommand());
