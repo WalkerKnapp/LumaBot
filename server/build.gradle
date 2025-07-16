@@ -2,8 +2,6 @@ plugins {
     id 'application'
 }
 
-applicationDefaultJvmArgs = ['-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dlog4j2.formatMsgNoLookups=true']
-
 mainClassName = "gq.luma.bot.Luma"
 
 sourceCompatibility = 11
