@@ -25,7 +25,7 @@ export class LoginSrcom extends LitElement {
     <div class="c-parentCard mdc-card">
         <h1>Add Speedrun.com Account to ${this.userInfo.discrimName}</h1>
         <hr>
-        <span style="display: inline">Please retrieve your API key from <a href="https://www.speedrun.com/api/auth" style="display: inline">www.speedrun.com/api/auth</a></span>
+        <span style="display: inline">Please retrieve your API key from <a href="https://www.speedrun.com/settings/api" style="display: inline">www.speedrun.com/settings/api</a></span>
         <div class="mdc-text-field" id="api-key" style="margin-top: 1em">
             <input type="text" id="api-key-field" class="mdc-text-field__input">
             <label class="mdc-floating-label" for="api-key-field">API Key</label>
