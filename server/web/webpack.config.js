@@ -111,7 +111,7 @@ module.exports = {
         }),
         new webpack.IgnorePlugin({ resourceRegExp: /vertx/ }),
         new CompressionPlugin({
-            filename: '[path].gz[query]',
+            filename: 'bundle.gz[query]',
             algorithm: 'gzip',
             test: /\.js$|\.css$|\.html$/,
             threshold: 10240,
