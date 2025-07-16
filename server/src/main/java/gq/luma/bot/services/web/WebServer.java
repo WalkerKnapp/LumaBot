@@ -11,7 +11,6 @@ import com.lukaspradel.steamapi.data.json.playersummaries.GetPlayerSummaries;
 import com.lukaspradel.steamapi.webapi.request.GetPlayerSummariesRequest;
 import com.lukaspradel.steamapi.webapi.request.builders.SteamWebApiRequestFactory;
 import gq.luma.bot.Luma;
-import gq.luma.bot.commands.subsystem.permissions.PermissionSet;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.services.Bot;
 import gq.luma.bot.services.Service;
@@ -32,16 +31,10 @@ import io.undertow.util.HttpString;
 import io.undertow.util.Methods;
 import io.undertow.util.PathTemplateMatch;
 import okhttp3.Request;
-import org.javacord.api.DiscordApi;
 import org.javacord.api.entity.message.MessageBuilder;
 import org.javacord.api.entity.permission.Role;
-import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.user.User;
 import org.pac4j.core.config.Config;
-import org.pac4j.core.context.session.SessionStore;
-import org.pac4j.core.context.session.SessionStoreFactory;
-import org.pac4j.core.exception.http.FoundAction;
-import org.pac4j.core.profile.CommonProfile;
 import org.pac4j.core.profile.ProfileManager;
 import org.pac4j.core.profile.UserProfile;
 import org.pac4j.oidc.profile.OidcProfile;
@@ -59,15 +52,11 @@ import org.xnio.streams.ChannelOutputStream;
 
 import java.io.*;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
-import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.sql.SQLException;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -77,10 +66,7 @@ import java.util.stream.Collectors;
 public class WebServer implements Service {
     private static final Logger logger = LoggerFactory.getLogger(WebServer.class);
 
-    private Path VERIFY_DASHBOARD_PATH;
     private Path CDN_PATH;
-
-    private Undertow webpageServer;
 
     private static class ProfileRestrictedHandler implements HttpHandler {
         private final WebPage pageToServe;
@@ -172,25 +158,10 @@ public class WebServer implements Service {
             }
         }
 
-        private final Map<Long, LinkedList<UserJoin>> last5JoinTimes = new HashMap<>();
-
-        private static class UserJoin {
-            private long userId;
-            private long time;
-            public boolean quarantined = false;
-
-            private UserJoin(long userId, long time) {
-                this.userId = userId;
-                this.time = time;
-            }
-        }
-
         private static final long VERIFIED_ROLE = 558133536784121857L;
         private static final long UNVERIFIED_ROLE = 804200620869156885L;
-        private static final long VERIFICATION_REVIEW_ROLE = 596219515251982347L;
         private static final long MOD_NOTIFICATIONS_ROLE = 797178777754140722L;
 
-        private static final long VERIFICATION_REVIEW_CHANNEL = 586288946271617024L;
         private static final long VERIFICATION_LOG_CHANNEL = 782042783442927616L;
 
         private synchronized void attemptToVerifyUser(DiscordProfile profile, long serverId, String ip) {
@@ -202,55 +173,12 @@ public class WebServer implements Service {
                         .send(channel);
             }));
 
-
-            // Quarantine if users joined in last 5 minutes exceeds 5
-            LinkedList<UserJoin> last5Joins = last5JoinTimes.computeIfAbsent(serverId, l -> new LinkedList<>());
-            while (last5Joins.peek() != null && last5Joins.peek().time < System.currentTimeMillis() - (1000 * 60 * 5)) {
-                last5Joins.pop();
-            }
-            UserJoin thisJoin = new UserJoin(Long.parseLong(profile.getId()), System.currentTimeMillis());
-            last5Joins.push(thisJoin);
-
-            /*
-            if(last5Joins.size() > 5) {
-                Bot.api.getServerById(serverId).ifPresent(server -> {
-                    for (UserJoin join : last5Joins) {
-                        if (!join.quarantined) {
-                            join.quarantined = true;
-                            Bot.api.getUserById(join.userId).thenAccept(user -> {
-                                Bot.api.getRoleById(VERIFIED_ROLE).ifPresent( role -> {
-                                    server.removeRoleFromUser(user, role);
-                                });
-                                Bot.api.getRoleById(VERIFICATION_REVIEW_ROLE).ifPresent( role -> {
-                                    server.addRoleToUser(user, role);
-                                });
-                                Bot.api.getTextChannelById(VERIFICATION_REVIEW_CHANNEL).ifPresent(channel -> {
-                                    new MessageBuilder()
-                                            .append(user)
-                                            .append("\nWelcome to the Portal 2 Speedrun Server")
-                                            .append("\nIt looks like something went wrong while verifying your profile. Please wait for a few minutes until a Mod can review.")
-                                            .append("\nIn the mean time, you can help us by telling us why you joined the server.")
-                                            .send(channel);
-                                });
-                                Bot.api.getTextChannelById(DELETED_MESSAGES_CHANNEL).ifPresent(channel -> {
-                                    new MessageBuilder()
-                                            .append("Quarantined user ").append(user.getDiscriminatedName()).append(".\n")
-                                            .append("Reason:\n")
-                                            .append("Joined within 5 minutes of more than 5 other users.")
-                                            .send(channel);
-                                });
-                            });
-                        }
-                        Luma.database.updateUserRecordVerified(Long.parseLong(profile.getId()), serverId, 1);
-                    }
-                });
-                return;
-            }*/
+            long userId = Long.parseLong(profile.getId());
 
             Role modNotifRole = Bot.api.getRoleById(MOD_NOTIFICATIONS_ROLE).orElseThrow(AssertionError::new);
 
             Bot.api.getServerById(serverId).ifPresent(server -> {
-                Bot.api.getUserById(thisJoin.userId).thenAccept(user -> {
+                Bot.api.getUserById(userId).thenAccept(user -> {
                     AtomicBoolean altNotice = new AtomicBoolean(false);
 
                     StringBuilder altNoticeText = new StringBuilder(modNotifRole.getMentionTag())
@@ -259,26 +187,6 @@ public class WebServer implements Service {
 
                     // Check if the IP address matches an existing user
                     List<Long> prevConnections = Luma.database.getUserConnectionAttemptsByIP(ip);
-                    /*if(prevConnections.size() > 0) {
-
-                        Bot.api.getRoleById(VERIFIED_ROLE).ifPresent(role -> {
-                            server.removeRoleFromUser(user, role).join();
-                        });
-                        Bot.api.getRoleById(VERIFICATION_REVIEW_ROLE).ifPresent(role -> {
-                            server.addRoleToUser(user, role).join();
-                        });
-                        Bot.api.getTextChannelById(VERIFICATION_REVIEW_CHANNEL).ifPresent(channel -> {
-                            new MessageBuilder()
-                                    .append(user)
-                                    .append("\nWelcome to the Portal 2 Speedrun Server")
-                                    .append("\nIt looks like something went wrong while verifying your profile. Please wait for a few minutes until a Mod can review.")
-                                    .append("\nIn the mean time, you can help us by telling us why you joined the server.")
-                                    .send(channel).join();
-                        });
-
-                        //Luma.database.updateUserRecordVerified(Long.parseLong(profile.getId()), serverId, 1);
-                        //return;
-                    }*/
 
                     for (long id : prevConnections) {
                         // Skip previous connections that match the current user.
@@ -287,7 +195,6 @@ public class WebServer implements Service {
                         }
 
                         altNotice.set(true);
-                        thisJoin.quarantined = true;
 
                         try {
                             User mention = Bot.api.getUserById(id).get(5, TimeUnit.SECONDS);
@@ -301,7 +208,7 @@ public class WebServer implements Service {
                         }
                     }
 
-                    Luma.database.getVerifiedConnectionsByUser(thisJoin.userId, serverId).forEach((type, ids) -> {
+                    Luma.database.getVerifiedConnectionsByUser(userId, serverId).forEach((type, ids) -> {
                         for (String id : ids) {
                             Luma.database.getVerifiedConnectionsById(id, type).stream()
                                     .filter(checkUser -> !checkUser.equals(user))
@@ -314,14 +221,6 @@ public class WebServer implements Service {
                                     });
                         }
                     });
-
-                    List<String> evilMatches = Luma.evilsService.checkEvil(ip);
-                    if (!evilMatches.isEmpty()) {
-                        altNotice.set(true);
-                        altNoticeText.append("\t - IP Address marked as abusive in the following databases: `")
-                                .append(String.join("` , `", evilMatches))
-                                .append("`\n");
-                    }
 
                     if (altNotice.get()) {
                         Bot.api.getTextChannelById(VERIFICATION_LOG_CHANNEL).ifPresent(channel -> {
@@ -391,7 +290,7 @@ public class WebServer implements Service {
                     String id = connectionObj.get("id").asString();
                     String type = connectionObj.get("type").asString();
                     if("steam".equals(type)) {
-                        id = String.valueOf(Long.valueOf(id) | 0x100000000L);
+                        id = String.valueOf(Long.parseLong(id) | 0x100000000L);
                         //GetPlayerSummariesRequest request = SteamWebApiRequestFactory.createGetPlayerSummariesRequest(List.of(id));
                         //GetPlayerSummaries summary = Luma.steamApi.steamWebApiClient.processRequest(request);
                         //id = summary.getResponse().getPlayers().get(0).getSteamid();
@@ -412,7 +311,7 @@ public class WebServer implements Service {
         }
     }
 
-    private class FileServeHandler implements HttpHandler {
+    private static class FileServeHandler implements HttpHandler {
         private final ByteBuffer uncompressedBuffer;
 
         private final boolean supportsBr;
@@ -424,8 +323,8 @@ public class WebServer implements Service {
             System.out.println("Loading page " + path.toString() + " =====");
             this.uncompressedBuffer = ByteBuffer.wrap(Files.readAllBytes(path));
             logger.debug("Uncompressed - " + this.uncompressedBuffer.capacity());
-            Path brPath = Paths.get(path.toString() + ".br");
-            Path gzipPath = Paths.get(path.toString() + ".gz");
+            Path brPath = Paths.get(path + ".br");
+            Path gzipPath = Paths.get(path + ".gz");
             supportsBr = Files.exists(brPath);
             supportsGzip = Files.exists(gzipPath);
             if(supportsBr) {
@@ -443,89 +342,20 @@ public class WebServer implements Service {
         }
 
         @Override
-        public void handleRequest(HttpServerExchange exchange) throws Exception {
+        public void handleRequest(HttpServerExchange exchange) {
             final List<String> res = exchange.getRequestHeaders().get(Headers.ACCEPT_ENCODING);
-            //System.out.println("Got request for resource. =========");
-            //System.out.println(exchange.getRequestHeaders().toString());
-            //System.out.println("Accept-Encoding Headers: " + res.size());
-            //res.forEach(System.out::println);
-            //System.out.println(res.size());
-            //System.out.println(exchange.getRequestHeaders().count("accept-encoding"));
-            //System.out.println(res.get(0));
-            //int algo = res.size() > 0 ? getOptimalCompressionAlgoritm(res.get(0).toCharArray()) : 0;
-            //System.out.println(algo);
             if(res.contains("br") && supportsBr) {
-                //System.out.println("Sending br buffer.");
                 brBuffer.rewind();
                 exchange.getResponseHeaders().add(Headers.CONTENT_ENCODING, "br");
                 exchange.getResponseSender().send(brBuffer);
             } else if(res.contains("gzip") && supportsGzip) {
-                //System.out.println("Sending gzip buffer.");
                 gzipBuffer.rewind();
                 exchange.getResponseHeaders().add(Headers.CONTENT_ENCODING, "gzip");
                 exchange.getResponseSender().send(gzipBuffer);
             } else {
-                //System.out.println("Sending uncompressed buffer.");
                 uncompressedBuffer.rewind();
                 exchange.getResponseSender().send(uncompressedBuffer);
             }
-        }
-    }
-
-    private int getOptimalCompressionAlgoritm(char[] compressionCookie) {
-        boolean gzipSupportPersist = false;
-
-        boolean gzipSupport = false;
-        boolean brSupport = false;
-        int paramRead = 0;
-        for(char c : compressionCookie) {
-            if(c == ',' || c == ' ') {
-                if(brSupport) {
-                    return 2;
-                }
-                gzipSupportPersist = gzipSupportPersist || gzipSupport;
-                paramRead = 0;
-                continue;
-            } else {
-                paramRead++;
-            }
-
-            if(paramRead == 1) {
-                if(c == 'g') {
-                    gzipSupport = true;
-                } else if (c == 'b') {
-                    brSupport = true;
-                }
-            } else if (paramRead == 2) {
-                if(c == 'z') {
-                    brSupport = false;
-                } else if(c == 'r') {
-                    gzipSupport = false;
-                } else {
-                    brSupport = false;
-                    gzipSupport = false;
-                }
-            } else if (paramRead == 3) {
-                brSupport = false;
-                if(c != 'i') {
-                    gzipSupport = false;
-                }
-            } else if (paramRead == 4) {
-                if (c != 'p') {
-                    gzipSupport = false;
-                }
-            } else {
-                gzipSupport = false;
-            }
-        }
-        if(brSupport && gzipSupportPersist) {
-          return 3;
-        } if(brSupport) {
-            return 2;
-        } else if (gzipSupportPersist) {
-            return 1;
-        } else {
-            return 0;
         }
     }
 
@@ -533,8 +363,6 @@ public class WebServer implements Service {
     public void startService() throws IOException {
         WebPage profilePage = new WebPage(Paths.get(FileReference.webRoot.getAbsolutePath(), "profile", "profile.html"));
         WebPage srcomLoginPage = new WebPage(Paths.get(FileReference.webRoot.getAbsolutePath(), "loginsrcom", "loginsrcom.html"));
-        VERIFY_DASHBOARD_PATH = Paths.get(FileReference.webRoot.getAbsolutePath(), "verifydashboard.html");
-        initVerifyDashboardPage();
         CDN_PATH = Paths.get(FileReference.webRoot.getAbsolutePath(), "cdn");
 
         final Config securityConfig = new WebSecConfigFactory().build();
@@ -602,11 +430,6 @@ public class WebServer implements Service {
                                     new UndertowWebContext(exchange));
                     exchange.endExchange();
                 }, securityConfig, "discord"))
-                .get("/dashboard", SecurityHandler.build(exchange -> {
-                    serveVerifyDashboard(exchange, Bot.api, 146404426746167296L);
-                }, securityConfig, "discord", "discord_admin"))
-                .get("/dashboard/twitch", SecurityHandler.build(new FileServeHandler("twitchverifydash", "twitchverifydash.html"), securityConfig, "discord", "discord_admin"))
-                .get("/twitchverifydash/bundle.js", SecurityHandler.build(new FileServeHandler("twitchverifydash", "bundle.js"), securityConfig, "discord", "discord_admin"))
                 .get("/callback", CallbackHandler.build(securityConfig, null, null))
                 .get("/logout", new LogoutHandler(securityConfig, "/"))
                 .get("/user/{did}", //new ProfileRestrictedHandler(null, securityConfig, false) {
@@ -619,7 +442,7 @@ public class WebServer implements Service {
                                     .add(new HttpString("Pragma"), "no-cache")
                                     .add(new HttpString("Expires"), "0");
                             PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
-                            long discordId = Long.parseLong(pathMatch.getParameters().get("did"));;
+                            long discordId = Long.parseLong(pathMatch.getParameters().get("did"));
                             //if(discordId != Long.valueOf(discordProfile.getId())) {
                             //    exchange.setStatusCode(403);
                             //    exchange.endExchange();
@@ -678,7 +501,7 @@ public class WebServer implements Service {
                             System.out.println(apiKey);
 
                             try {
-                                if (discordId == Long.valueOf(discordProfile.getId()) && !apiKey.isEmpty()) {
+                                if (discordId == Long.parseLong(discordProfile.getId()) && !apiKey.isEmpty()) {
                                     if (SRcomApi.requestProfile(discordId, serverId, apiKey)) {
                                         System.out.println("Profile requested successfully!");
                                         exchange.setStatusCode(200);
@@ -751,31 +574,13 @@ public class WebServer implements Service {
                             exchange.endExchange();
                         }
                     }
-                })
-                .get("/connections/twitch", new ProfileRestrictedHandler(null, securityConfig, false) {
-                    @Override
-                    public void servePage(HttpServerExchange exchange, DiscordProfile discordProfile, SteamOpenIdProfile steamProfile, OidcProfile twitchProfile) {
-
-                        if (discordProfile.getRoles().contains("ROLE_DISCORD_ADMIN")) {
-                            try (StreamSinkChannel sinkChannel = exchange.getResponseChannel()){
-                                try (JsonGenerator generator = Luma.jsonFactory.createGenerator(new BufferedOutputStream(new ChannelOutputStream(sinkChannel)))) {
-                                    Luma.database.writeStreamsJson(serverId, generator);
-                                    generator.flush();
-                                }
-                                sinkChannel.flush();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                            exchange.endExchange();
-                        } else {
-                            exchange.setStatusCode(403);
-                            exchange.endExchange();
-                        }
-                    }
                 });
 
 
-        webpageServer = Undertow.builder()
+        //case "api.luma.gq":
+        //apiHandler.handleRequest(exchange);
+        //break;
+        Undertow webpageServer = Undertow.builder()
                 .setServerOption(UndertowOptions.ENABLE_HTTP2, true)
                 .addHttpListener(8000, "0.0.0.0")
                 .setHandler(new SessionAttachmentHandler(exchange -> {
@@ -792,8 +597,8 @@ public class WebServer implements Service {
                             verifyWebpageHandler.handleRequest(exchange);
                             break;
                         //case "api.luma.gq":
-                            //apiHandler.handleRequest(exchange);
-                            //break;
+                        //apiHandler.handleRequest(exchange);
+                        //break;
                         default:
                             logger.debug("No host name found for host: " + exchange.getHostName());
                             exchange.setStatusCode(404);
@@ -833,7 +638,7 @@ public class WebServer implements Service {
         try(JsonParser parser = Luma.jsonFactory.createParser(json)) {
             while(!parser.isClosed()) {
                 if (parser.nextToken() == JsonToken.FIELD_NAME) {
-                    if (key.equals(parser.getCurrentName())) {
+                    if (key.equals(parser.currentName())) {
                         if (parser.nextToken() != JsonToken.VALUE_NUMBER_INT) {
                             logger.debug(key + " is not a string for inputted data");
                             return -1;
@@ -846,119 +651,5 @@ public class WebServer implements Service {
             e.printStackTrace();
         }
         return -1;
-    }
-
-    private boolean userHasPerm(long serverId, long userId, PermissionSet.Permission permission) {
-        try {
-            for (PermissionSet checkPerm : Luma.database.getPermission(serverId, PermissionSet.PermissionTarget.USER, userId)) {
-                if (checkPerm.effectivelyHasPermission(permission)) {
-                    return true;
-                }
-            }
-            return false;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    private String verifyDashboardBasePage;
-    private int userBoxesRep;
-
-    private void initVerifyDashboardPage() throws IOException {
-
-        byte[] verifyDashboardBuffer = new byte[(int) Files.size(VERIFY_DASHBOARD_PATH)];
-
-        try (SeekableByteChannel sbc = Files.newByteChannel(VERIFY_DASHBOARD_PATH);
-             InputStream stream = Channels.newInputStream(sbc)) {
-            int c;
-            int i = 0;
-            while ((c = stream.read()) != -1) {
-                if(c == '$') {
-                    if((c = stream.read()) == '$') {
-                        if((c = stream.read()) == '{') {
-                            StringBuilder sb = new StringBuilder();
-
-                            while((c = stream.read()) != '}') {
-                                sb.append((char)c);
-                            }
-
-                            switch (sb.toString()) {
-                                case "user_boxes":
-                                    userBoxesRep = i; break;
-                            }
-
-                            continue;
-                        } else {
-                            verifyDashboardBuffer[i] = '$';
-                            i++;
-                            verifyDashboardBuffer[i] = '$';
-                            i++;
-                        }
-                    } else {
-                        verifyDashboardBuffer[i] = '$';
-                        i++;
-                    }
-                }
-                verifyDashboardBuffer[i] = (byte) c;
-                i++;
-            }
-        }
-
-        verifyDashboardBasePage = new String(verifyDashboardBuffer).trim();
-    }
-
-    private void serveVerifyDashboard(HttpServerExchange exchange, DiscordApi api, long serverId) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(verifyDashboardBasePage, 0, userBoxesRep);
-
-        Server server = api.getServerById(serverId).orElse(null);
-
-        if(server != null) {
-            final Collection<User> members = server.getMembers();
-
-            for(User user : members) {
-                sb.append("<div class=\"userbox hidden\" name=\"").append(user.getDiscriminatedName()).append("\">");
-                boolean userIsVerified = Luma.database.getUserVerified(user.getId()) == 2;
-                boolean userHasVerifiedRole = user.getRoles(server).stream().anyMatch(role -> role.getId() == 558133536784121857L);
-                if(userIsVerified) {
-                    // Add the checkmark
-                    sb.append("<svg class=\"tablemargin\" width=\"30\" height=\"30\" viewBox=\"0 0 48 48\" fill=\"none\" stroke=\"green\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polyline points=\"40 12 18 34 8 24\"></polyline></svg>");
-                } else if(userHasVerifiedRole) {
-                    // Add the question mark
-                    sb.append("<svg class=\"tablemargin\" width=\"30\" height=\"30\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"yellow\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><uncompressedBuffer d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\"></uncompressedBuffer><line x1=\"12\" y1=\"17\" x2=\"12\" y2=\"17\"></line></svg>");
-                } else {
-                    // Add the X mark
-                    sb.append("<svg class=\"tablemargin\" width=\"30\" height=\"30\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"red\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"></line><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"></line></svg>");
-                }
-                sb.append("<div class=\"image-cropper tablemargin\">")
-                        .append("<img src=\"").append(user.getAvatar().getUrl().toString()).append("\" alt=\"Cannot Load PFP\"></img>")
-                        .append("</div>");
-                sb.append("<span class=\"tablemargin\">").append(user.getDiscriminatedName()).append("</span>");
-
-                if(userIsVerified) {
-                    sb.append("<div class = \"tablemargin\" style=\"display:block;\">");
-                    Luma.database.writeConnectionBoxes(user.getId(), serverId, sb);
-                    sb.append("</div>");
-
-                    sb.append("<div class=\"tablemargin\" style=\"display:block\">");
-                    Luma.database.writeIps(user.getId(), sb);
-                    sb.append("</div>");
-
-                    sb.append("<div class = \"tablemargin\" style=\"display:block\">");
-                    //TODO: Find alts
-                    sb.append("</div>");
-                }
-
-                sb.append("</br></div>");
-            }
-        } else {
-            exchange.setStatusCode(500);
-            exchange.getResponseSender().send("Error retrieving server data", IoCallback.END_EXCHANGE);
-        }
-
-        sb.append(verifyDashboardBasePage, userBoxesRep, verifyDashboardBasePage.length() - 1);
-
-        exchange.getResponseSender().send(sb.toString(), IoCallback.END_EXCHANGE);
     }
 }

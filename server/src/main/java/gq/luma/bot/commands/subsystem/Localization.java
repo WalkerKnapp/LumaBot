@@ -3,15 +3,15 @@ package gq.luma.bot.commands.subsystem;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 public class Localization {
-    private Properties properties = new Properties();
-    private String name;
+    private final Properties properties = new Properties();
+    private final String name;
 
     public Localization(InputStream stream, String name) throws IOException {
-        properties.load(new InputStreamReader(stream, Charset.forName("UTF-8")));
+        properties.load(new InputStreamReader(stream, StandardCharsets.UTF_8));
         this.name = name;
     }
 

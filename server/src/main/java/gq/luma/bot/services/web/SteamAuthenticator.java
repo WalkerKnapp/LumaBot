@@ -23,7 +23,7 @@ public class SteamAuthenticator implements Authenticator {
 
     private final Pattern STEAM_REGEX = Pattern.compile("(\\d+)");
 
-    private SteamAuthClient client;
+    private final SteamAuthClient client;
 
     public SteamAuthenticator(final SteamAuthClient client) {
         this.client = client;

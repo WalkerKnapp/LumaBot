@@ -26,31 +26,17 @@ public class PermissionSet {
         PINS(38),
         DEVELOPER(64);
 
-        int index;
+        final int index;
 
         Permission(int index){
             this.index = index;
         }
     }
 
-    private long id;
-    private boolean enabled;
-    private long server;
-    private long creator;
-    private PermissionTarget target;
-    private long targetId;
-    private long bitmap;
-    private boolean unremovable;
+    private final long bitmap;
 
     public PermissionSet(ResultSet rs) throws SQLException {
-        this.id = rs.getLong("id");
-        this.enabled = rs.getBoolean("enabled");
-        this.server = rs.getLong("server");
-        this.creator = rs.getLong("creator");
-        this.target = PermissionTarget.valueOf(rs.getString("target"));
-        this.targetId = rs.getLong("target_id");
         this.bitmap = rs.getLong("permissions");
-        this.unremovable = rs.getBoolean("unremovable");
     }
 
     public boolean hasPermission(Permission permission){
@@ -68,9 +54,5 @@ public class PermissionSet {
             return true;
         }
         return hasPermission(permission);
-    }
-
-    public long getTargetId(){
-        return targetId;
     }
 }

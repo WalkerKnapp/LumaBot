@@ -32,7 +32,7 @@ public class SteamRedirectionActionBuilder implements RedirectionActionBuilder {
     @Override
     public Optional<RedirectionAction> getRedirectionAction(WebContext context, SessionStore sessionStore) {
         try {
-            final List discoveries = this.steamClient.getConsumerManager().discover(STEAM_USER_IDENT);
+            final List<?> discoveries = this.steamClient.getConsumerManager().discover(STEAM_USER_IDENT);
 
             final DiscoveryInformation discoveryInformation = this.steamClient.getConsumerManager().associate(discoveries);
 

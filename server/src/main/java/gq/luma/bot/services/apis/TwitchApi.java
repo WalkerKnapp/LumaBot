@@ -3,7 +3,6 @@ package gq.luma.bot.services.apis;
 import com.github.philippheuer.credentialmanager.CredentialManager;
 import com.github.philippheuer.credentialmanager.CredentialManagerBuilder;
 import com.github.philippheuer.credentialmanager.domain.OAuth2Credential;
-import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.twitch4j.TwitchClient;
 import com.github.twitch4j.TwitchClientBuilder;
 import com.github.twitch4j.auth.providers.TwitchIdentityProvider;
@@ -47,7 +46,7 @@ public class TwitchApi implements Service {
     private Map<String, Long> currentAnnouncements;
 
     @Override
-    public void startService() throws Exception {
+    public void startService() {
         credentialManager = CredentialManagerBuilder.builder()
                 .build();
         credentialManager.registerIdentityProvider(new TwitchIdentityProvider(KeyReference.twitchClientId, KeyReference.twitchClientSecret, "https://luma.portal2.sr/"));
@@ -156,12 +155,12 @@ public class TwitchApi implements Service {
                             .getUsers().stream()
                             .findFirst().ifPresent(twitchUser -> {
                                 EmbedBuilder embed = new EmbedBuilder()
-                                        .setTimestamp(stream.getStartedAt().toInstant())
+                                        .setTimestamp(stream.getStartedAtInstant())
                                         .setTitle(stream.getUserName() + " is live!")
                                         .addField(stream.getTitle(), "https://twitch.tv/" + stream.getUserName())
                                         .setColor(embedColor.get())
                                         .setAuthor(userTag.get(), "https://twitch.tv/" + stream.getUserName(), profileUrl.get())
-                                        .setImage(stream.getThumbnailUrl() == null ? twitchUser.getProfileImageUrl() : stream.getThumbnailUrl());
+                                        .setImage(stream.getThumbnailUrl(1280, 720));
                                 MessageBuilder mb = new MessageBuilder()
                                         .setEmbed(embed);
                                 if (stream.getUserName().equals("Portal2Speedruns")) {
@@ -188,7 +187,6 @@ public class TwitchApi implements Service {
                     "",
                     "",
                     100,
-                    null,
                     List.of(PORTAL2_GAME_ID),
                     null,
                     userIds.subList(i, Math.min(i + 100, userIds.size())),
@@ -198,11 +196,5 @@ public class TwitchApi implements Service {
         }
 
         return streams;
-    }
-
-    public static void main(String[] args) throws Exception {
-        new KeyReference().startService();
-
-        new TwitchApi().startService();
     }
 }

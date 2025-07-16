@@ -9,7 +9,7 @@ public class SteamApi implements Service {
     public SteamWebApiClient steamWebApiClient;
 
     @Override
-    public void startService() throws Exception {
+    public void startService() {
         steamWebApiClient = new SteamWebApiClient.SteamWebApiClientBuilder(KeyReference.steamKey).build();
     }
 }

@@ -13,8 +13,8 @@ import java.util.ArrayList;
 
 public class WebPage {
 
-    private ArrayList<String> compositionParts = new ArrayList<>();
-    private ArrayList<String> inserts = new ArrayList<>();
+    private final ArrayList<String> compositionParts = new ArrayList<>();
+    private final ArrayList<String> inserts = new ArrayList<>();
 
     public WebPage(Path path) throws IOException {
         try (SeekableByteChannel sbc = Files.newByteChannel(path);

@@ -19,7 +19,6 @@ import org.javacord.api.listener.server.member.ServerMemberJoinListener;
 import org.javacord.api.listener.user.UserChangeNameListener;
 import org.javacord.api.listener.user.UserChangeNicknameListener;
 import org.javacord.api.listener.user.UserChangeStatusListener;
-import org.javacord.api.util.logging.ExceptionLogger;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -43,7 +42,7 @@ public class AutoDunceListener implements MessageCreateListener, MessageEditList
     private static final long DUNCE_ROLE_ID = 312324674275115008L;
     private static final long MOD_NOTIFICATIONS_ROLE_ID = 797178777754140722L;
 
-    private HashSet<Pattern> slursRegex = new HashSet<>();
+    private final HashSet<Pattern> slursRegex = new HashSet<>();
 
     public AutoDunceListener() throws IOException {
         try (BufferedReader reader = Files.newBufferedReader(Paths.get("slurs.txt"))) {

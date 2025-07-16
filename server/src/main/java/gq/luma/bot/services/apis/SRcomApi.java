@@ -33,7 +33,7 @@ public class SRcomApi {
                             objectDepth--;
                             break;
                         case FIELD_NAME:
-                            if (objectDepth == 2 && "weblink".equals(jsonParser.getCurrentName())) {
+                            if (objectDepth == 2 && "weblink".equals(jsonParser.currentName())) {
                                 if(jsonParser.nextToken() != JsonToken.VALUE_STRING) {
                                     return;
                                 }
@@ -76,8 +76,7 @@ public class SRcomApi {
                             }
                             break;
                         case FIELD_NAME:
-                            //System.out.println(jsonParser.getCurrentName());
-                            if ("category".equals(jsonParser.getCurrentName())) {
+                            if ("category".equals(jsonParser.currentName())) {
                                 if(jsonParser.nextToken() != JsonToken.VALUE_STRING) {
                                     System.err.println("Category is not a string");
                                     return;
@@ -90,7 +89,7 @@ public class SRcomApi {
                                         correctDataElement = objectDepth;
                                     }
                                 }
-                            } else if ("place".equals(jsonParser.getCurrentName())) {
+                            } else if ("place".equals(jsonParser.currentName())) {
                                 if(jsonParser.nextToken() != JsonToken.VALUE_NUMBER_INT) {
                                     System.err.println("Place is not an int");
                                     return;
@@ -137,7 +136,7 @@ public class SRcomApi {
                             objectDepth--;
                             break;
                         case FIELD_NAME:
-                            if("id".equals(jsonParser.getCurrentName())) {
+                            if("id".equals(jsonParser.currentName())) {
                                 if(jsonParser.nextToken() != JsonToken.VALUE_STRING) {
                                     return false;
                                 }
@@ -146,7 +145,7 @@ public class SRcomApi {
                                     Luma.database.addVerifiedConnection(userId, serverId, srcomId, "srcom", connectionName, apiKey);
                                     return true;
                                 }
-                            } else if ("international".equals(jsonParser.getCurrentName()) && objectDepth == 3) {
+                            } else if ("international".equals(jsonParser.currentName()) && objectDepth == 3) {
                                 if(jsonParser.nextToken() != JsonToken.VALUE_STRING) {
                                     return false;
                                 }
@@ -156,7 +155,7 @@ public class SRcomApi {
                                     Luma.database.addVerifiedConnection(userId, serverId, srcomId, "srcom", connectionName, apiKey);
                                     return true;
                                 }
-                            } else if ("japanese".equals(jsonParser.getCurrentName()) && objectDepth == 3) {
+                            } else if ("japanese".equals(jsonParser.currentName()) && objectDepth == 3) {
                                 if(jsonParser.nextToken() != JsonToken.VALUE_STRING) {
                                     return false;
                                 }

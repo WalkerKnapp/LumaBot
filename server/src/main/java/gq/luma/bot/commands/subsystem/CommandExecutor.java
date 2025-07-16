@@ -2,7 +2,6 @@ package gq.luma.bot.commands.subsystem;
 
 import gq.luma.bot.Luma;
 import gq.luma.bot.commands.subsystem.permissions.PermissionSet;
-import gq.luma.bot.utils.StringUtilities;
 import org.javacord.api.DiscordApi;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
@@ -18,8 +17,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class CommandExecutor {
-    private ArrayList<MCommand> commands;
-    private Map<String, Localization> localizations;
+    private final ArrayList<MCommand> commands;
+    private final Map<String, Localization> localizations;
 
     public CommandExecutor(DiscordApi api){
         this.commands = new ArrayList<>();
@@ -28,7 +27,7 @@ public class CommandExecutor {
         api.addMessageCreateListener(messageCreateEvent ->  {
             //System.out.println("Got Event! Content: " + messageCreateEvent.getMessage().getContent());
             if(messageCreateEvent.getMessage().getAuthor().asUser().isPresent() && !messageCreateEvent.getMessage().getAuthor().asUser().get().isBot() && !messageCreateEvent.getMessage().getAuthor().asUser().get().isYourself()) {
-                String[] split = StringUtilities.splitString(messageCreateEvent.getMessage().getContent());
+                String[] split = messageCreateEvent.getMessage().getContent().split("\\s+");
                 if (split.length > 0) {
                     commands.forEach(mCommand -> attemptExecute(mCommand, split, messageCreateEvent));
                 }
@@ -51,7 +50,7 @@ public class CommandExecutor {
                     Localization localization = getLocalization(loc);
                     for (String name : command.getCommand().aliases()) {
                         String expectedCommand = generateCommandString(command, event.getChannel(), localization, name);
-                        String[] expectedTree = StringUtilities.splitString(expectedCommand);
+                        String[] expectedTree = expectedCommand.split("\\s+");
                         if (equalsUpToFirst(expectedTree, split)) {
                             execute(command, expectedCommand, expectedTree, split, event, localization, user);
                         }
@@ -67,7 +66,7 @@ public class CommandExecutor {
     private boolean isUnderWhitelist(MCommand command, MessageCreateEvent event){
         if(command.getCommand().whilelistedGuilds().isEmpty())
             return true;
-        if(!event.getServer().isPresent())
+        if(event.getServer().isEmpty())
             return false;
         for(String guildId : command.getCommand().whilelistedGuilds().split(";")){
             if(guildId.equals(event.getServer().get().getIdAsString())){
@@ -138,9 +137,7 @@ public class CommandExecutor {
             content = event.getMessage().getContent().substring(substringIndex);
         }
         CommandEvent commandEvent = new CommandEvent(event.getApi(),
-                this,
                 localization,
-                commandTree[0],
                 content,
                 Arrays.copyOfRange(messageSplit, commandTree.length, messageSplit.length),
                 event.getMessage(),
@@ -198,9 +195,5 @@ public class CommandExecutor {
             expectedCommand = Luma.database.getEffectivePrefix(context) + " " + Arrays.stream(command.getCommand().parent().split(" ")).map(str -> localization.get(str + "_command")).collect(Collectors.joining(" ")) + " " + localization.get(name + "_command");
         }
         return expectedCommand;
-    }
-
-    public ArrayList<MCommand> getCommands() {
-        return commands;
     }
 }

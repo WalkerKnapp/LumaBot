@@ -1,20 +1,11 @@
 package gq.luma.bot.services;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.github.twitch4j.TwitchClient;
-import gq.luma.bot.Luma;
 import gq.luma.bot.commands.subsystem.permissions.PermissionSet;
 import gq.luma.bot.reference.DefaultReference;
 import gq.luma.bot.reference.FileReference;
 import gq.luma.bot.reference.KeyReference;
-import gq.luma.bot.services.apis.IVerbApi;
 import gq.luma.bot.services.apis.SRcomApi;
-import gq.luma.bot.systems.filtering.filters.ImageFilter;
-import gq.luma.bot.systems.filtering.filters.LinkFilter;
-import gq.luma.bot.systems.filtering.filters.SimpleFilter;
-import gq.luma.bot.systems.filtering.filters.VirusFilter;
-import gq.luma.bot.systems.filtering.filters.types.Filter;
-import org.apache.commons.csv.CSVPrinter;
 import org.javacord.api.entity.channel.ServerTextChannel;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.emoji.CustomEmoji;
@@ -34,32 +25,22 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
+@SuppressWarnings("SynchronizeOnNonFinalField")
 public class Database implements Service {
     private static final Logger logger = LoggerFactory.getLogger(Database.class);
 
     private Connection conn;
 
     private PreparedStatement getChannel;
-    private PreparedStatement updateChannelPrefix;
-    private PreparedStatement updateChannelLocale;
-    private PreparedStatement updateChannelNotify;
-    private PreparedStatement insertChannel;
 
     private PreparedStatement getServer;
     private PreparedStatement getServerPinsEmojiUnicode;
     private PreparedStatement getServerPinsEmojiCustom;
     private PreparedStatement getServerPinsChannel;
     private PreparedStatement getServerPinsThreshold;
-    private PreparedStatement updateServerPrefix;
-    private PreparedStatement updateServerLocale;
-    private PreparedStatement updateServerNotify;
-    private PreparedStatement updateClarifaiMonthlyCap;
-    private PreparedStatement updateClarifaiCount;
-    private PreparedStatement updateClarifaiResetDate;
     private PreparedStatement updateServerPinsEmojiUnicode;
     private PreparedStatement updateServerPinsEmojiCustom;
     private PreparedStatement updateServerPinsChannel;
@@ -76,43 +57,17 @@ public class Database implements Service {
     private PreparedStatement insertPinBlacklist;
     private PreparedStatement removePinBlacklist;
 
-    private PreparedStatement getUser;
-    private PreparedStatement updateUserNotify;
-    private PreparedStatement insertUser;
-
-    private PreparedStatement getResult;
-    private PreparedStatement insertResult;
-
-    private PreparedStatement getRoleByName;
-    private PreparedStatement getAllRoles;
-
-    private PreparedStatement getNodeByToken;
-    private PreparedStatement getNodeBySession;
-    private PreparedStatement getAllNodes;
-    private PreparedStatement updateNodeSession;
-    private PreparedStatement updateNodeTask;
-    private PreparedStatement updateNode;
-
     private PreparedStatement getEnabledPermission;
     private PreparedStatement getEnabledPermissionByTargetId;
-
-    private PreparedStatement getAllFilters;
-
-    private PreparedStatement getCommunityTrackedStreams;
-    private PreparedStatement getUserTrackedStreams;
 
     private PreparedStatement getUserRecordById;
     private PreparedStatement insertUserRecord;
     private PreparedStatement updateUserRecordVerified;
 
-    private PreparedStatement getUserConnectionAttemptsByID;
     private PreparedStatement getUserConnectionAttemptsByIP;
-    private PreparedStatement getUserConnectionAttempts;
-    private PreparedStatement getUserConnectionAttemptsCount;
     private PreparedStatement insertUserConnectionAttempt;
 
     private PreparedStatement getVerifiedConnectionsByUser;
-    private PreparedStatement getVerifiedConnectionsByUserAndType;
     private PreparedStatement getVerifiedConnectionsByUserAndTypeWithoutRemoved;
     private PreparedStatement getVerifiedConnectionsByType;
     private PreparedStatement getVerifiedConnectionsByTypeAndId;
@@ -120,26 +75,11 @@ public class Database implements Service {
     private PreparedStatement updateVerifiedConnectionNotifyByUserServerAndId;
     private PreparedStatement insertVerifiedConnection;
 
-    private PreparedStatement countVotingKeysByServerId;
-    private PreparedStatement getVotingKeysByServerId;
-    private PreparedStatement insertVotingKey;
-    private PreparedStatement removeVotingKey;
-    private PreparedStatement clearVotingKeys;
-
-    private PreparedStatement getManualRoleAssignmentsByUser;
-    private PreparedStatement insertManualRoleAssignment;
-    private PreparedStatement deleteManualRoleAssignment;
-
-    private PreparedStatement getPins;
-    private PreparedStatement insertPins;
-    private PreparedStatement deletePin;
-
     private PreparedStatement getPingLeaderboard;
     private PreparedStatement getPingLeaderboardByUser;
     private PreparedStatement updatePingLeaderboardByUser;
     private PreparedStatement incrementPingCountByUser;
     private PreparedStatement getPingCountByUser;
-    private PreparedStatement getPingCountsDesc;
 
     private PreparedStatement getUndunceInstants;
     private PreparedStatement getUndunceInstantByUser;
@@ -155,32 +95,22 @@ public class Database implements Service {
     private PreparedStatement insertWarning;
 
     @Override
-    public void startService() throws SQLException, ClassNotFoundException {
+    public void startService() throws SQLException {
         open();
         Runtime.getRuntime().addShutdownHook(new Thread(this::close));
     }
 
-    private void open() throws SQLException, ClassNotFoundException {
-
-        //Class.forName("com.mysql.jdbc.Driver");
+    private void open() throws SQLException {
 
         conn = DriverManager.getConnection("jdbc:mysql://" + FileReference.mySQLLocation + "/luma?user=" + KeyReference.sqlUser + "&password=" + KeyReference.sqlPass + "&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=EST&autoReconnect=true");
 
         getChannel = conn.prepareStatement("SELECT * FROM channels WHERE id = ?");
-        updateChannelPrefix = conn.prepareStatement("UPDATE channels SET prefix = ? WHERE id = ?");
-        updateChannelLocale = conn.prepareStatement("UPDATE channels SET locale = ? WHERE id = ?");
-        updateChannelNotify = conn.prepareStatement("UPDATE channels SET notify = ? WHERE id = ?");
-        insertChannel = conn.prepareStatement("INSERT INTO channels (prefix, locale, notify, id) VALUES (?, ?, ?, ?)");
 
         getServer = conn.prepareStatement("SELECT * FROM servers WHERE id = ?");
         getServerPinsEmojiUnicode = conn.prepareStatement("SELECT pin_emoji_unicode FROM servers WHERE id = ?");
         getServerPinsEmojiCustom = conn.prepareStatement("SELECT pin_emoji_custom FROM servers WHERE id = ?");
         getServerPinsChannel = conn.prepareStatement("SELECT pin_channel FROM servers WHERE id = ?");
         getServerPinsThreshold = conn.prepareStatement("SELECT pin_threshold FROM servers WHERE id = ?");
-        updateServerPrefix = conn.prepareStatement("UPDATE servers SET prefix = ? WHERE id = ?");
-        updateServerLocale = conn.prepareStatement("UPDATE servers SET locale = ? WHERE id = ?");
-        updateServerNotify = conn.prepareStatement("UPDATE servers SET notify = ? WHERE id = ?");
-        updateClarifaiCount = conn.prepareStatement("UPDATE servers SET clarifai_count = ? WHERE id = ?");
         updateServerPinsEmojiUnicode = conn.prepareStatement("UPDATE servers SET pin_emoji_unicode = ? WHERE id = ?");
         updateServerPinsEmojiCustom = conn.prepareStatement("UPDATE servers SET pin_emoji_custom = ? WHERE id = ?");
         updateServerPinsChannel = conn.prepareStatement("UPDATE servers SET pin_channel = ? WHERE id = ?");
@@ -198,42 +128,17 @@ public class Database implements Service {
         getPinEditableByServer = conn.prepareStatement("SELECT pin_editable FROM servers WHERE id = ?");
         updateServerPinsEditable = conn.prepareStatement("UPDATE servers SET pin_editable = ? WHERE id = ?");
 
-        getUser = conn.prepareStatement("SELECT * FROM users WHERE id = ?");
-        updateUserNotify = conn.prepareStatement("UPDATE users SET notify = ? WHERE id = ?");
-        insertUser = conn.prepareStatement("INSERT INTO users (notify, id) VALUES (?, ?, ?)");
-
-        getResult = conn.prepareStatement("SELECT * FROM render_results WHERE id = ?");
-        insertResult = conn.prepareStatement("INSERT INTO render_results (id, name, type, code, thumbnail, requester, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-
-        getRoleByName = conn.prepareStatement("SELECT * FROM donor_roles WHERE name = ? AND server_id = ?");
-        getAllRoles = conn.prepareStatement("SELECT * FROM donor_roles WHERE server_id = ?");
-
-        getNodeByToken = conn.prepareStatement("SELECT * FROM nodes WHERE token = ?");
-        getNodeBySession = conn.prepareStatement("SELECT * FROM nodes WHERE session = ?");
-        getAllNodes = conn.prepareStatement("SELECT * FROM nodes");
-        updateNodeSession = conn.prepareStatement("UPDATE nodes SET session = ? WHERE token = ?");
-        updateNodeTask = conn.prepareStatement("UPDATE nodes SET task = ? WHERE token = ?");
-        updateNode = conn.prepareStatement("UPDATE nodes SET session = ?, last_known_host = ?, last_known_name = ? WHERE token = ?");
-
         getEnabledPermission = conn.prepareStatement("SELECT * FROM permissions WHERE enabled = 1 AND server = ? AND target = ? AND target_id = ?");
         getEnabledPermissionByTargetId = conn.prepareStatement("SELECT * FROM permissions WHERE enabled = 1 AND target_id = ?");
-
-        getAllFilters = conn.prepareStatement("SELECT * FROM filters");
-
-        getCommunityTrackedStreams = conn.prepareStatement("SELECT * FROM tracked_streams WHERE tracking_type = ?");
 
         getUserRecordById = conn.prepareStatement("SELECT * FROM user_records WHERE id = ?");
         insertUserRecord = conn.prepareStatement("INSERT INTO user_records (id, server_id, discord_token) VALUES (?,?,?)");
         updateUserRecordVerified = conn.prepareStatement("UPDATE user_records SET verified = ? WHERE id = ? AND server_id = ?");
 
-        getUserConnectionAttemptsByID = conn.prepareStatement("SELECT * FROM user_connection_attempts WHERE user_id = ?");
         getUserConnectionAttemptsByIP = conn.prepareStatement("SELECT * FROM user_connection_attempts WHERE ip = ?");
-        getUserConnectionAttempts = conn.prepareStatement("SELECT * FROM user_connection_attempts");
-        getUserConnectionAttemptsCount = conn.prepareStatement("SELECT COUNT(*) FROM user_connection_attempts");
         insertUserConnectionAttempt = conn.prepareStatement("INSERT INTO user_connection_attempts (user_id, server_id, ip) VALUES (?,?,?)");
 
         getVerifiedConnectionsByUser = conn.prepareStatement("SELECT * FROM verified_connections WHERE user_id = ? AND server_id = ?");
-        getVerifiedConnectionsByUserAndType = conn.prepareStatement("SELECT * FROM verified_connections WHERE user_id = ? AND server_id = ? AND connection_type = ?");
         getVerifiedConnectionsByUserAndTypeWithoutRemoved = conn.prepareStatement("SELECT * FROM verified_connections WHERE user_id = ? AND server_id = ? AND connection_type = ? AND removed = 0");
         getVerifiedConnectionsByType = conn.prepareStatement("SELECT * FROM verified_connections WHERE connection_type = ?");
         getVerifiedConnectionsByTypeAndId = conn.prepareStatement("SELECT * FROM verified_connections WHERE connection_type = ? AND id = ?");
@@ -241,25 +146,12 @@ public class Database implements Service {
         updateVerifiedConnectionNotifyByUserServerAndId = conn.prepareStatement("UPDATE verified_connections SET notify = ? WHERE user_id = ? AND server_id = ? AND id = ?");
         insertVerifiedConnection = conn.prepareStatement("INSERT INTO verified_connections (user_id, server_id, id, connection_type, connection_name, token) VALUES (?,?,?,?,?,?)");
 
-        countVotingKeysByServerId = conn.prepareStatement("SELECT COUNT(*) FROM vote_keys WHERE `server_id` = ?");
-        getVotingKeysByServerId = conn.prepareStatement("SELECT * FROM vote_keys WHERE `server_id` = ?");
-        insertVotingKey = conn.prepareStatement("INSERT INTO vote_keys (`key`, server_id) VALUES (?,?)");
-        removeVotingKey = conn.prepareStatement("DELETE FROM vote_keys WHERE `key` = ? AND `server_id` = ?");
-        clearVotingKeys = conn.prepareStatement("DELETE FROM vote_keys WHERE `server_id` = ?");
-
-        getManualRoleAssignmentsByUser = conn.prepareStatement("SELECT * FROM manual_role_assignments WHERE `user_id` = ? AND `server_id` = ?");
-        insertManualRoleAssignment = conn.prepareStatement("INSERT INTO manual_role_assignments (`user_id`, `server_id`, `role_id`) VALUES (?, ?, ?)");
-        deleteManualRoleAssignment = conn.prepareStatement("DELETE FROM manual_role_assignments WHERE `user_id` = ? AND `server_id` = ? AND `role_id` = ?");
-
         getPingLeaderboard = conn.prepareStatement("SELECT * FROM ping_leaderboard ORDER BY `ping`");
         getPingLeaderboardByUser = conn.prepareStatement("SELECT ping FROM ping_leaderboard WHERE `user_id` = ?");
         updatePingLeaderboardByUser = conn.prepareStatement("INSERT INTO ping_leaderboard (`user_id`, `ping`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `ping` = ?");
 
         incrementPingCountByUser = conn.prepareStatement("INSERT INTO ping_counts (user_id, ping_count) VALUES (?, 1) ON DUPLICATE KEY UPDATE ping_count = ping_count + 1");
         getPingCountByUser = conn.prepareStatement("SELECT ping_count FROM ping_counts WHERE user_id = ?");
-        getPingCountsDesc = conn.prepareStatement("SELECT *" +
-                "      FROM Luma.ping_counts" +
-                "      ORDER BY ping_count DESC");
 
         getUndunceInstants = conn.prepareStatement("SELECT * FROM dunce_instants");
         getUndunceInstantByUser = conn.prepareStatement("SELECT undunce_instant FROM dunce_instants WHERE user_id = ?");
@@ -274,29 +166,6 @@ public class Database implements Service {
         getWarningsByUser = conn.prepareStatement("SELECT * FROM warnings WHERE user_id = ?");
         getWarningsCountByUser = conn.prepareStatement("SELECT COUNT(warning_instant) AS warning_count FROM warnings WHERE user_id = ?");
         insertWarning = conn.prepareStatement("INSERT INTO warnings (user_id, warning_instant, reason, message_link) VALUES (?, ?, ?, ?)");
-    }
-
-    //Results
-
-    public ResultSet getResult(int id) throws SQLException {
-        synchronized (getResult) {
-            getResult.setInt(1, id);
-            return getResult.executeQuery();
-        }
-    }
-
-    public void addResult(int id, String name, String type, String code, String thumbnail, long requester, int width, int height) throws SQLException {
-        synchronized (insertResult) {
-            insertResult.setInt(1, id);
-            insertResult.setString(2, name);
-            insertResult.setString(3, type);
-            insertResult.setString(4, code);
-            insertResult.setString(5, thumbnail);
-            insertResult.setLong(6, requester);
-            insertResult.setInt(7, width);
-            insertResult.setInt(8, height);
-            insertResult.execute();
-        }
     }
 
     public String getEffectivePrefix(TextChannel channel) throws SQLException {
@@ -314,12 +183,6 @@ public class Database implements Service {
         }
 
         return DefaultReference.DEFAULT_PREFIX;
-    }
-
-    //Channels
-
-    public String getChannelPrefix(TextChannel channel) throws SQLException {
-        return getChannelPrefix(channel.getId());
     }
 
     private String getChannelPrefix(long id) throws SQLException {
@@ -362,29 +225,6 @@ public class Database implements Service {
         }
     }
 
-    public long getServerClarifaiResetDate(Server server) throws SQLException {
-        synchronized (getServer) {
-            getServer.setLong(1, server.getId());
-            ResultSet rs = getServer.executeQuery();
-            if (rs.next()) {
-                return rs.getLong("clarifaiResetDate");
-            }
-            return 0;
-        }
-    }
-
-    public void setServerClarifaiResetDate(Server server, long date) throws SQLException {
-        synchronized (updateClarifaiResetDate) {
-            updateClarifaiResetDate.setLong(1, date);
-            updateClarifaiResetDate.setLong(2, server.getId());
-            updateClarifaiResetDate.execute();
-        }
-    }
-
-    public String getServerPrefix(Server server) throws SQLException {
-        return getServerPrefix(server.getId());
-    }
-
     private String getServerPrefix(long id) throws SQLException {
         synchronized (getServer) {
             getServer.setLong(1, id);
@@ -413,10 +253,6 @@ public class Database implements Service {
         return DefaultReference.DEFAULT_LOCALE;
     }
 
-    public String getChannelLocale(TextChannel channel) throws SQLException {
-        return getChannelLocale(channel.getId());
-    }
-
     private String getChannelLocale(long id) throws SQLException {
         synchronized (getChannel) {
             getChannel.setLong(1, id);
@@ -426,10 +262,6 @@ public class Database implements Service {
             }
             return null;
         }
-    }
-
-    public String getServerLocale(Server server) throws SQLException {
-        return getServerLocale(server.getId());
     }
 
     private String getServerLocale(long id) throws SQLException {
@@ -462,104 +294,6 @@ public class Database implements Service {
         }
     }
 
-    public Optional<Long> getServerStreamsChannel(long serverId){
-        try {
-            synchronized (getServer) {
-                getServer.setLong(1, serverId);
-                ResultSet rs = getServer.executeQuery();
-                if (rs.next()) {
-                    long streamsChannel = rs.getLong("streams_channel");
-                    if (!rs.wasNull()) {
-                        return Optional.of(streamsChannel);
-                    }
-                }
-                return Optional.empty();
-            }
-        } catch (SQLException e){
-            logger.error("Encountered error: ", e);
-            return Optional.empty();
-        }
-    }
-
-    public void setServerPrefix(Server server, String prefix) throws SQLException {
-        synchronized (getServer) {
-            getServer.setLong(1, server.getId());
-            ResultSet rs = getServer.executeQuery();
-
-            if (rs.next()) {
-                synchronized (updateServerPrefix) {
-                    updateServerPrefix.setString(1, prefix);
-                    updateServerPrefix.setLong(2, server.getId());
-                    updateServerPrefix.execute();
-                }
-            } else {
-                logger.error("Couldn't find server: {}.", server.toString());
-            }
-        }
-    }
-
-    public void setChannelPrefix(TextChannel channel, String prefix) throws SQLException {
-        synchronized (getChannel) {
-            getChannel.setLong(1, channel.getId());
-            ResultSet rs = getChannel.executeQuery();
-
-            if (rs.next()) {
-                synchronized (updateChannelPrefix) {
-                    updateChannelPrefix.setString(1, prefix);
-                    updateChannelPrefix.setLong(2, channel.getId());
-                    updateChannelPrefix.execute();
-                }
-            } else {
-                synchronized (insertChannel) {
-                    insertChannel.setString(1, prefix);
-                    insertChannel.setString(2, null);
-                    insertChannel.setInt(3, 0);
-                    insertChannel.setLong(4, channel.getId());
-                    insertChannel.execute();
-                }
-            }
-        }
-    }
-
-    public void setServerLocale(Server server, String locale) throws SQLException {
-        synchronized (getServer) {
-            getServer.setLong(1, server.getId());
-            ResultSet rs = getServer.executeQuery();
-
-            if (rs.next()) {
-                synchronized (updateServerLocale) {
-                    updateServerLocale.setString(1, locale);
-                    updateServerLocale.setLong(2, server.getId());
-                    updateServerLocale.execute();
-                }
-            } else {
-                logger.error("Couldn't find server: {}", server.toString());
-            }
-        }
-    }
-
-    public void setChannelLocale(TextChannel channel, String locale) throws SQLException {
-        synchronized (getChannel) {
-            getChannel.setLong(1, channel.getId());
-            ResultSet rs = getChannel.executeQuery();
-
-            if (rs.next()) {
-                synchronized (updateChannelLocale) {
-                    updateChannelLocale.setString(1, locale);
-                    updateChannelLocale.setLong(2, channel.getId());
-                    updateChannelLocale.execute();
-                }
-            } else {
-                synchronized (insertChannel) {
-                    insertChannel.setString(1, null);
-                    insertChannel.setString(2, locale);
-                    insertChannel.setInt(3, 0);
-                    insertChannel.setLong(4, channel.getId());
-                    insertChannel.execute();
-                }
-            }
-        }
-    }
 
     public Optional<String> getServerPinEmojiMention(Server server) {
         try {
@@ -866,32 +600,6 @@ public class Database implements Service {
         }
     }
 
-    public Optional<Long> getRoleByName(long serverId, String name) throws SQLException {
-        synchronized (getRoleByName) {
-            getRoleByName.setString(1, name.substring(0, 1).toUpperCase() + name.substring(1));
-            getRoleByName.setLong(2, serverId);
-            ResultSet rs = getRoleByName.executeQuery();
-
-            if (rs.next()) {
-                return Optional.of(rs.getLong("id"));
-            } else {
-                return Optional.empty();
-            }
-        }
-    }
-
-    public List<String> getAvailibeRoles(long serverId) throws SQLException {
-        synchronized (getAllRoles) {
-            getAllRoles.setLong(1, serverId);
-            ResultSet rs = getAllRoles.executeQuery();
-            List<String> ret = new ArrayList<>();
-            while (rs.next()) {
-                ret.add(rs.getString("name"));
-            }
-            return ret;
-        }
-    }
-
     public boolean isServerPinEditable(long serverId) throws SQLException {
         synchronized (getPinEditableByServer) {
             getPinEditableByServer.setLong(1, serverId);
@@ -913,38 +621,6 @@ public class Database implements Service {
         }
     }
 
-    //Nodes
-
-    public Optional<ResultSet> getNodeByToken(String token) throws SQLException {
-        synchronized (getNodeByToken) {
-            getNodeByToken.setString(1, token);
-            ResultSet rs = getNodeByToken.executeQuery();
-            if (rs.next()) {
-                return Optional.of(rs);
-            } else {
-                return Optional.empty();
-            }
-        }
-    }
-
-    public void updateNodeSession(String token, String session) throws SQLException {
-        synchronized (updateNodeSession) {
-            updateNodeSession.setString(1, session);
-            updateNodeSession.setString(2, token);
-            updateNodeSession.execute();
-        }
-    }
-
-    public void updateNode(String token, String session, String lastKnownHost, String lastKnownName) throws SQLException {
-        synchronized (updateNode) {
-            updateNode.setString(1, session);
-            updateNode.setString(2, lastKnownHost);
-            updateNode.setString(3, lastKnownName);
-            updateNode.setString(4, token);
-            updateNode.execute();
-        }
-    }
-
     public ArrayList<PermissionSet> getPermission(Server server, PermissionSet.PermissionTarget target, long targetId) throws SQLException {
         synchronized (getEnabledPermission) {
             getEnabledPermission.setLong(1, server.getId());
@@ -959,19 +635,6 @@ public class Database implements Service {
         }
     }
 
-    public ArrayList<PermissionSet> getPermission(long serverId, PermissionSet.PermissionTarget target, long targetId) throws SQLException {
-        synchronized (getEnabledPermission) {
-            getEnabledPermission.setLong(1, serverId);
-            getEnabledPermission.setString(2, target.name());
-            getEnabledPermission.setLong(3, targetId);
-            ArrayList<PermissionSet> ret = new ArrayList<>();
-            ResultSet rs = getEnabledPermission.executeQuery();
-            while (rs.next()) {
-                ret.add(new PermissionSet(rs));
-            }
-            return ret;
-        }
-    }
 
     public ArrayList<PermissionSet> getPermissionByTargetId(long targetId) throws SQLException {
         synchronized (getEnabledPermissionByTargetId) {
@@ -985,44 +648,6 @@ public class Database implements Service {
         }
     }
 
-    public Map<Long, Collection<Filter>> getAllFilters() throws SQLException {
-        synchronized (getAllFilters) {
-            ResultSet rs = getAllFilters.executeQuery();
-            Map<Long, Collection<Filter>> ret = new HashMap<>();
-            while (rs.next()) {
-                switch (rs.getInt("type")) {
-                    case 0:
-                        ret.computeIfAbsent(rs.getLong("server"), (id) -> new ArrayList<>()).add(new ImageFilter(rs));
-                        break;
-                    case 1:
-                        //Video Filter
-                        break;
-                    case 2:
-                        ret.computeIfAbsent(rs.getLong("server"), (id) -> new ArrayList<>()).add(new VirusFilter(rs));
-                        break;
-                    case 3:
-                        ret.computeIfAbsent(rs.getLong("server"), (id) -> new ArrayList<>()).add(new LinkFilter(rs));
-                        break;
-                    case 4:
-                        ret.computeIfAbsent(rs.getLong("server"), (id) -> new ArrayList<>()).add(new SimpleFilter(rs));
-                        break;
-                }
-            }
-            return ret;
-        }
-    }
-
-    public Map<String, List<Long>> getCommunityStreams() throws SQLException {
-        synchronized (getCommunityTrackedStreams) {
-            getCommunityTrackedStreams.setString(1, "community");
-            ResultSet rs = getCommunityTrackedStreams.executeQuery();
-            Map<String, List<Long>> map = new HashMap<>();
-            while (rs.next()) {
-                map.computeIfAbsent(rs.getString("tracked_id"), (s) -> new ArrayList<>()).add(rs.getLong("server_id"));
-            }
-            return map;
-        }
-    }
 
     public int getUserVerified(long id) {
         try {
@@ -1038,25 +663,6 @@ public class Database implements Service {
         } catch (SQLException e){
             e.printStackTrace();
             return -1;
-        }
-    }
-
-    public void writeConnectionBoxes(long id, long serverId, StringBuilder sb) {
-        try {
-            synchronized (getVerifiedConnectionsByUser) {
-                getVerifiedConnectionsByUser.setLong(1, id);
-                getVerifiedConnectionsByUser.setLong(2, serverId);
-                ResultSet rs = getVerifiedConnectionsByUser.executeQuery();
-                while (rs.next()) {
-                    sb.append("<div class=\"connectionbox\">");
-                    sb.append("<img class=\"connection\" src=\"https://cdn.walkerknapp.me/").append(rs.getString("connection_type"));
-                    sb.append(".png\" alt=\"").append(rs.getString("connection_type")).append("\"></img>");
-                    sb.append(rs.getString("connection_name"));
-                    sb.append("</div>");
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
     }
 
@@ -1117,64 +723,6 @@ public class Database implements Service {
                 jsonGenerator.writeEndArray();
             }
         } catch (SQLException | IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public class StreamRead {
-        int notify;
-        long discordId;
-        User user;
-        long twitchId;
-        com.github.twitch4j.helix.domain.User twitchUser;
-        boolean isLive;
-
-        public StreamRead(int notify, long discordId, User user, long twitchId, com.github.twitch4j.helix.domain.User twitchUser, boolean isLive) {
-            this.notify = notify;
-            this.discordId = discordId;
-            this.user = user;
-            this.twitchId = twitchId;
-            this.twitchUser = twitchUser;
-            this.isLive = isLive;
-        }
-    }
-
-    public void writeStreamsJson(long serverId, JsonGenerator generator) {
-        try {
-            synchronized (getVerifiedConnectionsByType) {
-                getVerifiedConnectionsByType.setString(1, "twitch");
-                ResultSet rs = getVerifiedConnectionsByType.executeQuery();
-                generator.writeStartArray();
-                ArrayList<Future<StreamRead>> futures = new ArrayList<>();
-                while (rs.next()) {
-                    long discordId = rs.getLong("user_id");
-                    long twitchId = rs.getLong("id");
-                    int notify = rs.getInt("notify");
-
-                    futures.add(Luma.executorService.submit(() -> {
-                        try {
-                            User user = Bot.api.getUserById(discordId).join();
-                            com.github.twitch4j.helix.domain.User twitchUser = Luma.twitchApi.client.getHelix().getUsers(Luma.twitchApi.appAccessToken, List.of(String.valueOf(twitchId)), null).execute().getUsers().get(0);
-                            if (twitchUser != null) {
-                                //Channel twitchChannel = Luma.twitchApi.client.getHelix()(twitchId);
-                                //boolean isLive = Luma.twitchApi.client.getStreamEndpoint().isLive(twitchChannel);
-                                boolean isLive = false;
-                                return new StreamRead(notify, discordId, user, twitchId, twitchUser, isLive);
-                            } else {
-                                System.err.println("Twitch user deleted, id=" + twitchId + " for user " + user.getDiscriminatedName());
-                            }
-                        } catch (Throwable e) {
-                            e.printStackTrace();
-                        }
-                        return null;
-                    }));
-                }
-                for (Future<StreamRead> future : futures) {
-                    writeStreamField(generator, future.get());
-                }
-                generator.writeEndArray();
-            }
-        } catch (SQLException | IOException | InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
     }
@@ -1243,20 +791,6 @@ public class Database implements Service {
         return ret;
     }
 
-    private void writeStreamField(JsonGenerator generator, StreamRead read) throws IOException {
-        if(read == null) return;
-        generator.writeStartObject();
-        generator.writeNumberField("notify", read.notify);
-        generator.writeNumberField("discordId", read.discordId);
-        generator.writeStringField("discordName", read.user.getDiscriminatedName());
-        generator.writeStringField("discordAvatarUrl", read.user.getAvatar().getUrl().toString());
-        generator.writeNumberField("twitchId", read.twitchId);
-        generator.writeStringField("twitchName", read.twitchUser.getDisplayName());
-        generator.writeStringField("twitchAvatarUrl", read.twitchUser.getProfileImageUrl());
-        generator.writeBooleanField("live", read.isLive);
-        generator.writeEndObject();
-    }
-
     public void setRemovedConnection(long discordId, long serverId, String id, int removed) {
         try {
             synchronized (updateVerifiedConnectionRemovedByUserServerAndId) {
@@ -1286,49 +820,6 @@ public class Database implements Service {
         }
     }
 
-    public void allIps(BiConsumer<Long, String> ipConsumer) {
-        try {
-            synchronized (getUserConnectionAttempts) {
-                ResultSet rs = getUserConnectionAttempts.executeQuery();
-
-                while (rs.next()) {
-                    ipConsumer.accept(rs.getLong("user_id"), rs.getString("ip"));
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public int ipCount() {
-        try {
-            synchronized (getUserConnectionAttemptsCount) {
-                ResultSet rs = getUserConnectionAttemptsCount.executeQuery();
-
-                rs.next();
-
-                return rs.getInt(1);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return 0;
-        }
-    }
-
-    public void writeIps(long id, StringBuilder sb) {
-        try {
-            synchronized (getUserConnectionAttemptsByID) {
-                getUserConnectionAttemptsByID.setLong(1, id);
-                ResultSet rs = getUserConnectionAttemptsByID.executeQuery();
-                while (rs.next()) {
-                    sb.append(rs.getString("ip"));
-                    sb.append("</br>");
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
 
     public void addUserRecord(long userId, long serverId, String accessToken) {
         try {
@@ -1420,127 +911,6 @@ public class Database implements Service {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-    }
-
-    public int countVotingKeysByServer(long serverId) {
-        try {
-            synchronized (countVotingKeysByServerId) {
-                countVotingKeysByServerId.setLong(1, serverId);
-                ResultSet rs = countVotingKeysByServerId.executeQuery();
-                rs.next();
-                return rs.getInt("Count(*)");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return 0;
-    }
-
-    public List<String> getVotingKeysByServer(long serverId) {
-        try {
-            synchronized (getVotingKeysByServerId) {
-                getVotingKeysByServerId.setLong(1, serverId);
-                ResultSet rs = getVotingKeysByServerId.executeQuery();
-                List<String> list = new ArrayList<>();
-                while (rs.next()) {
-                    list.add(rs.getString("key"));
-                }
-                return list;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return List.of();
-    }
-
-    public void insertVotingKey(String key, long serverId) {
-        try {
-            synchronized (insertVotingKey) {
-                insertVotingKey.setString(1, key);
-                insertVotingKey.setLong(2, serverId);
-                insertVotingKey.execute();
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void removeVotingKey(String key, long serverId) {
-        try {
-            synchronized (removeVotingKey) {
-                removeVotingKey.setString(1, key);
-                removeVotingKey.setLong(2, serverId);
-                removeVotingKey.execute();
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void clearVotingKeys(long serverId) {
-        try {
-            synchronized (clearVotingKeys) {
-                clearVotingKeys.setLong(1, serverId);
-                clearVotingKeys.execute();
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void assignRole(long roleId, long serverId, long userId) {
-        try {
-            synchronized (getManualRoleAssignmentsByUser) {
-                getManualRoleAssignmentsByUser.setLong(1, userId);
-                getManualRoleAssignmentsByUser.setLong(2, serverId);
-                ResultSet rs = getManualRoleAssignmentsByUser.executeQuery();
-                while (rs.next()) {
-                    if (rs.getLong("role_id") == roleId) {
-                        return;
-                    }
-                }
-            }
-
-            synchronized (insertManualRoleAssignment) {
-                insertManualRoleAssignment.setLong(1, userId);
-                insertManualRoleAssignment.setLong(2, serverId);
-                insertManualRoleAssignment.setLong(3, roleId);
-                insertManualRoleAssignment.execute();
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void unassignRole(long roleId, long serverId, long userId) {
-        try {
-            synchronized (deleteManualRoleAssignment) {
-                deleteManualRoleAssignment.setLong(1, userId);
-                deleteManualRoleAssignment.setLong(2, serverId);
-                deleteManualRoleAssignment.setLong(3, roleId);
-                deleteManualRoleAssignment.execute();
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public ArrayList<Long> getAssignedRoles(long userId, long serverId) {
-        ArrayList<Long> ret = new ArrayList<>();
-        try {
-            synchronized (getManualRoleAssignmentsByUser) {
-                getManualRoleAssignmentsByUser.setLong(1, userId);
-                getManualRoleAssignmentsByUser.setLong(2, serverId);
-                ResultSet rs = getManualRoleAssignmentsByUser.executeQuery();
-
-                while (rs.next()) {
-                    ret.add(rs.getLong("role_id"));
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return ret;
     }
 
     public String getPingLeaderboard() {
@@ -1707,27 +1077,6 @@ public class Database implements Service {
         }
     }
 
-    public void writePingCounts(CSVPrinter printer) {
-        try {
-            synchronized (getPingCountsDesc) {
-                ResultSet rs = getPingCountsDesc.executeQuery();
-
-                while (rs.next()) {
-                    String username = Bot.api.getUserById(rs.getLong("user_id")).thenApply(u -> u.getDiscriminatedName()).exceptionally(t -> {
-                        try {
-                            return String.valueOf(rs.getLong("user_id"));
-                        } catch (SQLException e) {
-                            e.printStackTrace();
-                            return "";
-                        }
-                    }).join();
-                    printer.printRecord(username, rs.getInt("ping_count"));
-                }
-            }
-        } catch (SQLException | IOException e) {
-            e.printStackTrace();
-        }
-    }
 
     public void addDunceStoredRoles(User user, Server server) {
         try {

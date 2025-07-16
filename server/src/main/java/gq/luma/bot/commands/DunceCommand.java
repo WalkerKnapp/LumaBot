@@ -1,13 +1,9 @@
 package gq.luma.bot.commands;
 
 import gq.luma.bot.Luma;
-import gq.luma.bot.commands.params.ParamUtilities;
 import gq.luma.bot.commands.subsystem.Command;
 import gq.luma.bot.commands.subsystem.CommandEvent;
 import gq.luma.bot.reference.BotReference;
-import gq.luma.bot.services.Bot;
-import gq.luma.bot.services.Database;
-import org.apache.commons.validator.GenericValidator;
 import org.javacord.api.entity.channel.TextChannel;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
 import org.javacord.api.entity.user.User;
@@ -15,14 +11,11 @@ import org.javacord.api.util.DiscordRegexPattern;
 
 import java.awt.*;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 
 public class DunceCommand {
@@ -30,6 +23,15 @@ public class DunceCommand {
     private static final long MOD_NOTIFICATIONS_CHANNEL_ID = 432229671711670272L;
 
     private static final long DUNCE_ROLE_ID = 312324674275115008L;
+
+    public static boolean isLong(String value) {
+        try {
+            Long.parseLong(value);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
 
     @Command(aliases = {"dunce"}, description = "dunce_description", usage = "", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296")
     public EmbedBuilder onDunce(CommandEvent event) {
@@ -51,7 +53,7 @@ public class DunceCommand {
                 // Reference is a mention, pull out the user id and get the user
                 String userId = mentionMatcher.group("id");
                 targetUser = event.getApi().getUserById(userId).exceptionally(t -> null).join();
-            } else if (GenericValidator.isLong(userReference)) {
+            } else if (isLong(userReference)) {
                 // Reference is a user id
                 targetUser = event.getApi().getUserById(userReference).exceptionally(t -> null).join();
             } else if (referenceSplitByHash.length > 1) {
@@ -73,7 +75,7 @@ public class DunceCommand {
 
                     String amountString = period.substring(0, period.length() - 1);
 
-                    if (GenericValidator.isLong(amountString)) {
+                    if (isLong(amountString)) {
                         long amount = Long.parseLong(amountString);
                         dunceUntilRaw = amount;
                         char unit = period.toCharArray()[period.length() - 1];
@@ -101,12 +103,6 @@ public class DunceCommand {
                                 break;
                         }
                     }
-
-                //} else if (qualifier.equalsIgnoreCase("until")) {
-                //    String date = event.getCommandArgs()[2];
-//
-               //     LocalDateTime.parse()
-                //}
 
             } else if (event.getCommandArgs().length == 1) {
                 // Timeout without explicit time
@@ -204,7 +200,7 @@ public class DunceCommand {
                 // Reference is a mention, pull out the user id and get the user
                 String userId = mentionMatcher.group("id");
                 targetUser = event.getApi().getUserById(userId).exceptionally(t -> null).join();
-            } else if (GenericValidator.isLong(userReference)) {
+            } else if (isLong(userReference)) {
                 // Reference is a user id
                 targetUser = event.getApi().getUserById(userReference).exceptionally(t -> null).join();
             } else if (referenceSplitByHash.length > 1) {
@@ -252,74 +248,6 @@ public class DunceCommand {
         }
     }
 
-    /*@Command(aliases = {"ban"}, description = "ban_description", usage = "", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296")
-    public EmbedBuilder onBan(CommandEvent event) {
-        User targetUser = null;
-
-        if (event.getCommandArgs().length >= 1) {
-
-            // Interpret user reference
-            String userReference = event.getCommandArgs()[0];
-
-            Matcher mentionMatcher = DiscordRegexPattern.USER_MENTION.matcher(userReference);
-            String[] referenceSplitByHash = userReference.split("#");
-
-            if (mentionMatcher.matches()) {
-                // Reference is a mention, pull out the user id and get the user
-                String userId = mentionMatcher.group("id");
-                targetUser = event.getApi().getUserById(userId).exceptionally(t -> null).join();
-            } else if (GenericValidator.isLong(userReference)) {
-                // Reference is a user id
-                targetUser = event.getApi().getUserById(userReference).exceptionally(t -> null).join();
-            } else if (referenceSplitByHash.length > 1) {
-                // Reference could be a nick
-                targetUser = event.getServer().orElseThrow(AssertionError::new)
-                        .getMemberByDiscriminatedNameIgnoreCase(userReference)
-                        .orElse(null);
-            }
-        }
-
-        if (targetUser == null) {
-            return new EmbedBuilder()
-                    .setColor(Color.RED)
-                    .setTitle("Invalid Syntax")
-                    .setDescription("Syntax: ?L ban (user) [reason]");
-        }
-
-        String reason;
-        if (event.getCommandRemainder().length() > event.getCommandArgs()[0].length() + 1) {
-            reason = event.getCommandRemainder().substring(event.getCommandArgs()[0].length() + 1);
-        } else {
-            reason = "";
-        }
-
-        // Ban the user
-        Bot.api.getServerById(146404426746167296L).orElseThrow(AssertionError::new)
-                .banUser(targetUser, 0, TimeUnit.SECONDS, reason);
-
-        // Notify mod-actions
-        TextChannel modActions = event.getServer().orElseThrow(AssertionError::new)
-                .getTextChannelById(MOD_NOTIFICATIONS_CHANNEL_ID).orElseThrow(AssertionError::new);
-        modActions.sendMessage(new EmbedBuilder()
-                .setAuthor(event.getAuthor())
-                .setDescription("Banned " + targetUser.getMentionTag() + " (" + targetUser.getDiscriminatedName() + ").")
-                .addField("Reason", reason.isEmpty() ? "*No reason given*" : reason));
-
-        // DM User (if able)
-        targetUser.sendMessage(new EmbedBuilder()
-                .setColor(BotReference.LUMA_COLOR)
-                .setTitle("You have been banned by a moderator")
-                .addField("Reason", reason.isEmpty() ? "*No reason given*" : reason)
-                .setFooter("Portal 2 Speedrun Server")
-                .setTimestampToNow());
-
-        // Send response
-        return new EmbedBuilder()
-                .setColor(BotReference.LUMA_COLOR)
-                .setDescription("Banned " + targetUser.getMentionTag() + " (" + targetUser.getDiscriminatedName() + ").")
-                .addField("Reason", reason.isEmpty() ? "*No reason given*" : reason);
-    }*/
-
     @Command(aliases = {"warn"}, description = "warn_description", usage = "", neededPerms = "CLEANUP", whilelistedGuilds = "146404426746167296")
     public EmbedBuilder onWarn(CommandEvent event) {
         User targetUser = null;
@@ -336,7 +264,7 @@ public class DunceCommand {
                 // Reference is a mention, pull out the user id and get the user
                 String userId = mentionMatcher.group("id");
                 targetUser = event.getApi().getUserById(userId).exceptionally(t -> null).join();
-            } else if (GenericValidator.isLong(userReference)) {
+            } else if (isLong(userReference)) {
                 // Reference is a user id
                 targetUser = event.getApi().getUserById(userReference).exceptionally(t -> null).join();
             } else if (referenceSplitByHash.length > 1) {
@@ -437,7 +365,7 @@ public class DunceCommand {
                 // Reference is a mention, pull out the user id and get the user
                 String userId = mentionMatcher.group("id");
                 targetUser = event.getApi().getUserById(userId).exceptionally(t -> null).join();
-            } else if (GenericValidator.isLong(userReference)) {
+            } else if (isLong(userReference)) {
                 // Reference is a user id
                 targetUser = event.getApi().getUserById(userReference).exceptionally(t -> null).join();
             } else if (referenceSplitByHash.length > 1) {

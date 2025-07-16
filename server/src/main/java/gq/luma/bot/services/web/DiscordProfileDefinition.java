@@ -1,12 +1,10 @@
 package gq.luma.bot.services.web;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.model.Token;
 import org.pac4j.core.profile.converter.Converters;
 import org.pac4j.core.profile.definition.CommonProfileDefinition;
 import org.pac4j.core.util.Pac4jConstants;
-import org.pac4j.oauth.config.OAuth20Configuration;
 import org.pac4j.oauth.config.OAuthConfiguration;
 import org.pac4j.oauth.profile.JsonHelper;
 import org.pac4j.oauth.profile.generic.GenericOAuth20ProfileDefinition;
@@ -58,10 +56,10 @@ public class DiscordProfileDefinition extends GenericOAuth20ProfileDefinition {
             profile.setId(id);
 
             // Extract the account creation time from its ID.
-            long creationTimeMillis = (Long.valueOf(id) >>> DISCORD_TIMESTAMP_OFFSET_BITS) + DISCORD_EPOCH_MILLIS;
+            long creationTimeMillis = (Long.parseLong(id) >>> DISCORD_TIMESTAMP_OFFSET_BITS) + DISCORD_EPOCH_MILLIS;
             profile.addAttribute(CREATION_TIME, Instant.ofEpochMilli(creationTimeMillis));
 
-            System.out.println(json.toString());
+            System.out.println(json);
 
             convertAndAdd(profile, Map.of(
                     Pac4jConstants.USERNAME, JsonHelper.getElement(json, Pac4jConstants.USERNAME),
@@ -79,7 +77,7 @@ public class DiscordProfileDefinition extends GenericOAuth20ProfileDefinition {
             if ((avatar = profile.getAttribute(AVATAR, String.class)) != null) {
                 pictureURL = String.format("https://cdn.discordapp.com/avatars/%s/%s.png", id, avatar);
             } else if ((discriminator = profile.getAttribute(DISCRIMINATOR, String.class)) != null) {
-                int index = Integer.valueOf(discriminator) % 5;
+                int index = Integer.parseInt(discriminator) % 5;
                 pictureURL = String.format("https://cdn.discordapp.com/embed/avatars/%d.png", index);
             }
             if (pictureURL != null) {

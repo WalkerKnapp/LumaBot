@@ -9,17 +9,3 @@
 
 rootProject.name = 'LumaBot'
 include "server"
-include 'common'
-
-//include ':javacord'
-//project(':javacord').projectDir = new File("../javacord")
-//include ':javacord-api'
-//project(':javacord-api').projectDir = new File("../javacord/javacord-api")
-//include ':javacord-core'
-//project(':javacord-core').projectDir = new File("../javacord/javacord-core")
-
-includeBuild("external/connect2id-oauth-for-twitch") {
-    dependencySubstitution {
-        substitute module('com.nimbusds:oauth2-oidc-sdk')
-    }
-}

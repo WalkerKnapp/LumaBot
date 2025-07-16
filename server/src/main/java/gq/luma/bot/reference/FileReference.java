@@ -7,16 +7,10 @@ import java.io.FileInputStream;
 import java.util.Properties;
 
 public class FileReference implements Service {
-    public static File tempDir;
     public static File webRoot;
     public static File localesDir;
 
-    public static File ffprobe;
-    public static File youtubeDL;
-    public static File sourceDemoParser;
-
     public static String mySQLLocation;
-    public static String clamAVLocation;
 
     @Override
     public void startService() throws Exception {
@@ -24,14 +18,9 @@ public class FileReference implements Service {
         try(FileInputStream fis = new FileInputStream("files.properties")){
             properties.load(fis);
         }
-        tempDir = new File(properties.getProperty("temp"));
         webRoot = new File(properties.getProperty("web_root"));
         localesDir = new File(properties.getProperty("locales"));
-        ffprobe = new File(properties.getProperty("ffprobe"));
-        youtubeDL = new File(properties.getProperty("youtube_dl"));
-        sourceDemoParser = new File(properties.getProperty("source_demo_parser"));
 
         mySQLLocation = properties.getProperty("my_sql_location");
-        clamAVLocation = properties.getProperty("clamav_location");
     }
 }

@@ -21,7 +21,7 @@ public class SteamCredentialsExtractor implements CredentialsExtractor {
 
     private static final String CANCEL_MODE = "cancel";
 
-    private SteamAuthClient client;
+    private final SteamAuthClient client;
 
     public SteamCredentialsExtractor(final SteamAuthClient client) {
         this.client = client;

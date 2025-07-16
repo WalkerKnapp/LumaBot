@@ -2,7 +2,6 @@ package gq.luma.bot.services;
 
 import gq.luma.bot.Luma;
 import org.javacord.api.entity.channel.ServerTextChannel;
-import org.javacord.api.entity.emoji.Emoji;
 import org.javacord.api.entity.message.Message;
 import org.javacord.api.entity.message.Reaction;
 import org.javacord.api.entity.message.embed.EmbedBuilder;
@@ -11,16 +10,15 @@ import org.javacord.api.entity.server.Server;
 import org.javacord.api.entity.webhook.IncomingWebhook;
 import org.javacord.api.entity.webhook.Webhook;
 import org.javacord.api.event.message.reaction.SingleReactionEvent;
-import org.javacord.api.util.logging.ExceptionLogger;
 
 import java.awt.*;
 import java.util.Optional;
 
 public class PinsService implements Service {
     @Override
-    public void startService() throws Exception {
+    public void startService() {
         Bot.api.addReactionAddListener(event -> {
-            if (!event.getServer().isPresent()) {
+            if (event.getServer().isEmpty()) {
                 return;
             }
             Server server = event.getServer().get();
@@ -71,7 +69,7 @@ public class PinsService implements Service {
         });
 
         Bot.api.addReactionRemoveListener(event -> {
-            if (!event.getServer().isPresent()) {
+            if (event.getServer().isEmpty()) {
                 return;
             }
             Server server = event.getServer().get();

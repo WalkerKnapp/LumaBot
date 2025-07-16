@@ -6,11 +6,8 @@ import org.pac4j.oauth.profile.OAuth20Profile;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 public class DiscordProfile extends OAuth20Profile {
-
-    private static final long serialVersionUID = 3096100857710568505L;
 
     /**
      * @return the user's 4-digit discord-tag.

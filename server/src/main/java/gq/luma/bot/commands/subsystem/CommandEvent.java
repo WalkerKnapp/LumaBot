@@ -9,24 +9,20 @@ import org.javacord.api.entity.user.User;
 import java.util.Optional;
 
 public class CommandEvent {
-    private DiscordApi api;
-    private CommandExecutor executor;
-    private Localization localization;
+    private final DiscordApi api;
+    private final Localization localization;
 
-    private String prefix;
-    private String commandRemainder;
-    private String[] commandArgs;
+    private final String commandRemainder;
+    private final String[] commandArgs;
 
-    private Message message;
-    private TextChannel channel;
-    private Optional<Server> server;
-    private User user;
+    private final Message message;
+    private final TextChannel channel;
+    private final Optional<Server> server;
+    private final User user;
 
-    public CommandEvent(DiscordApi api, CommandExecutor executor, Localization localization, String prefix, String commandRemainder, String[] commandArgs, Message message, TextChannel textChannel, Optional<Server> server, User author) {
+    public CommandEvent(DiscordApi api, Localization localization, String commandRemainder, String[] commandArgs, Message message, TextChannel textChannel, Optional<Server> server, User author) {
         this.api = api;
-        this.executor = executor;
         this.localization = localization;
-        this.prefix = prefix;
         this.commandRemainder = commandRemainder;
         this.commandArgs = commandArgs;
         this.message = message;
@@ -37,10 +33,6 @@ public class CommandEvent {
 
     public DiscordApi getApi() {
         return api;
-    }
-
-    public CommandExecutor getExecutor(){
-        return executor;
     }
 
     public String getCommandRemainder(){
@@ -69,9 +61,5 @@ public class CommandEvent {
 
     public User getAuthor() {
         return user;
-    }
-
-    public String getPrefix() {
-        return prefix;
     }
 }

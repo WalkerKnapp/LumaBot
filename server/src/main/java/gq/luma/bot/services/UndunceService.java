@@ -1,10 +1,8 @@
 package gq.luma.bot.services;
 
 import gq.luma.bot.Luma;
-import org.javacord.api.entity.user.User;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 
 public class UndunceService implements Service {
@@ -12,7 +10,7 @@ public class UndunceService implements Service {
     private static final long DUNCE_ROLE_ID = 312324674275115008L;
 
     @Override
-    public void startService() throws Exception {
+    public void startService() {
         Luma.schedulerService.scheduleAtFixedRate(this::checkUndunces, 0, 5, TimeUnit.SECONDS);
     }
 
