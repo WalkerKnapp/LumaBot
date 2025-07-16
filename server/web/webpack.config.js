@@ -11,9 +11,7 @@ module.exports = {
     mode: 'production',
     entry: {
         'profile': './src/views/profile.ts',
-        'loginsrcom': './src/views/loginsrcom.ts',
-        'twitchverifydash': './src/views/twitchverifydash.ts',
-        'mapdash': './src/views/mapdash.ts'
+        'loginsrcom': './src/views/loginsrcom.ts'
     },
     module: {
         rules: [
@@ -93,25 +91,13 @@ module.exports = {
             template: "./src/loginsrcom.html",
             filename: 'loginsrcom/loginsrcom.html'
         }),
-        new HtmlWebpackPlugin({
-            inject: true,
-            chunks: ['twitchverifydash'],
-            template: "./src/twitchverifydash.html",
-            filename: 'twitchverifydash/twitchverifydash.html'
-        }),
-        new HtmlWebpackPlugin({
-            inject: true,
-            chunks: ['mapdash'],
-            template: "./src/mapdash.html",
-            filename: 'mapdash/mapdash.html'
-        }),
         new MiniCssExtractPlugin({
             filename: "[name].css",
             chunkFilename: "[id].css"
         }),
         new webpack.IgnorePlugin({ resourceRegExp: /vertx/ }),
         new CompressionPlugin({
-            filename: 'bundle.gz[query]',
+            filename: '[path]bundle.gz[query]',
             algorithm: 'gzip',
             test: /\.js$|\.css$|\.html$/,
             threshold: 10240,
