@@ -102,7 +102,7 @@ public class Database implements Service {
 
     private void open() throws SQLException {
 
-        conn = DriverManager.getConnection("jdbc:mysql://" + FileReference.mySQLLocation + "/luma?user=" + KeyReference.sqlUser + "&password=" + KeyReference.sqlPass + "&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=EST&autoReconnect=true");
+        conn = DriverManager.getConnection("jdbc:mysql://" + FileReference.mySQLLocation + "/luma?user=" + KeyReference.sqlUser + "&password=" + KeyReference.sqlPass + "&autoReconnect=true");
 
         getChannel = conn.prepareStatement("SELECT * FROM channels WHERE id = ?");
 

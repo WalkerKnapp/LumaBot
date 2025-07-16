@@ -52,7 +52,6 @@ import org.xnio.streams.ChannelOutputStream;
 
 import java.io.*;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -61,12 +60,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 public class WebServer implements Service {
     private static final Logger logger = LoggerFactory.getLogger(WebServer.class);
-
-    private Path CDN_PATH;
 
     private static class ProfileRestrictedHandler implements HttpHandler {
         private final WebPage pageToServe;
@@ -114,7 +110,12 @@ public class WebServer implements Service {
 
             if(latestDiscordProfile != null) {
                 Luma.database.addUserRecord(Long.parseLong(latestDiscordProfile.getId()), serverId, latestDiscordProfile.getAccessToken());
-                String ip = exchange.getRequestHeaders().get("X-Forwarded-For").getFirst();
+                String ip;
+                if (exchange.getRequestHeaders().contains("X-Forwarded-For")) {
+                    ip = exchange.getRequestHeaders().get("X-Forwarded-For").getFirst();
+                } else {
+                    ip = exchange.getConnection().getPeerAddress().toString();
+                }
 
                 boolean lookupConnectionsSucceeded = lookupConnections(latestDiscordProfile, latestSteamProfile, latestTwitchProfile, serverId);
 
@@ -363,7 +364,6 @@ public class WebServer implements Service {
     public void startService() throws IOException {
         WebPage profilePage = new WebPage(Paths.get(FileReference.webRoot.getAbsolutePath(), "profile", "profile.html"));
         WebPage srcomLoginPage = new WebPage(Paths.get(FileReference.webRoot.getAbsolutePath(), "loginsrcom", "loginsrcom.html"));
-        CDN_PATH = Paths.get(FileReference.webRoot.getAbsolutePath(), "cdn");
 
         final Config securityConfig = new WebSecConfigFactory().build();
         final InMemorySessionManager sessionManager = new InMemorySessionManager("SessionManager");
@@ -373,36 +373,6 @@ public class WebServer implements Service {
         securityConfig.setHttpActionAdapter(UndertowHttpActionAdapter.INSTANCE);
 
         long serverId = 146404426746167296L;
-
-        HttpHandler rootHandler = Handlers.path().addExactPath("/", new FileServeHandler("index.html"));
-
-        HttpHandler cdnHandler = exchange -> {
-            String[] split = exchange.getRelativePath().split("/");
-            if(split.length < 1) {
-                return;
-            }
-            String filename = split[split.length - 1];
-
-            //System.out.println("Rel uncompressedBuffer: " + exchange.getRelativePath());
-            logger.trace("Cdn request for file name: " + filename);
-
-            for(Path path : Files.list(CDN_PATH).collect(Collectors.toCollection(ArrayList::new))) {
-                //System.out.println(path.getFileName().toString() + "=?=" + filename);
-                if(path.getFileName().toString().equalsIgnoreCase(filename)) {
-                    try {
-                        exchange.getResponseSender().transferFrom(FileChannel.open(path), IoCallback.END_EXCHANGE);
-                    } catch (IOException e) {
-                        logger.error("Error while sending to cdn: ", e);
-                        exchange.setStatusCode(500);
-                        exchange.getResponseSender().send("Something went wrong retrieving this file. Please try again later", IoCallback.END_EXCHANGE);
-                    }
-                    return;
-                }
-            }
-
-            exchange.setStatusCode(404);
-            exchange.getResponseSender().send("Could not find file " + filename + ". Please try again later.");
-        };
 
         HttpHandler verifyWebpageHandler = Handlers.routing()
                 .get("/", ProfileRestrictedHandler.build(profilePage, securityConfig, true))
@@ -576,35 +546,10 @@ public class WebServer implements Service {
                     }
                 });
 
-
-        //case "api.luma.gq":
-        //apiHandler.handleRequest(exchange);
-        //break;
         Undertow webpageServer = Undertow.builder()
                 .setServerOption(UndertowOptions.ENABLE_HTTP2, true)
                 .addHttpListener(8000, "0.0.0.0")
-                .setHandler(new SessionAttachmentHandler(exchange -> {
-                    logger.trace("Call to host name: " + exchange.getHostName());
-                    switch (exchange.getHostName()) {
-                        case "luma.gq":
-                        case "www.luma.gq":
-                            rootHandler.handleRequest(exchange);
-                            break;
-                        case "cdn.walkerknapp.me":
-                            cdnHandler.handleRequest(exchange);
-                            break;
-                        case "luma.portal2.sr":
-                            verifyWebpageHandler.handleRequest(exchange);
-                            break;
-                        //case "api.luma.gq":
-                        //apiHandler.handleRequest(exchange);
-                        //break;
-                        default:
-                            logger.debug("No host name found for host: " + exchange.getHostName());
-                            exchange.setStatusCode(404);
-                            exchange.getResponseSender().send("Invalid subdomain.", IoCallback.END_EXCHANGE);
-                    }
-                }, sessionManager, cookieConfig))
+                .setHandler(new SessionAttachmentHandler(verifyWebpageHandler, sessionManager, cookieConfig))
                 .build();
 
         webpageServer.start();

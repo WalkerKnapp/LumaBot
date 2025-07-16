@@ -39,7 +39,6 @@ public class Luma {
 
     static {
         services = new ArrayList<>();
-        services.add(new FileReference());
         services.add(new KeyReference());
         services.add(database = new Database());
         services.add(new WebServer());
