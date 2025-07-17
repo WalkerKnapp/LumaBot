@@ -60,7 +60,6 @@ public class Bot implements Service {
         CommandExecutor executor = new CommandExecutor(api);
         locales.forEach(executor::setLocalization);
         executor.registerCommand(new InfoCommand());
-        executor.registerCommand(new ServerCommands());
         executor.registerCommand(new PinsCommands());
         executor.registerCommand(new DunceCommand());
         executor.registerCommand(new VidCommand());
