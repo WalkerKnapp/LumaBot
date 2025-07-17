@@ -3,8 +3,10 @@ package gq.luma.bot.reference;
 import gq.luma.bot.services.Service;
 
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.Properties;
@@ -20,66 +22,48 @@ public class KeyReference implements Service {
     public static String sqlUser;
     public static String sqlPass;
 
+    private String loadKey(String propName, String envName, Properties props) {
+        if (props != null && props.containsKey(propName)) {
+            return props.getProperty(propName).trim();
+        }
 
-    @Override
-    public void startService() throws Exception {
-        if (Files.exists(Paths.get("keys.properties"))) {
-            // Read from traditional "keys.properties" file
-            Properties properties = new Properties();
-            try (FileInputStream fis = new FileInputStream("keys.properties")) {
-                properties.load(fis);
-            }
+        if (System.getenv(envName) != null) {
+            return System.getenv(envName).trim();
+        }
 
-            discordClientId = properties.getProperty("discord_client_id");
-            discordClientSecret = properties.getProperty("discord_client_secret");
-            discordToken = properties.getProperty("discord_bot_token");
-
-            steamKey = properties.getProperty("steam");
-
-            twitchClientId = properties.getProperty("twitch_client_id");
-            twitchClientSecret = properties.getProperty("twitch_client_secret");
-
-            sqlUser = properties.getProperty("sql_user");
-            sqlPass = properties.getProperty("sql_pass");
-        } else {
-            // Try to read from docker secrets, if we're running in docker
+        if (System.getenv(envName + "_FILE") != null) {
             try {
-                discordClientId = Files.readString(Paths.get("/run/secrets/luma_discord_client_id"));
-                discordClientSecret = Files.readString(Paths.get("/run/secrets/luma_discord_client_secret"));
-                discordToken = Files.readString(Paths.get("/run/secrets/luma_discord_bot_token"));
-
-                steamKey = Files.readString(Paths.get("/run/secrets/luma_steam_key"));
-
-                twitchClientId = Files.readString(Paths.get("/run/secrets/luma_twitch_client_id"));
-                twitchClientSecret = Files.readString(Paths.get("/run/secrets/luma_twitch_client_secret"));
-
-                sqlUser = Files.readString(Paths.get("/run/secrets/mysql_user"));
-                sqlPass = Files.readString(Paths.get("/run/secrets/mysql_pass"));
-
-            } catch (NoSuchFileException e) {
-                System.err.println("Docker secrets not found (" + e + "). Falling back to environment variables");
-
-                discordClientId = Objects.requireNonNull(System.getenv("LUMA_DISCORD_CLIENT_ID"), "LUMA_DISCORD_CLIENT_ID not set (and keys.properties, docker secrets are not set instead)");
-                discordClientSecret = Objects.requireNonNull(System.getenv("LUMA_DISCORD_CLIENT_SECRET"), "LUMA_DISCORD_CLIENT_SECRET not set (and keys.properties, docker secrets are not set instead)");
-                discordToken = Objects.requireNonNull(System.getenv("LUMA_DISCORD_BOT_TOKEN"), "LUMA_DISCORD_BOT_TOKEN not set (and keys.properties, docker secrets are not set instead)");
-
-                steamKey = Objects.requireNonNull(System.getenv("LUMA_STEAM_KEY"), "LUMA_STEAM_KEY not set (and keys.properties, docker secrets are not set instead)");
-
-                twitchClientId = Objects.requireNonNull(System.getenv("LUMA_TWITCH_CLIENT_ID"), "LUMA_TWITCH_CLIENT_ID not set (and keys.properties, docker secrets are not set instead)");
-                twitchClientSecret = Objects.requireNonNull(System.getenv("LUMA_TWITCH_CLIENT_SECRET"), "LUMA_TWITCH_CLIENT_SECRET not set (and keys.properties, docker secrets are not set instead)");
-
-                sqlUser = Objects.requireNonNull(System.getenv("MYSQL_USER"), "MYSQL_USER not set (and keys.properties, docker secrets are not set instead)");
-                sqlPass = Objects.requireNonNull(System.getenv("MYSQL_PASS"), "MYSQL_PASS not set (and keys.properties, docker secrets are not set instead)");
+                return Files.readString(Path.of(System.getenv(envName + "_FILE"))).trim();
+            } catch (IOException e) {
+                System.err.println("Encountered error while trying to read from the contents of " + envName + "_FILE");
             }
         }
 
-        discordClientId = discordClientId.trim();
-        discordClientSecret = discordClientSecret.trim();
-        discordToken = discordToken.trim();
-        steamKey = steamKey.trim();
-        twitchClientId = twitchClientId.trim();
-        twitchClientSecret = twitchClientSecret.trim();
-        sqlUser = sqlUser.trim();
-        sqlPass = sqlPass.trim();
+        throw new IllegalArgumentException("Failed to load property " + propName + " from keys.properties, " + envName + " from env variables, or contents of " + envName + "_FILE.");
+    }
+
+
+    @Override
+    public void startService() throws Exception {
+        Properties properties = null;
+        if (Files.exists(Paths.get("keys.properties"))) {
+            // Read from traditional "keys.properties" file
+            properties = new Properties();
+            try (FileInputStream fis = new FileInputStream("keys.properties")) {
+                properties.load(fis);
+            }
+        }
+
+        discordClientId = loadKey("discord_client_id", "DISCORD_CLIENT_ID", properties);
+        discordClientSecret = loadKey("discord_client_secret", "DISCORD_CLIENT_SECRET", properties);
+        discordToken = loadKey("discord_bot_token", "DISCORD_BOT_TOKEN", properties);
+
+        steamKey = loadKey("steam", "STEAM_KEY", properties);
+
+        twitchClientId = loadKey("twitch_client_id", "TWITCH_CLIENT_ID", properties);
+        twitchClientSecret = loadKey("twitch_client_secret", "TWITCH_CLIENT_SECRET", properties);
+
+        sqlUser = loadKey("sql_user", "MYSQL_USER", properties);
+        sqlPass = loadKey("sql_pass", "MYSQL_PASS", properties);
     }
 }
